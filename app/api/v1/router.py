@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import departments, employees, health
+from app.api.v1.endpoints import departments, designations, employees, health
 
 
 router = APIRouter()
@@ -16,6 +16,12 @@ router.include_router(
     departments.router,
     prefix="/departments",
     tags=["Departments"],
+)
+
+router.include_router(
+    designations.router,
+    prefix="/designations",
+    tags=["Designations"],
 )
 
 router.include_router(
