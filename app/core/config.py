@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     LOG_DIR: str = "logs"
     LOG_FILE_NAME: str = "voxaudit.log"
 
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
+    MINIO_SECURE: bool = False
+    MINIO_BUCKET: str = "voice-samples"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
