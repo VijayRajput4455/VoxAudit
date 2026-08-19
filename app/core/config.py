@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str
     MINIO_SECURE: bool = False
     MINIO_BUCKET: str = "voice-samples"
+    MINIO_REGION: str = "us-east-1"
+    MINIO_PUBLIC_URL: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

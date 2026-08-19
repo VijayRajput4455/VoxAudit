@@ -1,87 +1,215 @@
 from datetime import timedelta
 from io import BytesIO
+import time
+from typing import BinaryIO, Dict, Optional, Any
 
 from minio import Minio
+from minio.error import S3Error
+from urllib3.exceptions import MaxRetryError, HTTPError
 
 from app.core.config import settings
+from app.core.exceptions import (
+    StorageConnectionException,
+    StorageException,
+    StorageFileNotFoundException,
+)
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class MinioStorage:
+    """Production-grade object storage manager for MinIO / S3."""
 
-    def __init__(self, client: Minio) -> None:
+    def __init__(self, client: Optional[Minio] = None) -> None:
+        if client is None:
+            from app.integrations.minio.client import get_minio_client
+            client = get_minio_client()
         self.client = client
         self.bucket = settings.MINIO_BUCKET
+        self._bucket_checked = False
 
     def ensure_bucket(self) -> None:
-        exists = self.client.bucket_exists(self.bucket)
+        """Ensures that the configured bucket exists. Caches state to eliminate redundant network roundtrips."""
+        if self._bucket_checked:
+            return
 
-        if not exists:
-            self.client.make_bucket(self.bucket)
+        try:
+            exists = self.client.bucket_exists(self.bucket)
+            if not exists:
+                logger.info(f"Creating MinIO storage bucket: '{self.bucket}'")
+                self.client.make_bucket(self.bucket)
+            self._bucket_checked = True
+        except (S3Error, MaxRetryError, HTTPError) as exc:
+            logger.error(f"Failed to check or create bucket '{self.bucket}': {str(exc)}", exc_info=True)
+            raise StorageConnectionException(f"MinIO bucket check failed: {str(exc)}") from exc
+
+    def upload_stream(
+        self,
+        file_obj: BinaryIO,
+        length: int,
+        storage_key: str,
+        content_type: str = "audio/wav",
+        metadata: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """Streams file-like binary object directly to MinIO without loading entire file into RAM."""
+        self.ensure_bucket()
+        start_time = time.perf_counter()
+
+        try:
+            self.client.put_object(
+                bucket_name=self.bucket,
+                object_name=storage_key,
+                data=file_obj,
+                length=length,
+                content_type=content_type,
+                metadata=metadata,
+            )
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            logger.info(
+                f"Successfully uploaded object '{storage_key}' ({length} bytes) in {duration_ms}ms",
+                extra={
+                    "storage_key": storage_key,
+                    "content_type": content_type,
+                    "bytes": length,
+                    "duration_ms": duration_ms,
+                    "bucket": self.bucket,
+                },
+            )
+            return storage_key
+
+        except (S3Error, MaxRetryError, HTTPError) as exc:
+            logger.error(f"Failed to upload object '{storage_key}' to bucket '{self.bucket}': {str(exc)}", exc_info=True)
+            raise StorageException(f"Failed to upload object '{storage_key}': {str(exc)}") from exc
 
     def upload_file(
         self,
         file_data: bytes,
         storage_key: str,
         content_type: str = "audio/wav",
+        metadata: Optional[Dict[str, str]] = None,
     ) -> str:
-        self.ensure_bucket()
-
-        self.client.put_object(
-            bucket_name=self.bucket,
-            object_name=storage_key,
-            data=BytesIO(file_data),
+        """Uploads raw byte payload to MinIO."""
+        return self.upload_stream(
+            file_obj=BytesIO(file_data),
             length=len(file_data),
+            storage_key=storage_key,
             content_type=content_type,
+            metadata=metadata,
         )
-
-        return storage_key
 
     def download_file(
         self,
         storage_key: str,
     ) -> bytes:
+        """Downloads complete object content into bytes."""
+        start_time = time.perf_counter()
         response = None
+
         try:
             response = self.client.get_object(
                 bucket_name=self.bucket,
                 object_name=storage_key,
             )
-            return response.read()
+            content = response.read()
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            logger.info(
+                f"Downloaded object '{storage_key}' ({len(content)} bytes) in {duration_ms}ms",
+                extra={
+                    "storage_key": storage_key,
+                    "bytes": len(content),
+                    "duration_ms": duration_ms,
+                    "bucket": self.bucket,
+                },
+            )
+            return content
+
+        except S3Error as exc:
+            if exc.code in ("NoSuchKey", "NoSuchBucket"):
+                logger.warning(f"Storage object not found: '{storage_key}'")
+                raise StorageFileNotFoundException(f"Object '{storage_key}' not found in storage.") from exc
+            logger.error(f"Storage download failed for '{storage_key}': {str(exc)}", exc_info=True)
+            raise StorageException(f"Failed to download object '{storage_key}': {str(exc)}") from exc
+        except (MaxRetryError, HTTPError) as exc:
+            logger.error(f"Storage connection failed during download of '{storage_key}': {str(exc)}", exc_info=True)
+            raise StorageConnectionException(f"Connection error downloading '{storage_key}': {str(exc)}") from exc
         finally:
             if response:
                 response.close()
                 response.release_conn()
+
+    def get_object_stream(self, storage_key: str) -> Any:
+        """Returns raw HTTP response stream for streaming audio to API clients."""
+        try:
+            return self.client.get_object(
+                bucket_name=self.bucket,
+                object_name=storage_key,
+            )
+        except S3Error as exc:
+            if exc.code in ("NoSuchKey", "NoSuchBucket"):
+                raise StorageFileNotFoundException(f"Object '{storage_key}' not found in storage.") from exc
+            raise StorageException(f"Failed to stream object '{storage_key}': {str(exc)}") from exc
 
     def get_presigned_url(
         self,
         storage_key: str,
         expires_seconds: int = 3600,
     ) -> str:
-        return self.client.presigned_get_object(
-            bucket_name=self.bucket,
-            object_name=storage_key,
-            expires=timedelta(seconds=expires_seconds),
-        )
+        """Generates presigned URL for downloading objects. Supports public URL domain overrides for external access."""
+        try:
+            url = self.client.presigned_get_object(
+                bucket_name=self.bucket,
+                object_name=storage_key,
+                expires=timedelta(seconds=expires_seconds),
+            )
+
+            # If external public URL domain is configured (e.g. CDN or reverse proxy), override endpoint
+            public_url_base = getattr(settings, "MINIO_PUBLIC_URL", None)
+            if public_url_base and public_url_base.strip():
+                # Replace internal endpoint hostname with public URL domain
+                internal_endpoint = settings.MINIO_ENDPOINT
+                url = url.replace(f"http://{internal_endpoint}", public_url_base).replace(
+                    f"https://{internal_endpoint}", public_url_base
+                )
+
+            return url
+
+        except Exception as exc:
+            logger.error(f"Failed to generate presigned URL for '{storage_key}': {str(exc)}", exc_info=True)
+            raise StorageException(f"Failed to generate presigned URL: {str(exc)}") from exc
 
     def delete_file(
         self,
         storage_key: str,
     ) -> None:
-        self.client.remove_object(
-            bucket_name=self.bucket,
-            object_name=storage_key,
-        )
+        """Deletes object from storage."""
+        try:
+            self.client.remove_object(
+                bucket_name=self.bucket,
+                object_name=storage_key,
+            )
+            logger.info(f"Deleted object '{storage_key}' from bucket '{self.bucket}'")
+        except S3Error as exc:
+            logger.error(f"Failed to delete object '{storage_key}': {str(exc)}", exc_info=True)
+            raise StorageException(f"Failed to delete object '{storage_key}': {str(exc)}") from exc
 
     def file_exists(
         self,
         storage_key: str,
     ) -> bool:
+        """Checks if object exists in storage."""
         try:
             self.client.stat_object(
                 self.bucket,
                 storage_key,
             )
             return True
-
+        except S3Error as exc:
+            if exc.code in ("NoSuchKey", "NoSuchBucket"):
+                return False
+            logger.warning(f"Error checking file existence for '{storage_key}': {str(exc)}")
+            return False
         except Exception:
             return False
