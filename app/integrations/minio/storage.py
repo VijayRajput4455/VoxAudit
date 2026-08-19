@@ -1,9 +1,11 @@
 from datetime import timedelta
 from io import BytesIO
 import time
-from typing import BinaryIO, Dict, Optional, Any
+from typing import BinaryIO, Dict, Optional, Any, Union
+from uuid import UUID
 
 from minio import Minio
+from minio.datatypes import Object
 from minio.error import S3Error
 from urllib3.exceptions import MaxRetryError, HTTPError
 
@@ -17,9 +19,26 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Supported audio MIME types for voice audits
+ALLOWED_AUDIO_TYPES = {
+    "audio/wav",
+    "audio/x-wav",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/ogg",
+    "audio/flac",
+    "audio/x-m4a",
+    "audio/m4a",
+    "audio/webm",
+}
+
 
 class MinioStorage:
-    """Production-grade object storage manager for MinIO / S3."""
+    """Production-grade object storage manager for MinIO / S3.
+    
+    Responsible solely for object storage operations. Does not contain 
+    business logic or database dependencies. Easy to mock for testing.
+    """
 
     def __init__(self, client: Optional[Minio] = None) -> None:
         if client is None:
@@ -28,6 +47,19 @@ class MinioStorage:
         self.client = client
         self.bucket = settings.MINIO_BUCKET
         self._bucket_checked = False
+
+    @staticmethod
+    def generate_storage_key(
+        employee_code: str,
+        voice_sample_id: Union[UUID, str],
+        extension: str = "wav",
+    ) -> str:
+        """Generates a predictable storage key using employee code and voice sample ID.
+        
+        Example: employees/EMP001/550e8400-e29b-41d4-a716-446655440000.wav
+        """
+        clean_ext = extension.lstrip(".").lower()
+        return f"employees/{employee_code}/{str(voice_sample_id)}.{clean_ext}"
 
     def ensure_bucket(self) -> None:
         """Ensures that the configured bucket exists. Caches state to eliminate redundant network roundtrips."""
@@ -53,6 +85,19 @@ class MinioStorage:
         metadata: Optional[Dict[str, str]] = None,
     ) -> str:
         """Streams file-like binary object directly to MinIO without loading entire file into RAM."""
+        # 1. Validate file size
+        max_bytes = getattr(settings, "MAX_UPLOAD_SIZE_BYTES", 50 * 1024 * 1024)
+        if length > max_bytes:
+            err_msg = f"File size ({length} bytes) exceeds maximum permitted limit ({max_bytes} bytes)."
+            logger.warning(err_msg, extra={"storage_key": storage_key, "file_size": length})
+            raise ValueError(err_msg)
+
+        # 2. Validate audio content type
+        if content_type.lower() not in ALLOWED_AUDIO_TYPES:
+            logger.warning(
+                f"Unsupported audio content type '{content_type}' for storage key '{storage_key}'."
+            )
+
         self.ensure_bucket()
         start_time = time.perf_counter()
 
@@ -140,17 +185,28 @@ class MinioStorage:
                 response.close()
                 response.release_conn()
 
-    def get_object_stream(self, storage_key: str) -> Any:
-        """Returns raw HTTP response stream for streaming audio to API clients."""
+    def get_file_metadata(
+        self,
+        storage_key: str,
+    ) -> Dict[str, Any]:
+        """Retrieves object metadata from MinIO."""
         try:
-            return self.client.get_object(
+            stat: Object = self.client.stat_object(
                 bucket_name=self.bucket,
                 object_name=storage_key,
             )
+            return {
+                "storage_key": stat.object_name,
+                "size": stat.size,
+                "content_type": stat.content_type,
+                "last_modified": stat.last_modified,
+                "etag": stat.etag,
+                "metadata": stat.metadata,
+            }
         except S3Error as exc:
             if exc.code in ("NoSuchKey", "NoSuchBucket"):
                 raise StorageFileNotFoundException(f"Object '{storage_key}' not found in storage.") from exc
-            raise StorageException(f"Failed to stream object '{storage_key}': {str(exc)}") from exc
+            raise StorageException(f"Failed to get metadata for object '{storage_key}': {str(exc)}") from exc
 
     def get_presigned_url(
         self,
@@ -165,10 +221,8 @@ class MinioStorage:
                 expires=timedelta(seconds=expires_seconds),
             )
 
-            # If external public URL domain is configured (e.g. CDN or reverse proxy), override endpoint
             public_url_base = getattr(settings, "MINIO_PUBLIC_URL", None)
             if public_url_base and public_url_base.strip():
-                # Replace internal endpoint hostname with public URL domain
                 internal_endpoint = settings.MINIO_ENDPOINT
                 url = url.replace(f"http://{internal_endpoint}", public_url_base).replace(
                     f"https://{internal_endpoint}", public_url_base

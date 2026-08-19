@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     MINIO_REGION: str = "us-east-1"
     MINIO_PUBLIC_URL: str | None = None
 
+    # Maximum allowed audio upload size in bytes (default: 50MB)
+    MAX_UPLOAD_SIZE_BYTES: int = 50 * 1024 * 1024
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
