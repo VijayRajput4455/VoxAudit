@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # Maximum allowed audio upload size in bytes (default: 50MB)
     MAX_UPLOAD_SIZE_BYTES: int = 50 * 1024 * 1024
 
+    # Speaker Voice Embedding Configuration
+    EMBEDDING_DEVICE: str = "auto"
+    EMBEDDING_MODEL: str = "speechbrain/spkrec-ecapa-voxceleb"
+    EMBEDDING_MODEL_VERSION: str = "1.0.0"
+    EMBEDDING_DIMENSION: int = 192
+    MIN_EMBEDDING_AUDIO_SECONDS: float = 1.0
+    MAX_EMBEDDING_AUDIO_SECONDS: float = 300.0
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

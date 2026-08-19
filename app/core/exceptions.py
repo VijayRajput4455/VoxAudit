@@ -19,3 +19,23 @@ class StorageFileNotFoundException(StorageException):
 class StorageConnectionException(StorageException):
     """Raised when connection to object storage service fails."""
     pass
+
+
+class EmbeddingException(VoxAuditException):
+    """Base exception for speaker embedding operations."""
+    pass
+
+
+class EmbeddingModelException(EmbeddingException):
+    """Raised when ECAPA model loading fails."""
+    pass
+
+
+class InvalidAudioException(EmbeddingException):
+    """Raised when input audio is invalid, missing, unreadable, or out of duration limits."""
+    pass
+
+
+class EmbeddingInferenceException(EmbeddingException):
+    """Raised when speaker embedding inference or normalization fails."""
+    pass
