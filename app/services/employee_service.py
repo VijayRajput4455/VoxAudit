@@ -1,4 +1,3 @@
-from datetime import date
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -10,7 +9,8 @@ from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 
 class EmployeeService:
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session) -> None:
+        self.db = db
         self.repository = EmployeeRepository(db)
 
     def create_employee(
@@ -18,33 +18,44 @@ class EmployeeService:
         data: EmployeeCreate,
     ) -> Employee:
 
-        existing = self.repository.get_by_code(
+        existing_employee = self.repository.get_by_code(
             data.employee_code
         )
 
-        if existing:
+        if existing_employee:
             raise ValueError(
-                f"Employee code '{data.employee_code}' already exists."
+                f"Employee code "
+                f"'{data.employee_code}' already exists."
             )
-
-        name_parts = data.name.strip().split(" ", 1)
-        first_name = name_parts[0]
-        last_name = name_parts[1] if len(name_parts) > 1 else None
 
         employee = Employee(
             employee_code=data.employee_code,
-            first_name=first_name,
-            last_name=last_name,
+            first_name=data.first_name,
+            last_name=data.last_name,
             father_name=data.father_name,
             date_of_birth=data.date_of_birth,
-            date_of_joining=data.joining_date or date.today(),
+            date_of_joining=data.date_of_joining,
+            email=data.email,
+            phone=data.phone,
             department_id=data.department_id,
             designation_id=data.designation_id,
             shift_id=data.shift_id,
+            manager_id=data.manager_id,
+            location=data.location,
             status=data.status,
         )
 
-        return self.repository.create(employee)
+        try:
+            employee = self.repository.create(employee)
+
+            self.db.commit()
+            self.db.refresh(employee)
+
+            return employee
+
+        except Exception:
+            self.db.rollback()
+            raise
 
     def get_employee(
         self,
@@ -52,6 +63,13 @@ class EmployeeService:
     ) -> Employee | None:
 
         return self.repository.get_by_id(employee_id)
+
+    def get_employee_by_code(
+        self,
+        employee_code: str,
+    ) -> Employee | None:
+
+        return self.repository.get_by_code(employee_code)
 
     def get_employees(self) -> list[Employee]:
 
@@ -65,26 +83,27 @@ class EmployeeService:
 
         employee = self.repository.get_by_id(employee_id)
 
-        if not employee:
+        if employee is None:
             return None
 
         update_data = data.model_dump(
             exclude_unset=True
         )
 
-        if "name" in update_data and update_data["name"]:
-            name_val = update_data.pop("name")
-            name_parts = name_val.strip().split(" ", 1)
-            employee.first_name = name_parts[0]
-            employee.last_name = name_parts[1] if len(name_parts) > 1 else None
-
-        if "joining_date" in update_data:
-            employee.date_of_joining = update_data.pop("joining_date")
-
         for field, value in update_data.items():
             setattr(employee, field, value)
 
-        return self.repository.create(employee)
+        try:
+            employee = self.repository.update(employee)
+
+            self.db.commit()
+            self.db.refresh(employee)
+
+            return employee
+
+        except Exception:
+            self.db.rollback()
+            raise
 
     def delete_employee(
         self,
@@ -93,9 +112,15 @@ class EmployeeService:
 
         employee = self.repository.get_by_id(employee_id)
 
-        if not employee:
+        if employee is None:
             return False
 
-        self.repository.delete(employee)
+        try:
+            self.repository.delete(employee)
+            self.db.commit()
 
-        return True
+            return True
+
+        except Exception:
+            self.db.rollback()
+            raise
