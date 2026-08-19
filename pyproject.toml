@@ -1,0 +1,29 @@
+[project]
+name = "voxaudit"
+version = "0.1.0"
+description = "AI-powered voice audit platform for Customer Care and Sales teams"
+requires-python = ">=3.10,<3.12"
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "pydantic-settings",
+    "alembic",
+    "python-multipart"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "ruff"
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
