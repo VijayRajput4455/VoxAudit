@@ -39,6 +39,7 @@ def get_ecapa_model() -> Any:
     FastAPI workers will each maintain a single cached model instance.
     """
     from speechbrain.inference.speaker import EncoderClassifier
+    from speechbrain.utils.fetching import LocalStrategy
 
     device = resolve_device()
     model_source = getattr(settings, "EMBEDDING_MODEL", "speechbrain/spkrec-ecapa-voxceleb")
@@ -60,6 +61,7 @@ def get_ecapa_model() -> Any:
             source=model_source,
             savedir="models/ecapa",
             run_opts={"device": device},
+            local_strategy=LocalStrategy.COPY,
         )
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 

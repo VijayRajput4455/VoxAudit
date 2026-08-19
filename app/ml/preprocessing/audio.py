@@ -36,10 +36,21 @@ def load_and_preprocess_audio(
         raise InvalidAudioException(f"Audio path is not a valid file: '{path}'")
 
     try:
-        waveform, sample_rate = torchaudio.load(str(path))
-    except Exception as exc:
-        logger.error(f"Failed to load audio file '{path}': {str(exc)}", exc_info=True)
-        raise InvalidAudioException(f"Failed to decode audio file '{path}': {str(exc)}") from exc
+        try:
+            waveform, sample_rate = torchaudio.load(str(path), backend="soundfile")
+        except Exception:
+            waveform, sample_rate = torchaudio.load(str(path))
+    except Exception:
+        try:
+            import soundfile as sf
+            data, sample_rate = sf.read(str(path), dtype="float32")
+            if data.ndim == 1:
+                waveform = torch.from_numpy(data).unsqueeze(0)
+            else:
+                waveform = torch.from_numpy(data.T)
+        except Exception as exc:
+            logger.error(f"Failed to load audio file '{path}': {str(exc)}", exc_info=True)
+            raise InvalidAudioException(f"Failed to decode audio file '{path}': {str(exc)}") from exc
 
     # 2. Check for empty or non-finite waveform
     if waveform is None or waveform.numel() == 0:
