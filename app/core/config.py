@@ -13,6 +13,11 @@ class Settings(BaseSettings):
 
     API_V1_PREFIX: str = "/api/v1"
 
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"
+    LOG_DIR: str = "logs"
+    LOG_FILE_NAME: str = "voxaudit.log"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
