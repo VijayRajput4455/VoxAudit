@@ -56,9 +56,9 @@ class Employee(
         nullable=True,
     )
 
-    department_id: Mapped[str] = mapped_column(
+    department_id: Mapped[str | None] = mapped_column(
         ForeignKey("departments.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
@@ -114,3 +114,13 @@ class Employee(
         back_populates="employee",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def name(self) -> str:
+        if self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.first_name or ""
+
+    @property
+    def joining_date(self) -> date | None:
+        return self.date_of_joining

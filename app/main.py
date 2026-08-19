@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.v1.endpoints.health import router as health_router
+from app.api.v1.router import router as api_v1_router
 from app.core.config import settings
 from app.core.database import engine
 from app.models import Base
@@ -27,6 +27,6 @@ app = FastAPI(
 
 
 app.include_router(
-    health_router,
+    api_v1_router,
     prefix=settings.API_V1_PREFIX,
 )
