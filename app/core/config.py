@@ -37,6 +37,26 @@ class Settings(BaseSettings):
     MIN_EMBEDDING_AUDIO_SECONDS: float = 1.0
     MAX_EMBEDDING_AUDIO_SECONDS: float = 300.0
 
+    # RabbitMQ Message Broker Configuration
+    RABBITMQ_HOST: str = "localhost"
+    RABBITMQ_PORT: int = 5672
+    RABBITMQ_USER: str = "guest"
+    RABBITMQ_PASSWORD: str = "guest"
+    RABBITMQ_VHOST: str = "/"
+    RABBITMQ_QUEUE: str = "voice_enrollment_jobs"
+    RABBITMQ_EXCHANGE: str = "voxaudit_events"
+    RABBITMQ_ROUTING_KEY: str = "voice.enrollment"
+
+    # Milvus Vector Database Configuration
+    MILVUS_HOST: str = "localhost"
+    MILVUS_PORT: int = 19530
+    MILVUS_USER: str = ""
+    MILVUS_PASSWORD: str = ""
+    MILVUS_COLLECTION: str = "voice_embeddings"
+
+    # Voice Enrollment Worker Retries
+    VOICE_ENROLLMENT_MAX_RETRIES: int = 3
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

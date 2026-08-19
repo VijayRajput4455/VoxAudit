@@ -34,6 +34,14 @@ class VoiceSampleResponse(BaseModel):
     sample_type: str
     source: str | None
     status: str
+    error_message: str | None = None
 
     created_at: datetime
     updated_at: datetime
+
+
+class VoiceSampleEnrollmentResponse(BaseModel):
+    id: UUID
+    employee_id: UUID
+    status: str
+    message: str = "Voice sample accepted for processing."

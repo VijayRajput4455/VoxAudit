@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     employees,
     health,
     shifts,
+    voice_samples,
 )
 
 
@@ -40,4 +41,10 @@ router.include_router(
     employees.router,
     prefix="/employees",
     tags=["Employees"],
+)
+
+router.include_router(
+    voice_samples.router,
+    prefix="/voice-samples",
+    tags=["Voice Samples"],
 )

@@ -88,8 +88,13 @@ class VoiceSample(
     status: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
-        default="ACTIVE",
+        default="PENDING",
         index=True,
+    )
+
+    error_message: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
     )
 
     employee = relationship(

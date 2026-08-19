@@ -219,3 +219,6 @@ __marimo__/
 
 # SpeechBrain / HuggingFace model cache directory
 models/
+
+# Milvus Lite local vector DB
+voxaudit_milvus.db*
