@@ -1,28 +1,29 @@
 services:
 
+  # ---------------------------------------------------------------------------
+  # 1. PostgreSQL Database
+  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16
     container_name: voxaudit-postgres
-
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: voxaudit
       POSTGRES_USER: voxaudit
       POSTGRES_PASSWORD: voxaudit_password
-
     ports:
       - "5432:5432"
-
     volumes:
       - voxaudit_postgres_data:/var/lib/postgresql/data
-
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U voxaudit -d voxaudit" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # 2. MinIO Object Storage
+  # ---------------------------------------------------------------------------
   minio:
     image: minio/minio:latest
     container_name: voxaudit-minio
@@ -42,6 +43,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # 3. RabbitMQ Message Queue
+  # ---------------------------------------------------------------------------
   rabbitmq:
     image: rabbitmq:3-management
     container_name: voxaudit-rabbitmq
@@ -52,7 +56,15 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ---------------------------------------------------------------------------
+  # 4. Etcd (Metadata storage for Milvus)
+  # ---------------------------------------------------------------------------
   etcd:
     image: quay.io/coreos/etcd:v3.5.5
     container_name: voxaudit-etcd
@@ -66,6 +78,9 @@ services:
     volumes:
       - voxaudit_etcd_data:/etcd-data
 
+  # ---------------------------------------------------------------------------
+  # 5. Milvus Vector Database
+  # ---------------------------------------------------------------------------
   milvus:
     image: milvusdb/milvus:v2.4.0
     container_name: voxaudit-milvus
@@ -86,6 +101,121 @@ services:
     depends_on:
       - etcd
       - minio
+
+  # ---------------------------------------------------------------------------
+  # 6. VoxAudit API & Backend Engine (Port 8000)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: voxaudit-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      milvus:
+        condition: service_started
+
+  # ---------------------------------------------------------------------------
+  # 7. Standalone Frontend NGINX Container (Port 80)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: voxaudit-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+  # ---------------------------------------------------------------------------
+  # 8. Voice Sample Enrollment Worker (GPU Enabled)
+  # ---------------------------------------------------------------------------
+  voice-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.voice_worker
+    container_name: voxaudit-voice-worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    depends_on:
+      - postgres
+      - minio
+      - rabbitmq
+      - milvus
+
+  # ---------------------------------------------------------------------------
+  # 9. Call Processing & Audit Worker (GPU Enabled)
+  # ---------------------------------------------------------------------------
+  call-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.call_worker
+    container_name: voxaudit-call-worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    depends_on:
+      - postgres
+      - minio
+      - rabbitmq
+      - milvus
 
 volumes:
   voxaudit_postgres_data:

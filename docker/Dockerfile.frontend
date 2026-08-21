@@ -1,0 +1,10 @@
+# Standalone NGINX Dockerfile for VoxAudit Frontend SPA
+FROM nginx:alpine
+
+# Copy static frontend web app files
+COPY frontend /usr/share/nginx/html
+
+# Expose default HTTP port
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
