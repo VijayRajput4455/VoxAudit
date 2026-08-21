@@ -149,7 +149,11 @@ class CallProcessingWorker(BaseWorker):
         """Starts worker event loop listening on RabbitMQ call queue."""
         logger.info("Starting Call Processing Worker...")
         consumer = RabbitMQConsumer()
-        consumer.start_consuming(callback=self.process_job)
+        consumer.start_consuming(
+            callback=self.process_job,
+            queue_name=settings.RABBITMQ_CALL_QUEUE,
+            routing_key=settings.RABBITMQ_CALL_ROUTING_KEY,
+        )
 
 
 if __name__ == "__main__":

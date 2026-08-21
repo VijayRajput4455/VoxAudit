@@ -97,7 +97,7 @@ class CallService:
         }
 
         try:
-            self.publisher.publish_enrollment_job(job_payload)
+            self.publisher.publish_call_job(job_payload)
         except Exception as exc:
             logger.error(f"Failed to publish RabbitMQ call processing job for '{call_job.id}'.", exc_info=True)
             call_job.status = "FAILED"

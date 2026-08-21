@@ -200,7 +200,11 @@ class VoiceEnrollmentWorker(BaseWorker):
         """Starts worker event loop listening on RabbitMQ queue."""
         logger.info("Starting Voice Enrollment Worker...")
         consumer = RabbitMQConsumer()
-        consumer.start_consuming(callback=self.process_job)
+        consumer.start_consuming(
+            callback=self.process_job,
+            queue_name=settings.RABBITMQ_QUEUE,
+            routing_key=settings.RABBITMQ_ROUTING_KEY,
+        )
 
 
 if __name__ == "__main__":
