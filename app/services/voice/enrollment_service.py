@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import BinaryIO, Dict, Optional, Union
+from typing import Any, BinaryIO, Dict, Optional, Union
 from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session
@@ -142,3 +142,97 @@ class EnrollmentService:
             },
         )
         return created_sample
+
+    def enroll_voice_samples_batch(
+        self,
+        employee_id: Union[UUID, str],
+        files: list[tuple[BinaryIO, str, int, str]],
+        sample_type: str = "ENROLLMENT",
+        source: Optional[str] = "web",
+    ) -> list[VoiceSample]:
+        """Enrolls multiple voice samples for an employee in a single batch request."""
+        employee = self.employee_repo.get_by_id(UUID(str(employee_id)))
+        if not employee:
+            raise VoxAuditException(f"Employee with ID '{employee_id}' not found.")
+
+        samples = []
+        for file_obj, original_file_name, file_size, content_type in files:
+            sample = self.enroll_voice_sample(
+                employee_id=employee_id,
+                file_obj=file_obj,
+                original_file_name=original_file_name,
+                file_size=file_size,
+                content_type=content_type,
+                sample_type=sample_type,
+                source=source,
+            )
+            samples.append(sample)
+        return samples
+
+    def get_voice_database_summary(self) -> Dict[str, Any]:
+        """Generates a detailed summary of all enrolled employees, their voice sample files, and Milvus vector counts."""
+        from sqlalchemy import select
+        from app.models.employee import Employee
+        from app.models.voice_sample import VoiceSample
+        from app.integrations.milvus.repository import MilvusRepository
+
+        milvus_repo = MilvusRepository()
+        employees = self.db.scalars(select(Employee).order_by(Employee.first_name)).all()
+        all_samples = self.db.scalars(select(VoiceSample).order_by(VoiceSample.created_at.desc())).all()
+
+        samples_by_employee: dict[str, list[VoiceSample]] = {}
+        for sample in all_samples:
+            emp_id = str(sample.employee_id)
+            if emp_id not in samples_by_employee:
+                samples_by_employee[emp_id] = []
+            samples_by_employee[emp_id].append(sample)
+
+        profiles = []
+        total_enrolled_employees = 0
+
+        for emp in employees:
+            emp_id_str = str(emp.id)
+            emp_samples = samples_by_employee.get(emp_id_str, [])
+            emp_vectors = milvus_repo.get_vectors_by_employee_id(emp_id_str)
+            vector_count = len(emp_vectors)
+
+            if emp_samples or vector_count > 0:
+                total_enrolled_employees += 1
+
+            sample_items = [
+                {
+                    "id": s.id,
+                    "original_file_name": s.original_file_name,
+                    "storage_key": s.storage_key,
+                    "audio_format": s.audio_format,
+                    "duration_seconds": float(s.duration_seconds) if s.duration_seconds is not None else None,
+                    "quality_score": float(s.quality_score) if s.quality_score is not None else None,
+                    "embedding_id": s.embedding_id,
+                    "status": s.status,
+                    "created_at": s.created_at,
+                }
+                for s in emp_samples
+            ]
+
+            profiles.append(
+                {
+                    "employee_id": emp.id,
+                    "employee_code": emp.employee_code,
+                    "first_name": emp.first_name,
+                    "last_name": emp.last_name,
+                    "email": emp.email,
+                    "total_samples": len(emp_samples),
+                    "total_vectors": vector_count,
+                    "samples": sample_items,
+                }
+            )
+
+        milvus_stats = milvus_repo.get_collection_stats()
+        total_vectors_count = milvus_stats.get("total_vectors", 0)
+
+        return {
+            "total_employees_enrolled": total_enrolled_employees,
+            "total_voice_samples": len(all_samples),
+            "total_vectors": total_vectors_count,
+            "profiles": profiles,
+        }

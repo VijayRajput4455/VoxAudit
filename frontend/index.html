@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoxAudit - AI Conversation Intelligence & Voice Audit Platform</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-box">
+          <div class="logo-icon">
+            <i data-lucide="activity"></i>
+          </div>
+          <span class="logo-text">VoxAudit</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-group">
+          <a href="#" class="nav-item active">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="file-audio"></i>
+            <span>Audits</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="message-square"></i>
+            <span>Conversations</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="bell"></i>
+            <span>Alerts</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="bar-chart-3"></i>
+            <span>Analytics</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="file-text"></i>
+            <span>Reports</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="git-fork"></i>
+            <span>Pipelines</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="settings"></i>
+            <span>Settings</span>
+          </a>
+        </div>
+
+        <div class="nav-section-title">AI MODULES</div>
+
+        <div class="nav-group">
+          <a href="#" class="nav-item" onclick="openEnrollmentModal(event)">
+            <i data-lucide="mic"></i>
+            <span>Voice Enrollment</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="transcribe"></i>
+            <span>Transcription</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="users"></i>
+            <span>Speaker Diarization</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="smile"></i>
+            <span>Sentiment Analysis</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="target"></i>
+            <span>Intent Detection</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="layers"></i>
+            <span>Topic Modeling</span>
+          </a>
+          <a href="#" class="nav-item">
+            <i data-lucide="shield-check"></i>
+            <span>Compliance Check</span>
+          </a>
+        </div>
+      </nav>
+
+      <!-- SIDEBAR BOTTOM CARD -->
+      <div class="sidebar-footer">
+        <div class="ai-banner-card">
+          <div class="ai-banner-content">
+            <h3>VoxAudit AI</h3>
+            <p>Smart audit. Clear insights. Better conversations.</p>
+            <button class="ai-banner-btn" onclick="openVoiceSummaryModal()">
+              Explore AI Insights <i data-lucide="arrow-right"></i>
+            </button>
+          </div>
+          <div class="ai-bot-avatar">
+            <div class="bot-glow"></div>
+            <i data-lucide="bot"></i>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-content">
+      
+      <!-- TOP HEADER -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="mobile-menu-toggle">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="welcome-box">
+            <h1>Welcome back, Vijay! 👋</h1>
+            <p>Monitor, analyze and improve every conversation.</p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="date-picker-badge">
+            <i data-lucide="calendar"></i>
+            <span>Aug 15 - Aug 21, 2026</span>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </div>
+
+          <button class="btn-primary" onclick="openAuditModal()">
+            <i data-lucide="plus"></i>
+            <span>New Audit</span>
+          </button>
+
+          <button class="icon-btn notification-btn">
+            <i data-lucide="bell"></i>
+            <span class="notification-badge"></span>
+          </button>
+
+          <div class="user-avatar-box">
+            <div class="user-avatar">
+              <span>VR</span>
+              <span class="status-indicator"></span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- DASHBOARD METRICS GRID (5 CARDS) -->
+      <section class="metrics-grid">
+        
+        <!-- CARD 1: TOTAL AUDITS -->
+        <div class="metric-card card-purple">
+          <div class="metric-info">
+            <span class="metric-label">Total Audits</span>
+            <h2 class="metric-value" id="stat-total-audits">128</h2>
+            <div class="metric-trend trend-up">
+              <i data-lucide="trending-up"></i>
+              <span>↑ 18.6% vs last 7 days</span>
+            </div>
+          </div>
+          <div class="metric-icon icon-purple">
+            <i data-lucide="volume-2"></i>
+          </div>
+        </div>
+
+        <!-- CARD 2: CONVERSATIONS -->
+        <div class="metric-card card-blue">
+          <div class="metric-info">
+            <span class="metric-label">Conversations</span>
+            <h2 class="metric-value" id="stat-conversations">1,245</h2>
+            <div class="metric-trend trend-up">
+              <i data-lucide="trending-up"></i>
+              <span>↑ 24.3% vs last 7 days</span>
+            </div>
+          </div>
+          <div class="metric-icon icon-blue">
+            <i data-lucide="message-square"></i>
+          </div>
+        </div>
+
+        <!-- CARD 3: AVG SENTIMENT SCORE -->
+        <div class="metric-card card-green">
+          <div class="metric-info">
+            <span class="metric-label">Avg. Sentiment Score</span>
+            <h2 class="metric-value" id="stat-avg-sentiment">4.2/5</h2>
+            <div class="metric-trend trend-up">
+              <i data-lucide="trending-up"></i>
+              <span>↑ 8.7% vs last 7 days</span>
+            </div>
+          </div>
+          <div class="metric-icon icon-green">
+            <i data-lucide="smile"></i>
+          </div>
+        </div>
+
+        <!-- CARD 4: CRITICAL ALERTS -->
+        <div class="metric-card card-orange">
+          <div class="metric-info">
+            <span class="metric-label">Critical Alerts</span>
+            <h2 class="metric-value" id="stat-critical-alerts">23</h2>
+            <div class="metric-trend trend-down">
+              <i data-lucide="trending-down"></i>
+              <span>↓ 12.5% vs last 7 days</span>
+            </div>
+          </div>
+          <div class="metric-icon icon-orange">
+            <i data-lucide="alert-triangle"></i>
+          </div>
+        </div>
+
+        <!-- CARD 5: COMPLIANCE SCORE -->
+        <div class="metric-card card-pink">
+          <div class="metric-info">
+            <span class="metric-label">Compliance Score</span>
+            <h2 class="metric-value" id="stat-compliance">91%</h2>
+            <div class="metric-trend trend-up">
+              <i data-lucide="trending-up"></i>
+              <span>↑ 6.3% vs last 7 days</span>
+            </div>
+          </div>
+          <div class="metric-icon icon-pink">
+            <i data-lucide="shield-check"></i>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ROW 1: AUDIT OVERVIEW CHART & RECENT ALERTS -->
+      <section class="dashboard-row row-2-cols">
+        
+        <!-- AUDIT OVERVIEW CHART -->
+        <div class="panel-card chart-panel">
+          <div class="panel-header">
+            <div class="panel-title-box">
+              <h3>Audit Overview</h3>
+            </div>
+            <div class="panel-controls">
+              <div class="select-pill">
+                <span>Daily</span>
+                <i data-lucide="chevron-down"></i>
+              </div>
+              <div class="select-pill">
+                <span>Audits</span>
+                <i data-lucide="chevron-down"></i>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="auditOverviewChart"></canvas>
+          </div>
+        </div>
+
+        <!-- RECENT ALERTS PANEL -->
+        <div class="panel-card alerts-panel">
+          <div class="panel-header">
+            <h3>Recent Alerts</h3>
+            <a href="#" class="view-all-link">View all</a>
+          </div>
+          <div class="alerts-list">
+            
+            <div class="alert-item alert-danger">
+              <div class="alert-icon-box">
+                <i data-lucide="alert-circle"></i>
+              </div>
+              <div class="alert-content">
+                <h4>Compliance Violation</h4>
+                <p>Refund policy not followed</p>
+              </div>
+              <span class="alert-time">10m ago</span>
+            </div>
+
+            <div class="alert-item alert-warning">
+              <div class="alert-icon-box">
+                <i data-lucide="frown"></i>
+              </div>
+              <div class="alert-content">
+                <h4>Negative Sentiment Detected</h4>
+                <p>High customer dissatisfaction</p>
+              </div>
+              <span class="alert-time">25m ago</span>
+            </div>
+
+            <div class="alert-item alert-info">
+              <div class="alert-icon-box">
+                <i data-lucide="shield-alert"></i>
+              </div>
+              <div class="alert-content">
+                <h4>PII Detected</h4>
+                <p>Potential customer data shared</p>
+              </div>
+              <span class="alert-time">1h ago</span>
+            </div>
+
+            <div class="alert-item alert-purple">
+              <div class="alert-icon-box">
+                <i data-lucide="clock"></i>
+              </div>
+              <div class="alert-content">
+                <h4>Long Hold Time</h4>
+                <p>Customer waited for 8+ minutes</p>
+              </div>
+              <span class="alert-time">2h ago</span>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ROW 2: SENTIMENT DISTRIBUTION, TOP INTENTS, RECENT AUDITS -->
+      <section class="dashboard-row row-3-cols">
+        
+        <!-- SENTIMENT DISTRIBUTION DONUT CHART -->
+        <div class="panel-card sentiment-panel">
+          <div class="panel-header">
+            <h3>Sentiment Distribution</h3>
+          </div>
+          <div class="donut-chart-wrapper">
+            <div class="chart-box">
+              <canvas id="sentimentDonutChart"></canvas>
+            </div>
+            <div class="chart-legend">
+              <div class="legend-item">
+                <span class="legend-dot green"></span>
+                <span class="legend-name">Positive</span>
+                <span class="legend-val">45%</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot blue"></span>
+                <span class="legend-name">Neutral</span>
+                <span class="legend-val">30%</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot orange"></span>
+                <span class="legend-name">Negative</span>
+                <span class="legend-val">15%</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot red"></span>
+                <span class="legend-name">Very Negative</span>
+                <span class="legend-val">10%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOP INTENTS PROGRESS BARS -->
+        <div class="panel-card intents-panel">
+          <div class="panel-header">
+            <h3>Top Intents</h3>
+          </div>
+          <div class="intents-list">
+            
+            <div class="intent-item">
+              <div class="intent-label-box">
+                <span class="intent-name">Refund Request</span>
+                <span class="intent-percentage">32%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: 32%;"></div>
+              </div>
+            </div>
+
+            <div class="intent-item">
+              <div class="intent-label-box">
+                <span class="intent-name">Order Status</span>
+                <span class="intent-percentage">24%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: 24%;"></div>
+              </div>
+            </div>
+
+            <div class="intent-item">
+              <div class="intent-label-box">
+                <span class="intent-name">Billing Issue</span>
+                <span class="intent-percentage">18%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: 18%;"></div>
+              </div>
+            </div>
+
+            <div class="intent-item">
+              <div class="intent-label-box">
+                <span class="intent-name">Product Inquiry</span>
+                <span class="intent-percentage">14%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: 14%;"></div>
+              </div>
+            </div>
+
+            <div class="intent-item">
+              <div class="intent-label-box">
+                <span class="intent-name">Other</span>
+                <span class="intent-percentage">12%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: 12%;"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- RECENT AUDITS LIST -->
+        <div class="panel-card audits-list-panel">
+          <div class="panel-header">
+            <h3>Recent Audits</h3>
+            <a href="#" class="view-all-link">View all</a>
+          </div>
+          <div class="audits-list">
+            
+            <div class="audit-row-item">
+              <button class="play-btn">
+                <i data-lucide="play"></i>
+              </button>
+              <div class="audit-meta">
+                <h4>Customer call - Refund issue</h4>
+                <p>Aug 21, 2026 · 10:30 AM · 08:24</p>
+              </div>
+              <span class="badge badge-positive">Positive</span>
+              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+            </div>
+
+            <div class="audit-row-item">
+              <button class="play-btn">
+                <i data-lucide="play"></i>
+              </button>
+              <div class="audit-meta">
+                <h4>Sales call - Product demo</h4>
+                <p>Aug 21, 2026 · 09:15 AM · 12:18</p>
+              </div>
+              <span class="badge badge-neutral">Neutral</span>
+              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+            </div>
+
+            <div class="audit-row-item">
+              <button class="play-btn">
+                <i data-lucide="play"></i>
+              </button>
+              <div class="audit-meta">
+                <h4>Customer call - Late delivery</h4>
+                <p>Aug 20, 2026 · 04:45 PM · 06:31</p>
+              </div>
+              <span class="badge badge-negative">Negative</span>
+              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+            </div>
+
+            <div class="audit-row-item">
+              <button class="play-btn">
+                <i data-lucide="play"></i>
+              </button>
+              <div class="audit-meta">
+                <h4>Support call - Payment failure</h4>
+                <p>Aug 20, 2026 · 02:20 PM · 07:12</p>
+              </div>
+              <span class="badge badge-positive">Positive</span>
+              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- BOTTOM FEATURE CAROUSEL / BANNER -->
+      <section class="bottom-intelligence-banner">
+        <div class="banner-left">
+          <div class="robot-glow-box">
+            <i data-lucide="bot"></i>
+          </div>
+          <div class="banner-text">
+            <h3>AI-Powered Conversation Intelligence</h3>
+            <p>VoxAudit uses advanced AI to help you understand every conversation and improve customer experience.</p>
+          </div>
+        </div>
+
+        <div class="banner-feature-pills">
+          <div class="feature-pill">
+            <i data-lucide="volume-2"></i>
+            <span>Accurate Transcription</span>
+          </div>
+          <div class="feature-pill">
+            <i data-lucide="users"></i>
+            <span>Speaker Diarization</span>
+          </div>
+          <div class="feature-pill">
+            <i data-lucide="smile"></i>
+            <span>Sentiment Analysis</span>
+          </div>
+          <div class="feature-pill">
+            <i data-lucide="shield-check"></i>
+            <span>Compliance Check</span>
+          </div>
+          <div class="feature-pill">
+            <i data-lucide="sparkles"></i>
+            <span>Actionable Insights</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: VOICE ENROLLMENT STUDIO -->
+  <div class="modal-overlay" id="enrollmentModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i data-lucide="mic"></i> Voice Sample Enrollment Studio</h3>
+        <button class="close-btn" onclick="closeModal('enrollmentModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="enrollmentForm">
+          <div class="form-group">
+            <label>Select Employee</label>
+            <select id="enrollEmployeeSelect" required>
+              <option value="">-- Loading Employees... --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Voice Recording Audio Files (Select 1 or Multiple Files)</label>
+            <div class="file-dropzone" onclick="document.getElementById('enrollFiles').click()">
+              <i data-lucide="upload-cloud"></i>
+              <p>Drag & Drop audio files (.wav, .mp3) or <strong>Browse Files</strong></p>
+              <input type="file" id="enrollFiles" multiple accept="audio/*" style="display: none;" onchange="handleFileSelect(this)">
+            </div>
+            <div id="fileListPreview" class="file-preview-list"></div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('enrollmentModal')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btnEnrollSubmit">
+              <i data-lucide="send"></i> Enroll Voice Samples
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW CALL AUDIT -->
+  <div class="modal-overlay" id="auditModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i data-lucide="file-audio"></i> Submit Customer Call for AI Audit</h3>
+        <button class="close-btn" onclick="closeModal('auditModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="auditForm">
+          <div class="form-group">
+            <label>Call Recording File (.mp3, .wav)</label>
+            <div class="file-dropzone" onclick="document.getElementById('auditFile').click()">
+              <i data-lucide="upload-cloud"></i>
+              <p>Choose call audio recording file or <strong>Browse File</strong></p>
+              <input type="file" id="auditFile" accept="audio/*" required style="display: none;" onchange="handleAuditFileSelect(this)">
+            </div>
+            <div id="auditFilePreview" class="file-preview-list"></div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('auditModal')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btnAuditSubmit">
+              <i data-lucide="cpu"></i> Process & Audit Call
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VOICE DATABASE SUMMARY EXPLORER -->
+  <div class="modal-overlay" id="voiceSummaryModal">
+    <div class="modal-box modal-wide">
+      <div class="modal-header">
+        <h3><i data-lucide="database"></i> Enrolled Voice Database & Vector Profiles</h3>
+        <button class="close-btn" onclick="closeModal('voiceSummaryModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="voiceSummaryContent">
+          <p>Loading voice database summary...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

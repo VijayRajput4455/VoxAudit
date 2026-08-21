@@ -115,6 +115,11 @@ class Employee(
         cascade="all, delete-orphan",
     )
 
+    call_jobs = relationship(
+        "CallJob",
+        back_populates="employee",
+    )
+
     @property
     def name(self) -> str:
         if self.last_name:

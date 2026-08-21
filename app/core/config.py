@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     LOG_FILE_NAME: str = "voxaudit.log"
 
     MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str
-    MINIO_SECRET_KEY: str
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_SECURE: bool = False
     MINIO_BUCKET: str = "voice-samples"
     MINIO_REGION: str = "us-east-1"
@@ -56,6 +56,14 @@ class Settings(BaseSettings):
 
     # Voice Enrollment Worker Retries
     VOICE_ENROLLMENT_MAX_RETRIES: int = 3
+
+    # Call Processing Configuration (Whisper + Pyannote + ECAPA)
+    WHISPER_MODEL: str = "medium"
+    DIARIZATION_MODEL: str = "pyannote/speaker-diarization-community-1"
+    HF_TOKEN: str = ""
+    SPEAKER_MATCH_THRESHOLD: float = 0.50
+    RABBITMQ_CALL_QUEUE: str = "call_processing_jobs"
+    RABBITMQ_CALL_ROUTING_KEY: str = "call.processing"
 
     model_config = SettingsConfigDict(
         env_file=".env",

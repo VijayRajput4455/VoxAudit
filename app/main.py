@@ -65,3 +65,40 @@ app.include_router(
     api_v1_router,
     prefix=settings.API_V1_PREFIX,
 )
+
+# Serve Frontend SPA Dashboard
+from pathlib import Path
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+if frontend_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/dashboard", include_in_schema=False)
+    async def serve_dashboard():
+        return FileResponse(str(frontend_dir / "index.html"))
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    # Fix Swagger UI rendering for UploadFile array parameters
+    for schema in openapi_schema.get("components", {}).get("schemas", {}).values():
+        if isinstance(schema, dict) and "properties" in schema:
+            for prop in schema["properties"].values():
+                if prop.get("type") == "array" and "items" in prop:
+                    prop["items"]["format"] = "binary"
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi

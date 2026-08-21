@@ -1,7 +1,11 @@
 import os
 from pathlib import Path
+import sys
 import tempfile
 import time
+
+# Ensure project root directory is in sys.path when running script directly
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
@@ -200,5 +204,7 @@ class VoiceEnrollmentWorker(BaseWorker):
 
 
 if __name__ == "__main__":
+    from app.core.logging import setup_logging
+    setup_logging()
     worker = VoiceEnrollmentWorker()
     worker.start()

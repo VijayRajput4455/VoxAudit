@@ -67,3 +67,30 @@ def test_enrollment_service_successful_enrollment():
     assert sample.original_file_name == "enrollment.wav"
     storage_mock.upload_stream.assert_called_once()
     publisher_mock.publish_enrollment_job.assert_called_once()
+
+
+def test_enrollment_service_batch_enrollment():
+    db_mock = MagicMock()
+    mock_emp = Employee(id=str(uuid4()), employee_code="EMP001", first_name="Test", last_name="User")
+    db_mock.scalar.return_value = mock_emp
+
+    storage_mock = MagicMock()
+    publisher_mock = MagicMock()
+
+    service = EnrollmentService(db=db_mock, storage=storage_mock, publisher=publisher_mock)
+
+    files = [
+        (BytesIO(b"audio1"), "sample1.wav", 6, "audio/wav"),
+        (BytesIO(b"audio2"), "sample2.wav", 6, "audio/wav"),
+    ]
+
+    samples = service.enroll_voice_samples_batch(
+        employee_id=UUID(mock_emp.id),
+        files=files,
+    )
+
+    assert len(samples) == 2
+    assert samples[0].original_file_name == "sample1.wav"
+    assert samples[1].original_file_name == "sample2.wav"
+    assert storage_mock.upload_stream.call_count == 2
+    assert publisher_mock.publish_enrollment_job.call_count == 2

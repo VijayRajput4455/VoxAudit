@@ -109,16 +109,38 @@ class EmployeeService:
         self,
         employee_id: UUID,
     ) -> bool:
-
         employee = self.repository.get_by_id(employee_id)
-
         if employee is None:
             return False
 
         try:
+            # 1. Clean up MinIO audio files and PostgreSQL voice samples
+            from app.repositories.voice_sample_repository import VoiceSampleRepository
+            from app.integrations.minio.storage import MinioStorage
+            from app.integrations.milvus.repository import MilvusRepository
+
+            voice_sample_repo = VoiceSampleRepository(self.db)
+            voice_samples = voice_sample_repo.get_by_employee_id(employee_id)
+
+            storage = MinioStorage()
+            for sample in voice_samples:
+                if sample.storage_key:
+                    try:
+                        storage.delete_file(sample.storage_key)
+                    except Exception:
+                        pass
+                voice_sample_repo.delete(sample)
+
+            # 2. Clean up Milvus vector database embeddings
+            try:
+                milvus_repo = MilvusRepository()
+                milvus_repo.delete_vectors_by_employee_id(str(employee_id))
+            except Exception:
+                pass
+
+            # 3. Delete Employee record from PostgreSQL
             self.repository.delete(employee)
             self.db.commit()
-
             return True
 
         except Exception:
