@@ -1,6 +1,8 @@
 import json
+import time
 from typing import Any, Dict, Optional
 import requests
+
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -47,29 +49,39 @@ class OllamaClient:
         logger.info(f"Sending prompt to Ollama LLM ('{target_model}') at '{endpoint}'...")
 
         effective_timeout = getattr(settings, "OLLAMA_TIMEOUT_SECONDS", 300.0)
-        try:
-            response = self._session.post(
-                endpoint,
-                json=payload,
-                timeout=effective_timeout,
-            )
-            response.raise_for_request()
-            response_data = response.json()
+        max_retries = 3
+        retry_delay = 2.0
 
-            raw_text = response_data.get("response", "").strip()
-            if not raw_text:
-                raise ValueError("Empty response received from Ollama model.")
 
-            # Parse structured JSON output
-            parsed_json = json.loads(raw_text)
-            return parsed_json
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = self._session.post(
+                    endpoint,
+                    json=payload,
+                    timeout=effective_timeout,
+                )
+                response.raise_for_request()
+                response_data = response.json()
 
-        except requests.exceptions.RequestException as exc:
-            logger.error(f"Ollama connection error ('{endpoint}'): {str(exc)}", exc_info=True)
-            raise RuntimeError(f"Ollama service unreachable at '{self.base_url}': {str(exc)}") from exc
-        except json.JSONDecodeError as exc:
-            logger.error(f"Failed to decode JSON from Ollama response: {str(exc)}", exc_info=True)
-            raise ValueError(f"Ollama did not return valid JSON: {str(exc)}") from exc
+                raw_text = response_data.get("response", "").strip()
+                if not raw_text:
+                    raise ValueError("Empty response received from Ollama model.")
+
+                # Parse structured JSON output
+                parsed_json = json.loads(raw_text)
+                return parsed_json
+
+            except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as exc:
+                if attempt < max_retries:
+                    logger.warning(
+                        f"Ollama LLM evaluation attempt {attempt}/{max_retries} failed ({str(exc)}). "
+                        f"Retrying in {retry_delay}s while Ollama warms up model..."
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(f"Ollama service error ('{endpoint}') after {max_retries} attempts: {str(exc)}", exc_info=True)
+                    raise RuntimeError(f"Ollama service unreachable at '{self.base_url}': {str(exc)}") from exc
+
 
 
 @lru_cache
