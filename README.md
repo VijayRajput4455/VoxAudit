@@ -502,12 +502,26 @@ Once the server is running, interactive Swagger API documentation is available a
 
 ### Prerequisites
 - Python 3.11 (or conda environment `voxaudit`)
-- PostgreSQL 16
-- RabbitMQ 3
-- MinIO
-- Ollama (`ollama pull qwen3.5:9b`)
+- Docker & Docker Compose (for running infrastructure services)
 
-### Installation Steps
+---
+
+### Step 1: Launch Infrastructure Services via Docker
+
+To run VoxAudit locally while developing, start the backend infrastructure dependencies (**PostgreSQL**, **MinIO**, **RabbitMQ**, **Etcd**, **Milvus**, and **Ollama**) in Docker with a single command:
+
+```bash
+docker-compose -f deploy/docker-compose.yml up -d postgres minio rabbitmq etcd milvus ollama
+```
+
+Download the `qwen3.5:9b` LLM model inside the Docker Ollama instance:
+```bash
+docker exec -it voxaudit-ollama ollama pull qwen3.5:9b
+```
+
+---
+
+### Step 2: Python Application Setup
 
 1. **Clone the Repository**:
    ```bash
@@ -533,15 +547,16 @@ Once the server is running, interactive Swagger API documentation is available a
 
 5. **Start Background Workers**:
    ```bash
-   # Terminal 1: Call Processing Worker
+   # Terminal 1: Call Processing Worker (Stage 1 Audio ML Pipeline)
    python -m app.workers.call_processing_worker
 
-   # Terminal 2: QA Audit Worker
+   # Terminal 2: QA Audit Worker (Stage 2 LLM QA Scorecard Engine)
    python -m app.workers.qa_audit_worker
 
-   # Terminal 3: Voice Enrollment Worker
+   # Terminal 3: Voice Enrollment Worker (Biometric Vector Indexing)
    python -m app.workers.voice_enrollment_worker
    ```
+
 
 ---
 
