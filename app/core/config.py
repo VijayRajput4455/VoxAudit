@@ -70,7 +70,8 @@ class Settings(BaseSettings):
     # Ollama LLM Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen3.5:9b"
-    OLLAMA_TIMEOUT_SECONDS: float = 60.0
+    OLLAMA_TIMEOUT_SECONDS: float = 600.0
+
 
 
 

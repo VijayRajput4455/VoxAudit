@@ -83,13 +83,21 @@ class QAScorecardService:
             elif gap > 3.0:
                 silence_duration += gap
 
-        # 3. Format Call Transcript for Prompt
+        # 3. Format Call Transcript for Prompt (with max 6000 char prompt safety cap)
         formatted_transcript = []
         for t in transcript_turns:
             spk_name = t.get("speaker_name", t.get("speaker", "Unknown"))
             formatted_transcript.append(f"[{t['start']}s - {t['end']}s] {spk_name}: {t['text']}")
 
-        transcript_str = "\n".join(formatted_transcript)
+        full_transcript_str = "\n".join(formatted_transcript)
+
+        if len(full_transcript_str) > 6000:
+            head_str = full_transcript_str[:3000]
+            tail_str = full_transcript_str[-3000:]
+            transcript_str = f"{head_str}\n\n... [... {len(transcript_turns)} turns total - middle conversation turns truncated for speed ...] ...\n\n{tail_str}"
+        else:
+            transcript_str = full_transcript_str
+
 
         system_prompt = (
             "You are an Enterprise AI Call Quality & Compliance Auditor. "

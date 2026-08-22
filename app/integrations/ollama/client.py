@@ -42,9 +42,14 @@ class OllamaClient:
             "prompt": prompt,
             "format": "json",
             "stream": False,
+            "options": {
+                "num_predict": 1024,
+                "temperature": 0.1,
+            },
         }
         if system_prompt:
             payload["system"] = system_prompt
+
 
         logger.info(f"Sending prompt to Ollama LLM ('{target_model}') at '{endpoint}'...")
 
