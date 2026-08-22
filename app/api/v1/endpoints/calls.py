@@ -60,6 +60,57 @@ def process_call_audio(
         raise HTTPException(status_code=500, detail="Internal call processing submission failure.")
 
 
+@router.post(
+    "/{call_id}/audit",
+    response_model=CallSubmissionResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Trigger Asynchronous QA Audit & CX Analytics",
+    description="Queues an asynchronous QA audit job to RabbitMQ to evaluate Agent Scorecard and Customer Experience (CX) signals for a processed call. Updates the same database row when complete.",
+)
+def trigger_call_qa_audit(
+    call_id: UUID,
+    db: Session = Depends(get_db),
+) -> CallSubmissionResponse:
+    """Queues asynchronous QA Scorecard & CX Analytics processing for a call."""
+    from uuid import uuid4
+    from app.integrations.rabbitmq.publisher import RabbitMQPublisher
+
+    statement = select(CallJob).where(CallJob.id == call_id)
+    call_job = db.scalar(statement)
+
+    if not call_job:
+        raise HTTPException(status_code=404, detail=f"Call job '{call_id}' not found.")
+
+    if call_job.status != "COMPLETED":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Call job '{call_id}' must be in COMPLETED status with a transcript before auditing (current status: {call_job.status}).",
+        )
+
+    if not call_job.transcript_json or "turns" not in call_job.transcript_json:
+        raise HTTPException(status_code=400, detail=f"Call job '{call_id}' has no transcript turns available for auditing.")
+
+    publisher = RabbitMQPublisher()
+    job_id = str(uuid4())
+    job_payload = {
+        "event": "QA_AUDIT_PROCESSING",
+        "job_id": job_id,
+        "call_id": str(call_job.id),
+        "attempt": 1,
+    }
+
+    try:
+        publisher.publish_qa_audit_job(job_payload)
+        return CallSubmissionResponse(
+            id=call_job.id,
+            status=call_job.status,
+            message="QA Audit job queued successfully.",
+        )
+    except Exception as exc:
+        logger.error(f"Failed to publish QA audit job for call '{call_id}': {str(exc)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to queue QA audit job: {str(exc)}")
+
+
 @router.get(
     "/{call_id}",
     response_model=CallJobResponse,
@@ -81,6 +132,34 @@ def get_call_job(
     return CallJobResponse.model_validate(call_job)
 
 
+
+@router.get(
+    "/{call_id}/scorecard",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    summary="Get Call QA Scorecard & CX Metrics",
+    description="Retrieves detailed Agent QA Scorecard and Customer Experience (CX) signal indicators for a completed call.",
+)
+def get_call_scorecard(
+    call_id: UUID,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Retrieves QA Scorecard and Customer Experience signals for a call."""
+    statement = select(CallJob).where(CallJob.id == call_id)
+    call_job = db.scalar(statement)
+
+    if not call_job:
+        raise HTTPException(status_code=404, detail=f"Call job '{call_id}' not found.")
+
+    if call_job.status != "COMPLETED":
+        raise HTTPException(status_code=400, detail=f"Call job '{call_id}' is not yet COMPLETED (current status: {call_job.status}).")
+
+    if not call_job.qa_scorecard_json:
+        raise HTTPException(status_code=404, detail=f"QA Scorecard not available for call '{call_id}'.")
+
+    return call_job.qa_scorecard_json
+
+
 @router.get(
     "",
     response_model=List[CallJobResponse],
@@ -90,9 +169,19 @@ def get_call_job(
 def list_call_jobs(
     limit: int = 50,
     offset: int = 0,
+    min_qa_score: Optional[float] = None,
+    max_qa_score: Optional[float] = None,
     db: Session = Depends(get_db),
 ) -> List[CallJobResponse]:
     """Lists processed customer support call audit jobs."""
-    statement = select(CallJob).order_by(CallJob.created_at.desc()).limit(limit).offset(offset)
+    statement = select(CallJob)
+
+    if min_qa_score is not None:
+        statement = statement.where(CallJob.qa_score >= min_qa_score)
+    if max_qa_score is not None:
+        statement = statement.where(CallJob.qa_score <= max_qa_score)
+
+    statement = statement.order_by(CallJob.created_at.desc()).limit(limit).offset(offset)
     call_jobs = db.scalars(statement).all()
     return [CallJobResponse.model_validate(job) for job in call_jobs]
+

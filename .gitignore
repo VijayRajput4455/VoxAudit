@@ -222,3 +222,7 @@ models/
 
 # Milvus Lite local vector DB
 voxaudit_milvus.db*
+
+# Scratch / temporary scripts
+scratch/
+

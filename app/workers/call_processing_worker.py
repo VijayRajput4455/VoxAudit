@@ -62,9 +62,7 @@ class CallProcessingWorker(BaseWorker):
         start_time = time.perf_counter()
 
         try:
-            call_job = db_session.scalar(
-                db_session.query(CallJob).filter(CallJob.id == UUID(call_id_str))
-            )
+            call_job = db_session.get(CallJob, UUID(call_id_str))
 
             if not call_job:
                 logger.error(f"CallJob record '{call_id_str}' not found in database.")
@@ -124,9 +122,7 @@ class CallProcessingWorker(BaseWorker):
             )
 
             try:
-                call_job = db_session.scalar(
-                    db_session.query(CallJob).filter(CallJob.id == UUID(call_id_str))
-                )
+                call_job = db_session.get(CallJob, UUID(call_id_str))
                 if call_job:
                     call_job.status = "FAILED"
                     call_job.error_message = f"Call processing failed (attempt {attempt}/{self.max_retries}): {str(exc)}"

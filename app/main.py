@@ -22,10 +22,22 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up application and initializing database tables...")
+    from sqlalchemy import text
     Base.metadata.create_all(bind=engine)
-    logger.info("Database tables initialized successfully.")
+
+    # Ensure new QA Scorecard columns exist on pre-existing call_jobs PostgreSQL table
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE call_jobs ADD COLUMN IF NOT EXISTS qa_score FLOAT;"))
+            conn.execute(text("ALTER TABLE call_jobs ADD COLUMN IF NOT EXISTS qa_scorecard_json JSON;"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_call_jobs_qa_score ON call_jobs (qa_score);"))
+        logger.info("Database schema auto-migration for QA Scorecard columns applied successfully.")
+    except Exception as exc:
+        logger.warning(f"Database schema auto-migration warning: {str(exc)}")
+
     yield
     logger.info("Shutting down application...")
+
 
 
 app = FastAPI(

@@ -217,8 +217,45 @@ services:
       - rabbitmq
       - milvus
 
+  # ---------------------------------------------------------------------------
+  # 10. Ollama Local LLM Engine (Port 11434)
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: voxaudit-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - voxaudit_ollama_data:/root/.ollama
+
+  # ---------------------------------------------------------------------------
+  # 11. QA Audit Worker (Ollama LLM Powered)
+  # ---------------------------------------------------------------------------
+  qa-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.qa_worker
+    container_name: voxaudit-qa-worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen3.5:9b
+
+    depends_on:
+      - postgres
+      - rabbitmq
+      - ollama
+
 volumes:
   voxaudit_postgres_data:
   voxaudit_minio_data:
   voxaudit_etcd_data:
   voxaudit_milvus_data:
+  voxaudit_ollama_data:
+

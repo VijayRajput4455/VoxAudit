@@ -13,6 +13,9 @@ python-multipart>=0.0.9
 # ML & GPU Audio Acceleration
 torch>=2.2.0
 torchaudio>=2.2.0
+faster-whisper>=1.0.0
+pyannote.audio>=3.1.1
+huggingface-hub>=0.20.0
 speechbrain>=1.0.0
 soundfile>=0.12.1
 scipy>=1.12.0
@@ -25,3 +28,4 @@ pymilvus>=2.4.0
 minio>=7.2.5
 pika>=1.3.2
 requests>=2.31.0
+

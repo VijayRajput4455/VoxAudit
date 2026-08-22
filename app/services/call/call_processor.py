@@ -220,12 +220,16 @@ class CallProcessor:
         sample_rate: int,
         threshold: float = 0.50,
     ) -> Tuple[Dict[str, str], Optional[str]]:
-        """Matches extracted speaker embeddings against enrolled employees in Milvus vector space."""
+        """Matches extracted speaker embeddings against enrolled employees in Milvus vector space.
+        Uses exact best-candidate threshold matching: only the highest scoring speaker is mapped to the Agent,
+        while all other speakers are mapped to 'Customer'.
+        """
         logger.info("Identifying speakers against Milvus enrolled vector database...")
+        speaker_scores: Dict[str, Tuple[float, str, str]] = {}
         speaker_names: Dict[str, str] = {}
-        speaker_scores: Dict[str, float] = {}
         matched_employee_id = None
 
+        # Step 1: For each diarized speaker, find its highest cosine similarity match in Milvus
         for speaker, audio in speaker_audio.items():
             embedding = self.generate_speaker_embedding(audio, sample_rate)
             matches = self.milvus_repo.search_vectors(query_embedding=embedding, top_k=1)
@@ -233,23 +237,42 @@ class CallProcessor:
             if matches:
                 top_match = matches[0]
                 similarity = top_match.get("similarity_score", 0.0)
-                speaker_scores[speaker] = similarity
                 employee_id_str = top_match.get("employee_id")
 
-                if similarity >= threshold and employee_id_str:
+                if employee_id_str:
                     try:
                         emp = self.employee_repo.get_by_id(UUID(employee_id_str))
                         if emp:
-                            speaker_names[speaker] = f"{emp.first_name} {emp.last_name}".strip()
-                            matched_employee_id = str(emp.id)
-                            logger.info(f"Speaker '{speaker}' identified as Employee '{speaker_names[speaker]}' (score: {similarity:.4f})")
+                            emp_name = f"{emp.first_name} {emp.last_name}".strip()
+                            speaker_scores[speaker] = (similarity, str(emp.id), emp_name)
                     except Exception as exc:
                         logger.warning(f"Error fetching employee '{employee_id_str}': {str(exc)}")
 
-        # Assign best match above threshold, remaining speaker assigned to "Customer"
+        if not speaker_scores:
+            logger.info("No enrolled employee vector matches found. All speakers set to Customer.")
+            for speaker in speaker_audio:
+                speaker_names[speaker] = "Customer"
+            return speaker_names, None
+
+        # Step 2: Find which diarized speaker has the absolute highest similarity score to an enrolled Agent
+        best_speaker = max(speaker_scores, key=lambda s: speaker_scores[s][0])
+        best_score, best_emp_id, best_emp_name = speaker_scores[best_speaker]
+
+        logger.info(f"Best Agent candidate: '{best_speaker}' with similarity score {best_score:.4f}")
+
+        # Step 3: Only label as Agent if the best score meets the threshold
+        if best_score >= threshold:
+            speaker_names[best_speaker] = best_emp_name
+            matched_employee_id = best_emp_id
+            logger.info(f"Speaker '{best_speaker}' identified as Agent '{best_emp_name}' (score: {best_score:.4f})")
+        else:
+            logger.info(f"No speaker passed similarity threshold ({threshold}). All speakers labeled as Customer.")
+
+        # Step 4: Every other speaker is the Customer
         for speaker in speaker_audio:
             if speaker not in speaker_names:
                 speaker_names[speaker] = "Customer"
+                logger.info(f"Speaker '{speaker}' labeled as 'Customer'")
 
         return speaker_names, matched_employee_id
 
@@ -387,3 +410,5 @@ class CallProcessor:
             "speaker_mappings": speaker_names,
             "transcript_turns": transcript_turns,
         }
+
+

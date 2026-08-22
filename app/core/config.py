@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     SPEAKER_MATCH_THRESHOLD: float = 0.50
     RABBITMQ_CALL_QUEUE: str = "call_processing_jobs"
     RABBITMQ_CALL_ROUTING_KEY: str = "call.processing"
+    RABBITMQ_QA_QUEUE: str = "qa_audit_jobs"
+    RABBITMQ_QA_ROUTING_KEY: str = "call.qa_audit"
+
+    # Ollama LLM Configuration
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen3.5:9b"
+    OLLAMA_TIMEOUT_SECONDS: float = 60.0
+
+
+
 
     model_config = SettingsConfigDict(
         env_file=".env",
