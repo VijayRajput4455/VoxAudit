@@ -107,15 +107,21 @@ class VerificationService:
                 try:
                     emp = self.employee_repo.get_by_id(UUID(top_match["employee_id"]))
                     if emp:
+                        dept_name = emp.department.name if emp.department else None
+                        desig_name = emp.designation.name if emp.designation else None
                         matched_employee_data = {
                             "id": str(emp.id),
                             "employee_code": emp.employee_code,
                             "first_name": emp.first_name,
                             "last_name": emp.last_name,
+                            "full_name": f"{emp.first_name} {emp.last_name or ''}".strip(),
                             "email": emp.email,
+                            "phone": emp.phone,
+                            "department_name": dept_name,
+                            "designation_name": desig_name,
                         }
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning(f"Error fetching matched employee details: {exc}")
 
             return {
                 "is_match": is_match,

@@ -1,6 +1,5 @@
 /* ==========================================================================
    VoxAudit Dashboard Frontend Logic
-   Matching exact enterprise voice audit dashboard
    ========================================================================== */
 
 let departmentsCache = [];
@@ -9,6 +8,80 @@ let shiftsCache = [];
 let employeesCache = [];
 let auditsCache = [];
 let auditsOverTimeChartInstance = null;
+
+/* ==========================================================================
+   CUSTOM REUSABLE MODALS & TOAST NOTIFICATION SYSTEM
+   ========================================================================== */
+
+function showToast(message, type = "success") {
+  const container = document.getElementById("toastContainer");
+  if (!container) {
+    console.log(`[Toast ${type}]: ${message}`);
+    return;
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `toast-message toast-${type}`;
+
+  let iconName = "check-circle";
+  let iconColor = "#10b981";
+  if (type === "error") {
+    iconName = "alert-circle";
+    iconColor = "#ef4444";
+  } else if (type === "info") {
+    iconName = "info";
+    iconColor = "#3b82f6";
+  }
+
+  toast.innerHTML = `<i data-lucide="${iconName}" style="color:${iconColor}; width:18px; height:18px;"></i> <span>${message}</span>`;
+  container.appendChild(toast);
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 20);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(10px)";
+    toast.style.transition = "all 0.3s ease";
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+function showConfirmModal({ title = "Confirm Action", message = "Are you sure you want to proceed?", confirmText = "Confirm", isDanger = true }) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("confirmModal");
+    const titleEl = document.getElementById("confirmModalTitle");
+    const msgEl = document.getElementById("confirmModalMessage");
+    const btnSubmit = document.getElementById("confirmModalSubmitBtn");
+    const btnCancel = document.getElementById("confirmModalCancelBtn");
+    const iconEl = document.getElementById("confirmModalIcon");
+
+    if (!modal) return resolve(false);
+
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+    if (btnSubmit) {
+      btnSubmit.textContent = confirmText;
+      btnSubmit.style.background = isDanger ? "#ef4444" : "#1d61e7";
+      btnSubmit.style.borderColor = isDanger ? "#ef4444" : "#1d61e7";
+    }
+    if (iconEl) {
+      iconEl.innerHTML = isDanger ? `<i data-lucide="alert-triangle" style="color: #ef4444; width: 44px; height: 44px;"></i>` : `<i data-lucide="help-circle" style="color: #1d61e7; width: 44px; height: 44px;"></i>`;
+    }
+
+    modal.classList.add("active");
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+
+    const cleanup = (result) => {
+      modal.classList.remove("active");
+      btnSubmit.onclick = null;
+      btnCancel.onclick = null;
+      resolve(result);
+    };
+
+    btnSubmit.onclick = () => cleanup(true);
+    btnCancel.onclick = () => cleanup(false);
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   if (window.lucide) {
@@ -137,6 +210,11 @@ function showView(viewName, e) {
       titleEl.textContent = "Work Shifts & Rosters";
       subEl.textContent = "Manage shift schedules, start/end times, and timezones.";
       loadShifts();
+      break;
+    case "voice-enrollment":
+      titleEl.textContent = "Voice Enrollment Studio";
+      subEl.textContent = "Register employee voice data, extract ECAPA-VoxCeleb vectors, and run speaker verification tests.";
+      loadVoiceEnrollmentPage();
       break;
     default:
       titleEl.textContent = "Dashboard";
@@ -364,18 +442,31 @@ async function saveDepartment(e) {
     const url = id ? `/api/v1/departments/${id}` : "/api/v1/departments/";
     const method = id ? "PATCH" : "POST";
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    if (!res.ok) throw new Error("Failed");
+    if (!res.ok) throw new Error("Failed to save department");
+    showToast(id ? "Department updated successfully" : "New department created", "success");
     closeModal("departmentModal");
     loadDepartments();
-  } catch (err) { alert("Error saving department"); }
+  } catch (err) { showToast("Error saving department: " + err.message, "error"); }
 }
 
 async function deleteDepartment(id, name) {
-  if (!confirm(`Delete department '${name}'?`)) return;
+  const confirmed = await showConfirmModal({
+    title: "Delete Department",
+    message: `Are you sure you want to delete department '${name}'?`,
+    confirmText: "Delete Department",
+    isDanger: true
+  });
+  if (!confirmed) return;
+
   try {
-    await fetch(`/api/v1/departments/${id}`, { method: "DELETE" });
-    loadDepartments();
-  } catch (err) {}
+    const res = await fetch(`/api/v1/departments/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast(`Department '${name}' deleted`, "success");
+      loadDepartments();
+    } else {
+      showToast("Failed to delete department", "error");
+    }
+  } catch (err) { showToast("Error deleting department", "error"); }
 }
 
 /* DESIGNATIONS */
@@ -477,18 +568,32 @@ async function saveDesignation(e) {
   try {
     const url = id ? `/api/v1/designations/${id}` : "/api/v1/designations/";
     const method = id ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error("Failed to save designation");
+    showToast(id ? "Designation updated" : "New designation created", "success");
     closeModal("designationModal");
     loadDesignations();
-  } catch (err) { alert("Error saving designation"); }
+  } catch (err) { showToast("Error saving designation", "error"); }
 }
 
 async function deleteDesignation(id, name) {
-  if (!confirm(`Delete designation '${name}'?`)) return;
+  const confirmed = await showConfirmModal({
+    title: "Delete Designation",
+    message: `Are you sure you want to delete designation '${name}'?`,
+    confirmText: "Delete Designation",
+    isDanger: true
+  });
+  if (!confirmed) return;
+
   try {
-    await fetch(`/api/v1/designations/${id}`, { method: "DELETE" });
-    loadDesignations();
-  } catch (err) {}
+    const res = await fetch(`/api/v1/designations/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast(`Designation '${name}' deleted`, "success");
+      loadDesignations();
+    } else {
+      showToast("Failed to delete designation", "error");
+    }
+  } catch (err) { showToast("Error deleting designation", "error"); }
 }
 
 /* SHIFTS */
@@ -586,18 +691,32 @@ async function saveShift(e) {
   try {
     const url = id ? `/api/v1/shifts/${id}` : "/api/v1/shifts/";
     const method = id ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error("Failed");
+    showToast(id ? "Shift updated successfully" : "New shift created", "success");
     closeModal("shiftModal");
     loadShifts();
-  } catch (err) { alert("Error saving shift"); }
+  } catch (err) { showToast("Error saving shift", "error"); }
 }
 
 async function deleteShift(id, name) {
-  if (!confirm(`Delete shift '${name}'?`)) return;
+  const confirmed = await showConfirmModal({
+    title: "Delete Work Shift",
+    message: `Are you sure you want to delete shift '${name}'?`,
+    confirmText: "Delete Shift",
+    isDanger: true
+  });
+  if (!confirmed) return;
+
   try {
-    await fetch(`/api/v1/shifts/${id}`, { method: "DELETE" });
-    loadShifts();
-  } catch (err) {}
+    const res = await fetch(`/api/v1/shifts/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast(`Shift '${name}' deleted`, "success");
+      loadShifts();
+    } else {
+      showToast("Failed to delete shift", "error");
+    }
+  } catch (err) { showToast("Error deleting shift", "error"); }
 }
 
 async function seedDefaultShifts() {
@@ -850,6 +969,8 @@ function openAddEmployeeModal() {
   document.getElementById("empCode").value = "";
   document.getElementById("empFirstName").value = "";
   document.getElementById("empLastName").value = "";
+  document.getElementById("empFatherName").value = "";
+  document.getElementById("empDateOfBirth").value = "";
   document.getElementById("empEmail").value = "";
   document.getElementById("empPhone").value = "";
   document.getElementById("empDateJoining").value = new Date().toISOString().split("T")[0];
@@ -870,6 +991,8 @@ function openEditEmployeeModal(id) {
   document.getElementById("empCode").value = emp.employee_code || "";
   document.getElementById("empFirstName").value = emp.first_name || "";
   document.getElementById("empLastName").value = emp.last_name || "";
+  document.getElementById("empFatherName").value = emp.father_name || "";
+  document.getElementById("empDateOfBirth").value = emp.date_of_birth ? String(emp.date_of_birth).split("T")[0] : "";
   document.getElementById("empEmail").value = emp.email || "";
   document.getElementById("empPhone").value = emp.phone || "";
   document.getElementById("empDateJoining").value = emp.date_of_joining ? String(emp.date_of_joining).split("T")[0] : new Date().toISOString().split("T")[0];
@@ -893,6 +1016,8 @@ async function saveEmployee(e) {
   const payload = {
     first_name: document.getElementById("empFirstName").value.trim(),
     last_name: document.getElementById("empLastName").value.trim() || null,
+    father_name: document.getElementById("empFatherName").value.trim() || null,
+    date_of_birth: document.getElementById("empDateOfBirth").value || null,
     email: document.getElementById("empEmail").value.trim() || null,
     phone: document.getElementById("empPhone").value.trim() || null,
     date_of_joining: document.getElementById("empDateJoining").value,
@@ -919,21 +1044,564 @@ async function saveEmployee(e) {
       const errData = await res.json();
       throw new Error(errData.detail || "Failed to save employee");
     }
-
     closeModal("employeeModal");
+    showToast(id ? "Employee profile updated" : "New employee added successfully", "success");
     loadEmployees();
   } catch (err) {
-    alert("Error saving employee: " + err.message);
+    showToast("Error saving employee: " + err.message, "error");
   }
 }
 
 async function deleteEmployee(id, name) {
-  if (!confirm(`Delete employee profile '${name}'? This will also clean up associated voice embeddings.`)) return;
+  const confirmed = await showConfirmModal({
+    title: "Delete Employee Profile",
+    message: `Are you sure you want to delete employee '${name}'? This will also clean up associated voice embeddings.`,
+    confirmText: "Delete Profile",
+    isDanger: true
+  });
+  if (!confirmed) return;
+
   try {
     const res = await fetch(`/api/v1/employees/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Delete failed");
+    showToast(`Employee profile '${name}' deleted`, "success");
     loadEmployees();
   } catch (err) {
-    alert("Error deleting employee profile");
+    showToast("Error deleting employee profile", "error");
+  }
+}
+
+/* ==========================================================================
+   VOICE ENROLLMENT & BIOMETRICS STUDIO LOGIC
+   ========================================================================== */
+
+let enrollMode = "upload";
+let mediaRecorder = null;
+let audioChunks = [];
+let recordedAudioBlob = null;
+let micTimerInterval = null;
+let recordingSeconds = 0;
+
+function setEnrollMode(mode) {
+  enrollMode = mode;
+  const btnUpload = document.getElementById("btnModeUpload");
+  const btnMic = document.getElementById("btnModeMic");
+  const uploadArea = document.getElementById("enrollUploadArea");
+  const micArea = document.getElementById("enrollMicArea");
+
+  if (mode === "upload") {
+    if (btnUpload) btnUpload.classList.add("active");
+    if (btnMic) btnMic.classList.remove("active");
+    if (uploadArea) uploadArea.style.display = "block";
+    if (micArea) micArea.style.display = "none";
+  } else {
+    if (btnMic) btnMic.classList.add("active");
+    if (btnUpload) btnUpload.classList.remove("active");
+    if (uploadArea) uploadArea.style.display = "none";
+    if (micArea) micArea.style.display = "block";
+  }
+}
+
+async function loadVoiceEnrollmentPage() {
+  const tbody = document.getElementById("veDirectoryTableBody");
+  if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Loading enrolled voice directory...</td></tr>`;
+
+  try {
+    const [empRes, summaryRes, deptRes] = await Promise.all([
+      fetch("/api/v1/employees/"),
+      fetch("/api/v1/voice-samples/summary/all"),
+      fetch("/api/v1/departments/")
+    ]);
+
+    if (empRes.ok) employeesCache = await empRes.json();
+    if (deptRes.ok) departmentsCache = await deptRes.json();
+
+    let summaryData = null;
+    if (summaryRes.ok) summaryData = await summaryRes.json();
+
+    populateVoiceEnrollmentDropdowns();
+    renderVoiceEnrollmentDirectory(summaryData);
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Error loading voice enrollment directory</td></tr>`;
+  }
+}
+
+function populateVoiceEnrollmentDropdowns() {
+  const veEmpSel = document.getElementById("veEmployeeSelect");
+  if (veEmpSel) {
+    veEmpSel.innerHTML = `<option value="">-- Select Target Employee --</option>` +
+      employeesCache.map(e => `<option value="${e.id}">${e.first_name} ${e.last_name || ""} (${e.employee_code})</option>`).join("");
+  }
+
+  const verTargetSel = document.getElementById("verifyTargetSelect");
+  if (verTargetSel) {
+    verTargetSel.innerHTML = `<option value="">-- Open Identification (1:N Search Across All) --</option>` +
+      employeesCache.map(e => `<option value="${e.id}">${e.first_name} ${e.last_name || ""} (${e.employee_code})</option>`).join("");
+  }
+}
+
+function renderVoiceEnrollmentDirectory(summaryData) {
+  const tbody = document.getElementById("veDirectoryTableBody");
+  if (!tbody) return;
+
+  const agentsMetric = document.getElementById("veMetricAgents");
+  const samplesMetric = document.getElementById("veMetricSamples");
+  const vectorsMetric = document.getElementById("veMetricVectors");
+  const durationMetric = document.getElementById("veMetricDuration");
+
+  if (!summaryData) {
+    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">No voice enrollment summary data available.</td></tr>`;
+    return;
+  }
+
+  const profiles = summaryData.profiles || [];
+
+  let cumulativeDurationSec = 0;
+  profiles.forEach(p => {
+    (p.samples || []).forEach(s => {
+      if (s.duration_seconds) cumulativeDurationSec += s.duration_seconds;
+    });
+  });
+
+  if (agentsMetric) agentsMetric.textContent = summaryData.total_employees_enrolled || 0;
+  if (samplesMetric) samplesMetric.textContent = summaryData.total_voice_samples || 0;
+  if (vectorsMetric) vectorsMetric.textContent = summaryData.total_vectors || 0;
+  if (durationMetric) {
+    const totalSec = Math.round(cumulativeDurationSec);
+    durationMetric.textContent = totalSec > 60 ? `${Math.floor(totalSec / 60)}m ${totalSec % 60}s` : `${totalSec}s`;
+  }
+
+  if (profiles.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">No employees registered. Go to Employees tab to create employees first.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = profiles.map(prof => {
+    const fullName = `${prof.first_name} ${prof.last_name || ""}`.trim();
+    const matchedDept = prof.department_name || (prof.department_id ? departmentsCache.find(d => strId(d.id) === strId(prof.department_id))?.name : "--") || "--";
+    const samplesList = prof.samples || [];
+    const sampleCount = prof.total_samples || samplesList.length;
+    const vectorCount = prof.total_vectors || 0;
+
+    let profDurationSec = 0;
+    samplesList.forEach(s => { if (s.duration_seconds) profDurationSec += s.duration_seconds; });
+    const durSec = Math.round(profDurationSec);
+    const durStr = durSec > 60 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : `${durSec}s`;
+
+    const isEnrolled = sampleCount > 0 || vectorCount > 0;
+    const statusClass = isEnrolled ? "badge-completed" : "badge-inactive";
+    const statusText = isEnrolled ? `ENROLLED (${vectorCount} Vector${vectorCount === 1 ? '' : 's'})` : "NO SAMPLES";
+
+    const fileNames = samplesList.map(s => s.original_file_name || s.id).join(", ");
+    const fileSub = fileNames ? `<br><small style="color: #475569; font-size: 11px;">Files: ${fileNames}</small>` : "";
+
+    return `
+      <tr>
+        <td><code>${prof.employee_code || "--"}</code></td>
+        <td><strong>${fullName}</strong>${fileSub}</td>
+        <td>${matchedDept}</td>
+        <td><strong>${sampleCount} audio clip(s)</strong></td>
+        <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+        <td>${durStr}</td>
+        <td>
+          <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="selectEmployeeForEnrollment('${prof.employee_id}')">+ Add Sample</button>
+          ${isEnrolled ? `<button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteEmployeeVoiceSamples('${prof.employee_id}', '${fullName}')">Clear Voice Samples</button>` : ""}
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function selectEmployeeForEnrollment(employeeId) {
+  const sel = document.getElementById("veEmployeeSelect");
+  if (sel) {
+    sel.value = employeeId;
+    sel.scrollIntoView({ behavior: "smooth" });
+  }
+}
+
+/* ==========================================================================
+   LIVE MICROPHONE RECORDING LOGIC
+   ========================================================================== */
+
+async function startMicRecording() {
+  audioChunks = [];
+  recordedAudioBlob = null;
+  recordingSeconds = 0;
+
+  const btnStart = document.getElementById("btnStartRecord");
+  const btnStop = document.getElementById("btnStopRecord");
+  const btnClear = document.getElementById("btnClearRecord");
+  const statusText = document.getElementById("micStatusText");
+  const timerEl = document.getElementById("micTimer");
+  const preview = document.getElementById("micAudioPreview");
+
+  if (preview) preview.style.display = "none";
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      recordedAudioBlob = new Blob(audioChunks, { type: "audio/wav" });
+      const audioUrl = URL.createObjectURL(recordedAudioBlob);
+      if (preview) {
+        preview.src = audioUrl;
+        preview.style.display = "block";
+      }
+      if (statusText) statusText.textContent = "Recording complete! Click 'Enroll Voice Data' to submit.";
+      if (btnClear) btnClear.style.display = "inline-block";
+    };
+
+    mediaRecorder.start();
+    if (btnStart) btnStart.disabled = true;
+    if (btnStop) btnStop.disabled = false;
+    if (statusText) statusText.textContent = "Recording employee voice... Speak clearly into the microphone.";
+
+    micTimerInterval = setInterval(() => {
+      recordingSeconds++;
+      const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, "0");
+      const secs = String(recordingSeconds % 60).padStart(2, "0");
+      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+
+  } catch (err) {
+    alert("Microphone access denied or unavailable: " + err.message);
+  }
+}
+
+function stopMicRecording() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+  }
+  clearInterval(micTimerInterval);
+  const btnStart = document.getElementById("btnStartRecord");
+  const btnStop = document.getElementById("btnStopRecord");
+  if (btnStart) btnStart.disabled = false;
+  if (btnStop) btnStop.disabled = true;
+}
+
+function clearMicRecording() {
+  audioChunks = [];
+  recordedAudioBlob = null;
+  recordingSeconds = 0;
+  clearInterval(micTimerInterval);
+
+  const statusText = document.getElementById("micStatusText");
+  const timerEl = document.getElementById("micTimer");
+  const preview = document.getElementById("micAudioPreview");
+  const btnClear = document.getElementById("btnClearRecord");
+
+  if (statusText) statusText.textContent = "Ready to record employee voice...";
+  if (timerEl) timerEl.textContent = "00:00";
+  if (preview) { preview.src = ""; preview.style.display = "none"; }
+  if (btnClear) btnClear.style.display = "none";
+}
+
+/* ==========================================================================
+   SUBMIT ENROLLMENT & VERIFICATION
+   ========================================================================== */
+
+async function submitVoiceEnrollment(e) {
+  e.preventDefault();
+  const empId = document.getElementById("veEmployeeSelect").value;
+  if (!empId) return showToast("Please select a target employee", "error");
+
+  const btnSubmit = document.getElementById("btnSubmitEnrollment");
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader"></i> Processing Voice...`; }
+
+  const formData = new FormData();
+  formData.append("employee_id", empId);
+  formData.append("sample_type", "ENROLLMENT");
+
+  if (enrollMode === "upload") {
+    const fileInput = document.getElementById("veAudioFiles");
+    if (!fileInput.files || fileInput.files.length === 0) {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
+      return showToast("Please select at least one audio file to upload", "error");
+    }
+    for (let i = 0; i < fileInput.files.length; i++) {
+      formData.append("files", fileInput.files[i]);
+    }
+  } else {
+    if (!recordedAudioBlob) {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
+      return showToast("Please record an audio sample first using the microphone", "error");
+    }
+    formData.append("files", recordedAudioBlob, `mic_enrollment_${Date.now()}.wav`);
+  }
+
+  try {
+    const res = await fetch("/api/v1/voice-samples/enroll", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Enrollment failed.");
+    }
+
+    const data = await res.json();
+    showToast(`Voice sample(s) successfully enrolled! ${data.message || ""}`, "success");
+
+    clearMicRecording();
+    document.getElementById("veAudioFiles").value = "";
+    loadVoiceEnrollmentPage();
+  } catch (err) {
+    showToast("Voice Enrollment Error: " + err.message, "error");
+  } finally {
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  }
+}
+
+/* ==========================================================================
+   LIVE MICROPHONE VERIFICATION TEST LOGIC
+   ========================================================================== */
+
+let verifyMode = "upload";
+let verifyMediaRecorder = null;
+let verifyAudioChunks = [];
+let verifyRecordedAudioBlob = null;
+let verifyMicTimerInterval = null;
+let verifyRecordingSeconds = 0;
+
+function setVerifyMode(mode) {
+  verifyMode = mode;
+  const btnUpload = document.getElementById("btnVerifyModeUpload");
+  const btnMic = document.getElementById("btnVerifyModeMic");
+  const uploadArea = document.getElementById("verifyUploadArea");
+  const micArea = document.getElementById("verifyMicArea");
+
+  if (mode === "upload") {
+    if (btnUpload) btnUpload.classList.add("active");
+    if (btnMic) btnMic.classList.remove("active");
+    if (uploadArea) uploadArea.style.display = "block";
+    if (micArea) micArea.style.display = "none";
+  } else {
+    if (btnMic) btnMic.classList.add("active");
+    if (btnUpload) btnUpload.classList.remove("active");
+    if (uploadArea) uploadArea.style.display = "none";
+    if (micArea) micArea.style.display = "block";
+  }
+}
+
+async function startVerifyMicRecording() {
+  verifyAudioChunks = [];
+  verifyRecordedAudioBlob = null;
+  verifyRecordingSeconds = 0;
+
+  const btnStart = document.getElementById("btnVerifyStartRecord");
+  const btnStop = document.getElementById("btnVerifyStopRecord");
+  const btnClear = document.getElementById("btnVerifyClearRecord");
+  const statusText = document.getElementById("verifyMicStatusText");
+  const timerEl = document.getElementById("verifyMicTimer");
+  const preview = document.getElementById("verifyMicAudioPreview");
+
+  if (preview) preview.style.display = "none";
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    verifyMediaRecorder = new MediaRecorder(stream);
+
+    verifyMediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) verifyAudioChunks.push(event.data);
+    };
+
+    verifyMediaRecorder.onstop = () => {
+      verifyRecordedAudioBlob = new Blob(verifyAudioChunks, { type: "audio/wav" });
+      const audioUrl = URL.createObjectURL(verifyRecordedAudioBlob);
+      if (preview) {
+        preview.src = audioUrl;
+        preview.style.display = "block";
+      }
+      if (statusText) statusText.textContent = "Test recording complete! Click 'Verify & Identify Speaker' to run.";
+      if (btnClear) btnClear.style.display = "inline-block";
+    };
+
+    verifyMediaRecorder.start();
+    if (btnStart) btnStart.disabled = true;
+    if (btnStop) btnStop.disabled = false;
+    if (statusText) statusText.textContent = "Recording test voice sample... Speak into microphone.";
+
+    verifyMicTimerInterval = setInterval(() => {
+      verifyRecordingSeconds++;
+      const mins = String(Math.floor(verifyRecordingSeconds / 60)).padStart(2, "0");
+      const secs = String(verifyRecordingSeconds % 60).padStart(2, "0");
+      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+
+  } catch (err) {
+    alert("Microphone access denied or unavailable: " + err.message);
+  }
+}
+
+function stopVerifyMicRecording() {
+  if (verifyMediaRecorder && verifyMediaRecorder.state !== "inactive") {
+    verifyMediaRecorder.stop();
+    verifyMediaRecorder.stream.getTracks().forEach(track => track.stop());
+  }
+  clearInterval(verifyMicTimerInterval);
+  const btnStart = document.getElementById("btnVerifyStartRecord");
+  const btnStop = document.getElementById("btnVerifyStopRecord");
+  if (btnStart) btnStart.disabled = false;
+  if (btnStop) btnStop.disabled = true;
+}
+
+function clearVerifyMicRecording() {
+  verifyAudioChunks = [];
+  verifyRecordedAudioBlob = null;
+  verifyRecordingSeconds = 0;
+  clearInterval(verifyMicTimerInterval);
+
+  const statusText = document.getElementById("verifyMicStatusText");
+  const timerEl = document.getElementById("verifyMicTimer");
+  const preview = document.getElementById("verifyMicAudioPreview");
+  const btnClear = document.getElementById("btnVerifyClearRecord");
+
+  if (statusText) statusText.textContent = "Ready to record test voice clip...";
+  if (timerEl) timerEl.textContent = "00:00";
+  if (preview) { preview.src = ""; preview.style.display = "none"; }
+  if (btnClear) btnClear.style.display = "none";
+}
+
+async function submitVoiceVerificationTest(e) {
+  e.preventDefault();
+  const targetId = document.getElementById("verifyTargetSelect").value;
+  const resultContainer = document.getElementById("verifyResultContainer");
+  const resultTitle = document.getElementById("verifyResultTitle");
+  const scoreBadge = document.getElementById("verifyScoreBadge");
+  const resultDetail = document.getElementById("verifyResultDetail");
+  const btnSubmit = document.getElementById("btnVerifySubmit");
+
+  const formData = new FormData();
+  if (targetId) formData.append("target_employee_id", targetId);
+
+  if (verifyMode === "upload") {
+    const fileInput = document.getElementById("verifyAudioFile");
+    if (!fileInput.files || fileInput.files.length === 0) {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="shield-check"></i> Verify Speaker`; }
+      return showToast("Please select a query audio file to upload", "error");
+    }
+    formData.append("file", fileInput.files[0]);
+  } else {
+    if (!verifyRecordedAudioBlob) {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="shield-check"></i> Verify Speaker`; }
+      return showToast("Please record a test voice sample first using the microphone", "error");
+    }
+    formData.append("file", verifyRecordedAudioBlob, `verify_query_${Date.now()}.wav`);
+  }
+
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader"></i> Verification in progress...`; }
+
+  try {
+    const res = await fetch("/api/v1/voice-samples/verify", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Verification failed.");
+    }
+
+    const result = await res.json();
+    const scorePct = Math.round((result.similarity_score || 0) * 100);
+
+    if (resultContainer) resultContainer.style.display = "block";
+    if (scoreBadge) scoreBadge.textContent = `${scorePct}% Similarity`;
+
+    const matchedEmp = result.matched_employee || {};
+    const topMatch = (result.top_matches && result.top_matches[0]) ? result.top_matches[0] : {};
+    const empId = matchedEmp.id || topMatch.employee_id;
+    const cachedEmp = employeesCache.find(e => strId(e.id) === strId(empId));
+
+    const empCode = matchedEmp.employee_code || (cachedEmp ? cachedEmp.employee_code : "AGNT-XXXXXX");
+    const fullName = matchedEmp.full_name || (matchedEmp.first_name ? `${matchedEmp.first_name} ${matchedEmp.last_name || ""}`.trim() : (cachedEmp ? `${cachedEmp.first_name} ${cachedEmp.last_name || ""}`.trim() : "Enrolled Agent"));
+    const deptName = matchedEmp.department_name || (cachedEmp && cachedEmp.department_id ? departmentsCache.find(d => strId(d.id) === strId(cachedEmp.department_id))?.name : null);
+    const desigName = matchedEmp.designation_name || (cachedEmp && cachedEmp.designation_id ? designationsCache.find(d => strId(d.id) === strId(cachedEmp.designation_id))?.name : null);
+
+    if (result.is_match) {
+      if (resultContainer) { resultContainer.style.background = "#f0fdf4"; resultContainer.style.borderColor = "#bbf7d0"; }
+      if (resultTitle) { resultTitle.textContent = "VERIFIED MATCH CONFIRMED"; resultTitle.style.color = "#166534"; }
+      
+      let html = `<div style="margin-top: 6px;">
+        <div style="font-size: 15px; font-weight: 700; color: #14532d; margin-bottom: 4px;">
+          ${fullName} <code style="font-size: 13px; color: #166534; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">${empCode}</code>
+        </div>
+        <div style="font-size: 12.5px; color: #15803d;">
+          ${deptName ? `<strong>Department:</strong> ${deptName} &nbsp;|&nbsp; ` : ""}
+          ${desigName ? `<strong>Role:</strong> ${desigName} &nbsp;|&nbsp; ` : ""}
+          <strong>ECAPA Vector Match:</strong> ${scorePct}%
+        </div>
+      </div>`;
+      if (resultDetail) resultDetail.innerHTML = html;
+    } else {
+      if (resultContainer) { resultContainer.style.background = "#fef2f2"; resultContainer.style.borderColor = "#fecaca"; }
+      if (resultTitle) { resultTitle.textContent = "NO MATCH DETECTED"; resultTitle.style.color = "#991b1b"; }
+      let html = `<div style="font-size: 13px; color: #991b1b; margin-top: 4px;">
+        No enrolled employee voice profile matched above threshold (${Math.round((result.threshold_applied || 0.7) * 100)}%).
+        ${topMatch.employee_id ? `<br><small style="color: #b91c1c;">Closest Candidate: ${fullName} (<code>${empCode}</code>) with ${scorePct}% similarity.</small>` : ""}
+      </div>`;
+      if (resultDetail) resultDetail.innerHTML = html;
+    }
+
+  } catch (err) {
+    showToast("Verification Test Error: " + err.message, "error");
+  } finally {
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="shield-check"></i> Verify Speaker`; }
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  }
+}
+
+async function deleteEmployeeVoiceSamples(employeeId, empName) {
+  const confirmed = await showConfirmModal({
+    title: "Clear Employee Voice Samples",
+    message: `Are you sure you want to purge all voice samples for employee '${empName}'?`,
+    confirmText: "Clear Voice Data",
+    isDanger: true
+  });
+  if (!confirmed) return;
+
+  try {
+    const samplesRes = await fetch(`/api/v1/voice-samples/employee/${employeeId}`);
+    if (samplesRes.ok) {
+      const samples = await samplesRes.json();
+      for (const s of samples) {
+        await fetch(`/api/v1/voice-samples/${s.id}`, { method: "DELETE" });
+      }
+      showToast(`Voice samples purged for ${empName}`, "success");
+      loadVoiceEnrollmentPage();
+    }
+  } catch (err) {
+    showToast("Error clearing voice samples", "error");
+  }
+}
+
+async function purgeAllVoiceData() {
+  const confirmed = await showConfirmModal({
+    title: "Purge All System Voice Data",
+    message: "CAUTION: Are you sure you want to purge ALL voice samples and Milvus embeddings across the system? This action cannot be undone.",
+    confirmText: "Purge All Data",
+    isDanger: true
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch("/api/v1/voice-samples/purge/all", { method: "DELETE" });
+    if (res.ok) {
+      showToast("System voice database successfully purged", "success");
+      loadVoiceEnrollmentPage();
+    } else {
+      showToast("Error purging voice data", "error");
+    }
+  } catch (err) {
+    showToast("Error purging voice data", "error");
   }
 }

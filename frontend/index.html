@@ -57,6 +57,12 @@
           <i data-lucide="clock"></i>
           <span>Shifts</span>
         </a>
+
+        <div class="nav-section-title">VOICE MODULE</div>
+        <a href="#" class="nav-item" id="nav-voice-enrollment" onclick="showView('voice-enrollment', event)">
+          <i data-lucide="mic"></i>
+          <span>Voice Enrollment</span>
+        </a>
       </nav>
 
       <!-- SIDEBAR FOOTER -->
@@ -489,6 +495,220 @@
       </div>
 
       <!-- ==================================================================== -->
+      <!-- VIEW: VOICE ENROLLMENT & BIOMETRICS STUDIO PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-voice-enrollment" class="page-view">
+        <!-- METRICS CARDS -->
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>ENROLLED AGENTS</span>
+                <h2 id="veMetricAgents">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="mic"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>Voice Registered</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL VOICE SAMPLES</span>
+                <h2 id="veMetricSamples">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="file-audio"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Audio Clips</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>MILVUS 192D VECTORS</span>
+                <h2 id="veMetricVectors">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="database"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="cpu"></i><span>SpeechBrain ECAPA</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL AUDIO DURATION</span>
+                <h2 id="veMetricDuration">0s</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="clock"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="activity"></i><span>Enrolled Speech</span></div>
+          </div>
+        </section>
+
+        <!-- DUAL COLUMN LAYOUT: ENROLLMENT STUDIO & VERIFICATION TEST -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+          
+          <!-- CARD 1: STAFF VOICE ENROLLMENT STUDIO -->
+          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+            <div>
+              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                <div class="panel-title">
+                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="mic"></i></span>
+                    Staff Voice Enrollment Studio
+                  </h3>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Register employee voice samples via file upload or live recording</p>
+                </div>
+              </div>
+
+              <form id="voiceEnrollForm" onsubmit="submitVoiceEnrollment(event)">
+                <div class="form-group" style="margin-bottom: 18px;">
+                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Target Employee *</label>
+                  <select id="veEmployeeSelect" required style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;">
+                    <option value="">-- Loading Employees... --</option>
+                  </select>
+                </div>
+
+                <!-- ENROLLMENT METHOD TOGGLE -->
+                <div style="display: flex; gap: 12px; margin-bottom: 18px;">
+                  <button type="button" class="mode-tab-btn active" id="btnModeUpload" onclick="setEnrollMode('upload')">
+                    <i data-lucide="upload-cloud"></i> File Upload
+                  </button>
+                  <button type="button" class="mode-tab-btn" id="btnModeMic" onclick="setEnrollMode('mic')">
+                    <i data-lucide="mic"></i> Live Mic Recording
+                  </button>
+                </div>
+
+                <!-- MODE A: FILE UPLOAD -->
+                <div id="enrollUploadArea">
+                  <div class="form-group" style="margin-bottom: 18px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Voice Files (.wav, .mp3, .flac) *</label>
+                    <input type="file" id="veAudioFiles" multiple accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
+                  </div>
+                </div>
+
+                <!-- MODE B: LIVE MIC RECORDING -->
+                <div id="enrollMicArea" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px;">
+                  <div id="micStatusText" style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 10px;">Ready to record employee voice...</div>
+                  <div id="micTimer" style="font-size: 26px; font-weight: 700; font-family: monospace; color: #1d61e7; margin-bottom: 14px;">00:00</div>
+                  <div style="display: flex; justify-content: center; gap: 10px;">
+                    <button type="button" class="btn-primary" id="btnStartRecord" onclick="startMicRecording()"><i data-lucide="mic"></i> Start Recording</button>
+                    <button type="button" class="btn-secondary" id="btnStopRecord" onclick="stopMicRecording()" disabled style="color:#ef4444;"><i data-lucide="square"></i> Stop</button>
+                    <button type="button" class="btn-secondary" id="btnClearRecord" onclick="clearMicRecording()" style="display:none;">Clear</button>
+                  </div>
+                  <audio id="micAudioPreview" controls style="display:none; width: 100%; margin-top: 14px; border-radius: 8px;"></audio>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="shield"></i> SpeechBrain ECAPA 192d</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnSubmitEnrollment"><i data-lucide="cpu"></i> Enroll Voice Data</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- CARD 2: SPEAKER VERIFICATION TEST -->
+          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+            <div>
+              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                <div class="panel-title">
+                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="shield-check"></i></span>
+                    Speaker Verification Test
+                  </h3>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Test speaker identity & similarity score against enrolled database</p>
+                </div>
+              </div>
+
+              <form id="voiceVerifyForm" onsubmit="submitVoiceVerificationTest(event)">
+                <div class="form-group" style="margin-bottom: 18px;">
+                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Target Employee (Optional - 1:1 Verification)</label>
+                  <select id="verifyTargetSelect" style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;">
+                    <option value="">-- Open Identification (1:N Search Across All) --</option>
+                  </select>
+                </div>
+
+                <!-- VERIFICATION METHOD TOGGLE -->
+                <div style="display: flex; gap: 12px; margin-bottom: 18px;">
+                  <button type="button" class="mode-tab-btn active" id="btnVerifyModeUpload" onclick="setVerifyMode('upload')">
+                    <i data-lucide="upload-cloud"></i> Upload Audio Clip
+                  </button>
+                  <button type="button" class="mode-tab-btn" id="btnVerifyModeMic" onclick="setVerifyMode('mic')">
+                    <i data-lucide="mic"></i> Record Live Test Mic
+                  </button>
+                </div>
+
+                <!-- VERIFY MODE A: FILE UPLOAD -->
+                <div id="verifyUploadArea">
+                  <div class="form-group" style="margin-bottom: 18px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Query Voice File (.wav, .mp3, .flac) *</label>
+                    <input type="file" id="verifyAudioFile" accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
+                  </div>
+                </div>
+
+                <!-- VERIFY MODE B: LIVE MIC RECORDING -->
+                <div id="verifyMicArea" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px;">
+                  <div id="verifyMicStatusText" style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 10px;">Ready to record test voice clip...</div>
+                  <div id="verifyMicTimer" style="font-size: 26px; font-weight: 700; font-family: monospace; color: #1d61e7; margin-bottom: 14px;">00:00</div>
+                  <div style="display: flex; justify-content: center; gap: 10px;">
+                    <button type="button" class="btn-primary" id="btnVerifyStartRecord" onclick="startVerifyMicRecording()"><i data-lucide="mic"></i> Start Recording</button>
+                    <button type="button" class="btn-secondary" id="btnVerifyStopRecord" onclick="stopVerifyMicRecording()" disabled style="color:#ef4444;"><i data-lucide="square"></i> Stop</button>
+                    <button type="button" class="btn-secondary" id="btnVerifyClearRecord" onclick="clearVerifyMicRecording()" style="display:none;">Clear</button>
+                  </div>
+                  <audio id="verifyMicAudioPreview" controls style="display:none; width: 100%; margin-top: 14px; border-radius: 8px;"></audio>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="cpu"></i> Milvus Cosine 1:N Search</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnVerifySubmit"><i data-lucide="shield-check"></i> Verify Speaker</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- TEST RESULT CONTAINER -->
+            <div id="verifyResultContainer" style="display:none; margin-top: 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <strong style="color:#166534; font-size:14px;" id="verifyResultTitle">Identification Match</strong>
+                <span class="status-pill badge-completed" id="verifyScoreBadge">95% Match</span>
+              </div>
+              <div style="font-size: 13px; color: #15803d; margin: 0;" id="verifyResultDetail">Matched Employee: Alice Smith (AGNT-000001)</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ENROLLED VOICE SAMPLES DIRECTORY -->
+        <div class="panel-card">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3>Enrolled Staff Voice Directory</h3>
+              <p>Registered audio samples, duration, and vector status per employee</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <button class="btn-secondary" onclick="loadVoiceEnrollmentPage()"><i data-lucide="refresh-cw"></i> Refresh</button>
+              <button class="btn-secondary" onclick="purgeAllVoiceData()" style="color:#ef4444;"><i data-lucide="trash-2"></i> Purge All Voice Data</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Employee Code</th>
+                  <th>Full Name</th>
+                  <th>Department</th>
+                  <th>Sample Count</th>
+                  <th>Vector Status</th>
+                  <th>Total Duration</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="veDirectoryTableBody">
+                <tr><td colspan="7" class="loading-cell">Loading enrolled voice directory...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================================================================== -->
       <!-- VIEW: EMPLOYEES MANAGEMENT PAGE -->
       <!-- ==================================================================== -->
       <div id="view-employees" class="page-view">
@@ -839,18 +1059,28 @@
             <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i data-lucide="user" style="width: 16px; height: 16px;"></i> Personal & Profile Info
             </h4>
-            <div style="display:flex; gap:16px; flex-wrap:wrap;">
-              <div class="form-group" style="flex:1; min-width:220px;">
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom: 12px;">
+              <div class="form-group" style="flex:1; min-width:200px;">
                 <label>Employee Code</label>
-                <input type="text" id="empCode" placeholder="Auto-generated if blank (e.g. AGNT-000001)">
+                <input type="text" id="empCode" placeholder="Auto-generated (e.g. AGNT-000001)">
               </div>
-              <div class="form-group" style="flex:1; min-width:220px;">
+              <div class="form-group" style="flex:1; min-width:200px;">
                 <label>First Name *</label>
                 <input type="text" id="empFirstName" required placeholder="e.g. Alice">
               </div>
-              <div class="form-group" style="flex:1; min-width:220px;">
+              <div class="form-group" style="flex:1; min-width:200px;">
                 <label>Last Name</label>
                 <input type="text" id="empLastName" placeholder="e.g. Smith">
+              </div>
+            </div>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div class="form-group" style="flex:1; min-width:200px;">
+                <label>Father's Name</label>
+                <input type="text" id="empFatherName" placeholder="e.g. Robert Smith">
+              </div>
+              <div class="form-group" style="flex:1; min-width:200px;">
+                <label>Date of Birth</label>
+                <input type="date" id="empDateOfBirth">
               </div>
             </div>
           </div>
@@ -1060,6 +1290,24 @@
       <div class="modal-body"><div id="voiceSummaryContent"><p>Loading summary...</p></div></div>
     </div>
   </div>
+
+  <!-- CENTERED REUSABLE CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box" style="max-width: 440px; text-align: center; border-top: 4px solid #ef4444; padding: 24px;">
+      <div id="confirmModalIcon" style="font-size: 36px; margin-bottom: 12px; display: flex; justify-content: center;">
+        <i data-lucide="alert-triangle" style="color: #ef4444; width: 44px; height: 44px;"></i>
+      </div>
+      <h3 id="confirmModalTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Confirm Action</h3>
+      <p id="confirmModalMessage" style="font-size: 13.5px; color: #475569; margin-bottom: 24px; line-height: 1.5;">Are you sure you want to proceed?</p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn-secondary" id="confirmModalCancelBtn" style="padding: 10px 24px; font-weight: 600;">Cancel</button>
+        <button type="button" class="btn-primary" id="confirmModalSubmitBtn" style="padding: 10px 24px; font-weight: 600; background: #ef4444; border-color: #ef4444;">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM-CENTER FLOATING TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
 
   <script src="/static/app.js"></script>
 </body>

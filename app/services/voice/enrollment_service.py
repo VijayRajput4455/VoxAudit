@@ -214,6 +214,7 @@ class EnrollmentService:
                 for s in emp_samples
             ]
 
+            dept_name = emp.department.name if getattr(emp, "department", None) else None
             profiles.append(
                 {
                     "employee_id": emp.id,
@@ -221,6 +222,8 @@ class EnrollmentService:
                     "first_name": emp.first_name,
                     "last_name": emp.last_name,
                     "email": emp.email,
+                    "department_id": emp.department_id,
+                    "department_name": dept_name,
                     "total_samples": len(emp_samples),
                     "total_vectors": vector_count,
                     "samples": sample_items,

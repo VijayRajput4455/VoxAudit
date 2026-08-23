@@ -110,6 +110,8 @@ class EmployeeVoiceProfileResponse(BaseModel):
     first_name: str
     last_name: str | None = None
     email: str | None = None
+    department_id: UUID | None = None
+    department_name: str | None = None
     total_samples: int
     total_vectors: int
     samples: list[VoiceSampleSummaryItem]
