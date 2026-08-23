@@ -662,34 +662,12 @@
                   </select>
                 </div>
 
-                <!-- ENROLLMENT METHOD TOGGLE -->
-                <div style="display: flex; gap: 12px; margin-bottom: 18px;">
-                  <button type="button" class="mode-tab-btn active" id="btnModeUpload" onclick="setEnrollMode('upload')">
-                    <i data-lucide="upload-cloud"></i> File Upload
-                  </button>
-                  <button type="button" class="mode-tab-btn" id="btnModeMic" onclick="setEnrollMode('mic')">
-                    <i data-lucide="mic"></i> Live Mic Recording
-                  </button>
-                </div>
-
-                <!-- MODE A: FILE UPLOAD -->
+                <!-- FILE UPLOAD FIELD -->
                 <div id="enrollUploadArea">
                   <div class="form-group" style="margin-bottom: 18px;">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Voice Files (.wav, .mp3, .flac) *</label>
-                    <input type="file" id="veAudioFiles" multiple accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
+                    <input type="file" id="veAudioFiles" multiple required accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
                   </div>
-                </div>
-
-                <!-- MODE B: LIVE MIC RECORDING -->
-                <div id="enrollMicArea" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px;">
-                  <div id="micStatusText" style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 10px;">Ready to record employee voice...</div>
-                  <div id="micTimer" style="font-size: 26px; font-weight: 700; font-family: monospace; color: #1d61e7; margin-bottom: 14px;">00:00</div>
-                  <div style="display: flex; justify-content: center; gap: 10px;">
-                    <button type="button" class="btn-primary" id="btnStartRecord" onclick="startMicRecording()"><i data-lucide="mic"></i> Start Recording</button>
-                    <button type="button" class="btn-secondary" id="btnStopRecord" onclick="stopMicRecording()" disabled style="color:#ef4444;"><i data-lucide="square"></i> Stop</button>
-                    <button type="button" class="btn-secondary" id="btnClearRecord" onclick="clearMicRecording()" style="display:none;">Clear</button>
-                  </div>
-                  <audio id="micAudioPreview" controls style="display:none; width: 100%; margin-top: 14px; border-radius: 8px;"></audio>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
@@ -721,21 +699,11 @@
                   </select>
                 </div>
 
-                <!-- VERIFICATION METHOD TOGGLE -->
-                <div style="display: flex; gap: 12px; margin-bottom: 18px;">
-                  <button type="button" class="mode-tab-btn active" id="btnVerifyModeUpload" onclick="setVerifyMode('upload')">
-                    <i data-lucide="upload-cloud"></i> Upload Audio Clip
-                  </button>
-                  <button type="button" class="mode-tab-btn" id="btnVerifyModeMic" onclick="setVerifyMode('mic')">
-                    <i data-lucide="mic"></i> Record Live Test Mic
-                  </button>
-                </div>
-
-                <!-- VERIFY MODE A: FILE UPLOAD -->
+                <!-- VERIFY FILE UPLOAD -->
                 <div id="verifyUploadArea">
                   <div class="form-group" style="margin-bottom: 18px;">
                     <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Query Voice File (.wav, .mp3, .flac) *</label>
-                    <input type="file" id="verifyAudioFile" accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
+                    <input type="file" id="verifyAudioFile" required accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
                   </div>
                 </div>
 
