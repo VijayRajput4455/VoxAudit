@@ -922,8 +922,32 @@ function populateDropdowns() {
   }
 }
 
+let empViewMode = "table";
+
+function switchEmpViewMode(mode, btn) {
+  empViewMode = mode;
+  const btnTable = document.getElementById("btnEmpViewTable");
+  const btnGrid = document.getElementById("btnEmpViewGrid");
+  const tableView = document.getElementById("employeesTableView");
+  const gridView = document.getElementById("employeesGridView");
+
+  if (mode === "table") {
+    if (btnTable) btnTable.classList.add("active");
+    if (btnGrid) btnGrid.classList.remove("active");
+    if (tableView) tableView.style.display = "block";
+    if (gridView) gridView.style.display = "none";
+  } else {
+    if (btnGrid) btnGrid.classList.add("active");
+    if (btnTable) btnTable.classList.remove("active");
+    if (tableView) tableView.style.display = "none";
+    if (gridView) gridView.style.display = "block";
+  }
+  filterEmployees();
+}
+
 function renderEmployeesTable(list) {
   const tbody = document.getElementById("employeesTableBody");
+  const gridContainer = document.getElementById("employeesGridContainer");
   if (!tbody) return;
 
   const totalEl = document.getElementById("empMetricTotal");
@@ -938,9 +962,11 @@ function renderEmployeesTable(list) {
 
   if (list.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" class="loading-cell">No employees found. Click "+ Add Employee" to create one.</td></tr>`;
+    if (gridContainer) gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; color:#64748b;">No employees found.</div>`;
     return;
   }
 
+  // Populate Table View
   tbody.innerHTML = list.map(emp => {
     const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "--";
     const desig = designationsCache.find(d => strId(d.id) === strId(emp.designation_id))?.name || "--";
@@ -951,14 +977,12 @@ function renderEmployeesTable(list) {
     const statusClass = emp.status === "ACTIVE" ? "badge-completed" : "badge-inactive";
     const subName = emp.father_name ? `<br><small style="color: #64748b; font-size: 11px;">S/o ${emp.father_name}</small>` : "";
 
-    // Voice profile badge
     const vProf = voiceProfilesCache.find(v => strId(v.employee_id) === strId(emp.id));
     const sampleCount = vProf ? vProf.total_samples : 0;
     const voiceBadge = sampleCount > 0 
       ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="mic" style="width:11px;"></i> ${sampleCount} Clip(s)</span>`
       : `<span class="status-pill badge-inactive" style="font-size:11px;">No Voice</span>`;
 
-    // QA Call Performance calculation
     const empCalls = callsCache.filter(c => strId(c.identified_employee_id) === strId(emp.id) || strId(c.expected_employee_id) === strId(emp.id));
     const qaScores = empCalls.map(c => c.qa_score).filter(s => s !== null && s !== undefined);
     const avgQa = qaScores.length > 0 ? Math.round(qaScores.reduce((a, b) => a + b, 0) / qaScores.length) : null;
@@ -997,6 +1021,98 @@ function renderEmployeesTable(list) {
       </tr>
     `;
   }).join("");
+
+  // Populate Grid View Cards
+  if (gridContainer) {
+    gridContainer.innerHTML = list.map(emp => {
+      const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "--";
+      const desig = designationsCache.find(d => strId(d.id) === strId(emp.designation_id))?.name || "--";
+      const shift = shiftsCache.find(s => strId(s.id) === strId(emp.shift_id))?.name || "--";
+      const fullName = `${emp.first_name} ${emp.last_name || ""}`.trim();
+      const initials = `${emp.first_name[0] || ""}${emp.last_name ? emp.last_name[0] : ""}`.toUpperCase() || "EP";
+      const statusClass = emp.status === "ACTIVE" ? "badge-completed" : "badge-inactive";
+      const subName = emp.father_name ? `S/o ${emp.father_name}` : "";
+
+      const vProf = voiceProfilesCache.find(v => strId(v.employee_id) === strId(emp.id));
+      const sampleCount = vProf ? vProf.total_samples : 0;
+      const voiceBadge = sampleCount > 0 
+        ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="mic" style="width:11px;"></i> ${sampleCount} Clip(s)</span>`
+        : `<span class="status-pill badge-inactive" style="font-size:11px;">No Voice</span>`;
+
+      const empCalls = callsCache.filter(c => strId(c.identified_employee_id) === strId(emp.id) || strId(c.expected_employee_id) === strId(emp.id));
+      const qaScores = empCalls.map(c => c.qa_score).filter(s => s !== null && s !== undefined);
+      const avgQa = qaScores.length > 0 ? Math.round(qaScores.reduce((a, b) => a + b, 0) / qaScores.length) : null;
+
+      const qaBadge = avgQa !== null
+        ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="award" style="width:11px;"></i> ${avgQa}% QA (${empCalls.length})</span>`
+        : `<span class="status-pill badge-pending" style="font-size:11px;">No Audits</span>`;
+
+      const location = emp.location || "Main Branch";
+      const email = emp.email || "--";
+      const phone = emp.phone || "--";
+
+      return `
+        <div class="metric-card" style="padding: 22px; border-radius: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 14px rgba(0,0,0,0.04);">
+          <!-- TOP ROW: AVATAR, NAME, CODE & STATUS -->
+          <div class="metric-card-top" style="margin-bottom: 14px;">
+            <div style="display: flex; gap: 14px; align-items: flex-start; min-width: 0; flex: 1;">
+              <div style="width: 50px; height: 50px; border-radius: 14px; background: linear-gradient(135deg, #1d61e7, #3b82f6); color: #ffffff; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(29, 97, 231, 0.2);">
+                ${initials}
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <code style="font-size: 11px; font-weight: 700; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-bottom: 3px;">${emp.employee_code}</code>
+                <h3 style="font-size: 16.5px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.25; word-break: break-word;">${fullName}</h3>
+                ${subName ? `<small style="color: #64748b; font-size: 12px; display: block; margin-top: 2px;">${subName}</small>` : ""}
+              </div>
+            </div>
+            <span class="status-pill ${statusClass}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;">${emp.status}</span>
+          </div>
+
+          <!-- ENRICHED 6-FIELD DETAILS GRID -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; font-size: 13px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; margin: 12px 0;">
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">DEPARTMENT</span>
+              <strong style="color:#0f172a; font-size:13px; word-break:break-word; display:block;">${dept}</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">DESIGNATION</span>
+              <strong style="color:#0f172a; font-size:13px; word-break:break-word; display:block;">${desig}</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">SHIFT TIMING</span>
+              <strong style="color:#0f172a; font-size:13px; word-break:break-word; display:block;">${shift}</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">LOCATION</span>
+              <strong style="color:#0f172a; font-size:13px; word-break:break-word; display:block;">${location}</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">EMAIL ADDRESS</span>
+              <strong style="color:#0f172a; font-size:12px; word-break:break-all; display:block;">${email}</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">PHONE NUMBER</span>
+              <strong style="color:#0f172a; font-size:12px; word-break:break-all; display:block;">${phone}</strong>
+            </div>
+          </div>
+
+          <!-- BADGES ROW -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+            ${qaBadge}
+            ${voiceBadge}
+          </div>
+
+          <!-- ENRICHED ACTION FOOTER -->
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 14px; border-top: 1px solid #f1f5f9; flex-wrap: wrap;">
+            <button class="btn-secondary" style="flex: 1; min-width: 80px; padding: 8px 10px; font-size: 12px; justify-content: center;" onclick="openEmployeeProfileModal('${emp.id}')"><i data-lucide="user" style="width: 14px;"></i> Profile</button>
+            <button class="btn-secondary" style="padding: 8px 10px; font-size: 12px;" onclick="openManageVoiceClipsModal('${emp.id}', '${fullName}')"><i data-lucide="mic" style="width: 14px;"></i> Voice Clips</button>
+            <button class="btn-secondary" style="padding: 8px 10px; font-size: 12px;" onclick="openEditEmployeeModal('${emp.id}')"><i data-lucide="edit-3" style="width: 14px;"></i> Edit</button>
+            <button class="btn-secondary" style="padding: 8px 10px; font-size: 12px; color: #ef4444;" onclick="deleteEmployee('${emp.id}', '${fullName}')"><i data-lucide="trash-2" style="width: 14px;"></i></button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
 
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }

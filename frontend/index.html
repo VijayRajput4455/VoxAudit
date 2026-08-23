@@ -756,34 +756,48 @@
         </section>
 
         <div class="panel-card">
-          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+          <!-- PANEL HEADER ROW 1: TITLE & ACTION BUTTONS -->
+          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Employees & Agents Directory</h3>
               <p>Manage staff profiles, department mappings, designations, shifts, and voice enrollment</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <input type="text" id="empSearchInput" placeholder="Search name, code, email..." style="padding: 7px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; width: 180px;" oninput="filterEmployees()">
-              
-              <select id="empDeptFilter" style="padding: 7px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
-                <option value="">All Departments</option>
-              </select>
-
-              <select id="empDesigFilter" style="padding: 7px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
-                <option value="">All Roles</option>
-              </select>
-
               <div class="time-range-group">
-                <button class="time-range-btn active" onclick="filterEmpStatus('ALL', this)">All</button>
-                <button class="time-range-btn" onclick="filterEmpStatus('ACTIVE', this)">Active</button>
-                <button class="time-range-btn" onclick="filterEmpStatus('INACTIVE', this)">Inactive</button>
+                <button class="time-range-btn active" id="btnEmpViewTable" onclick="switchEmpViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
+                <button class="time-range-btn" id="btnEmpViewGrid" onclick="switchEmpViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
 
               <button class="btn-secondary" onclick="exportEmployeesCSV()"><i data-lucide="download"></i> Export CSV</button>
-              <button class="btn-secondary" onclick="openBulkImportModal()"><i data-lucide="upload-cloud"></i> Bulk Import CSV</button>
+              <button class="btn-secondary" onclick="openBulkImportModal()"><i data-lucide="upload-cloud"></i> Bulk Import</button>
               <button class="btn-primary" onclick="openAddEmployeeModal()"><i data-lucide="plus"></i> Add Employee</button>
             </div>
           </div>
-          <div class="table-responsive">
+
+          <!-- PANEL HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+              <div style="position: relative; flex: 1; min-width: 220px; max-width: 320px;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="empSearchInput" placeholder="Search name, code, father, email..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterEmployees()">
+              </div>
+
+              <select id="empDeptFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
+                <option value="">All Departments</option>
+              </select>
+
+              <select id="empDesigFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
+                <option value="">All Roles</option>
+              </select>
+            </div>
+
+            <div class="time-range-group">
+              <button class="time-range-btn active" onclick="filterEmpStatus('ALL', this)">All</button>
+              <button class="time-range-btn" onclick="filterEmpStatus('ACTIVE', this)">Active</button>
+              <button class="time-range-btn" onclick="filterEmpStatus('INACTIVE', this)">Inactive</button>
+            </div>
+          </div>
+          <div class="table-responsive" id="employeesTableView">
             <table class="data-table">
               <thead>
                 <tr>
@@ -803,6 +817,13 @@
                 <tr><td colspan="10" class="loading-cell">Loading employees...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- EMPLOYEES GRID VIEW CONTAINER -->
+          <div id="employeesGridView" style="display: none; padding-top: 16px;">
+            <div id="employeesGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+              <!-- DYNAMICALLY POPULATED VIA JS -->
+            </div>
           </div>
         </div>
       </div>
