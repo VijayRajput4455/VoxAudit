@@ -860,6 +860,10 @@ code {
   z-index: 1000;
 }
 
+#confirmModal {
+  z-index: 999999 !important;
+}
+
 .modal-overlay.active {
   display: flex;
 }

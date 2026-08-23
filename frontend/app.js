@@ -846,18 +846,20 @@ function strId(id) { return id ? String(id).toLowerCase() : ""; }
    ========================================================================== */
 
 let voiceProfilesCache = [];
+let callsCache = [];
 
 async function loadEmployees() {
   const tbody = document.getElementById("employeesTableBody");
-  if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="loading-cell">Loading employees...</td></tr>`;
+  if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="loading-cell">Loading employees...</td></tr>`;
 
   try {
-    const [empRes, deptRes, desigRes, shiftRes, voiceRes] = await Promise.all([
+    const [empRes, deptRes, desigRes, shiftRes, voiceRes, callsRes] = await Promise.all([
       fetch("/api/v1/employees/"),
       fetch("/api/v1/departments/"),
       fetch("/api/v1/designations/"),
       fetch("/api/v1/shifts/"),
-      fetch("/api/v1/voice-samples/summary/all")
+      fetch("/api/v1/voice-samples/summary/all"),
+      fetch("/api/v1/calls/")
     ]);
 
     if (empRes.ok) employeesCache = await empRes.json();
@@ -868,11 +870,12 @@ async function loadEmployees() {
       const summary = await voiceRes.json();
       voiceProfilesCache = summary.profiles || [];
     }
+    if (callsRes.ok) callsCache = await callsRes.json();
 
     populateDropdowns();
     renderEmployeesTable(employeesCache);
   } catch (err) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="color: #ef4444; text-align: center;">Error loading employees</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="color: #ef4444; text-align: center;">Error loading employees</td></tr>`;
   }
 }
 
@@ -925,16 +928,16 @@ function renderEmployeesTable(list) {
 
   const totalEl = document.getElementById("empMetricTotal");
   const activeEl = document.getElementById("empMetricActive");
+  const voiceEl = document.getElementById("empMetricVoice");
   const deptsEl = document.getElementById("empMetricDepts");
-  const desigsEl = document.getElementById("empMetricDesigs");
 
   if (totalEl) totalEl.textContent = list.length;
   if (activeEl) activeEl.textContent = list.filter(e => e.status === "ACTIVE").length;
+  if (voiceEl) voiceEl.textContent = voiceProfilesCache.filter(v => v.total_samples > 0).length;
   if (deptsEl) deptsEl.textContent = new Set(list.map(e => e.department_id).filter(Boolean)).size;
-  if (desigsEl) desigsEl.textContent = new Set(list.map(e => e.designation_id).filter(Boolean)).size;
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="loading-cell">No employees found. Click "+ Add Employee" to create one.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="loading-cell">No employees found. Click "+ Add Employee" to create one.</td></tr>`;
     return;
   }
 
@@ -943,24 +946,47 @@ function renderEmployeesTable(list) {
     const desig = designationsCache.find(d => strId(d.id) === strId(emp.designation_id))?.name || "--";
     const shift = shiftsCache.find(s => strId(s.id) === strId(emp.shift_id))?.name || "--";
     const fullName = `${emp.first_name} ${emp.last_name || ""}`.trim();
+    const initials = `${emp.first_name[0] || ""}${emp.last_name ? emp.last_name[0] : ""}`.toUpperCase() || "EP";
     const contactInfo = emp.email || emp.phone || "--";
     const statusClass = emp.status === "ACTIVE" ? "badge-completed" : "badge-inactive";
     const subName = emp.father_name ? `<br><small style="color: #64748b; font-size: 11px;">S/o ${emp.father_name}</small>` : "";
 
+    // Voice profile badge
     const vProf = voiceProfilesCache.find(v => strId(v.employee_id) === strId(emp.id));
     const sampleCount = vProf ? vProf.total_samples : 0;
     const voiceBadge = sampleCount > 0 
       ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="mic" style="width:11px;"></i> ${sampleCount} Clip(s)</span>`
       : `<span class="status-pill badge-inactive" style="font-size:11px;">No Voice</span>`;
 
+    // QA Call Performance calculation
+    const empCalls = callsCache.filter(c => strId(c.identified_employee_id) === strId(emp.id) || strId(c.expected_employee_id) === strId(emp.id));
+    const qaScores = empCalls.map(c => c.qa_score).filter(s => s !== null && s !== undefined);
+    const avgQa = qaScores.length > 0 ? Math.round(qaScores.reduce((a, b) => a + b, 0) / qaScores.length) : null;
+
+    const qaBadge = avgQa !== null
+      ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="award" style="width:11px;"></i> ${avgQa}% QA (${empCalls.length})</span>`
+      : `<span class="status-pill badge-pending" style="font-size:11px;">No Audits</span>`;
+
+    const avatarHtml = `
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg, #1d61e7, #3b82f6); color:#fff; font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          ${initials}
+        </div>
+        <div>
+          <strong>${fullName}</strong>${subName}
+        </div>
+      </div>
+    `;
+
     return `
       <tr>
         <td><code>${emp.employee_code}</code></td>
-        <td><strong>${fullName}</strong>${subName}</td>
+        <td>${avatarHtml}</td>
         <td><small>${contactInfo}</small></td>
         <td>${dept}</td>
         <td>${desig}</td>
         <td>${shift}</td>
+        <td>${qaBadge}</td>
         <td>${voiceBadge}</td>
         <td><span class="status-pill ${statusClass}">${emp.status}</span></td>
         <td>
@@ -1103,9 +1129,12 @@ async function openEmployeeProfileModal(id) {
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <strong style="font-size:13px; color:#1e293b;">${s.original_file_name || s.code}</strong>
-            <div style="font-size:11px; color:#64748b;">Format: ${s.audio_format || "wav"} | Duration: ${s.duration_seconds ? Math.round(s.duration_seconds) + "s" : "--"}</div>
+            <div style="font-size:11px; color:#64748b;">Format: ${s.audio_format || "wav"} | Duration: ${s.duration_seconds ? Math.round(s.duration_seconds) + "s" : "--"} | Vector ID: <code>${s.embedding_id ? String(s.embedding_id).substring(0, 8) + "..." : "192D"}</code></div>
           </div>
-          <span class="status-pill badge-completed" style="font-size:11px;">${s.status}</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="status-pill badge-completed" style="font-size:11px;">${s.status}</span>
+            <button class="btn-secondary" style="padding:4px 8px; font-size:11px; color:#ef4444;" onclick="deleteSingleVoiceSample('${s.id}', '${s.original_file_name || s.code}', '${emp.id}', '${fullName}')">Delete Clip</button>
+          </div>
         </div>
       `).join("")
     : `<p style="font-size:13px; color:#64748b; margin:0;">No voice samples enrolled yet. Go to Voice Enrollment tab to register voice samples.</p>`;
@@ -1396,7 +1425,8 @@ function renderVoiceEnrollmentDirectory(summaryData) {
         <td>${durStr}</td>
         <td>
           <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="selectEmployeeForEnrollment('${prof.employee_id}')">+ Add Sample</button>
-          ${isEnrolled ? `<button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteEmployeeVoiceSamples('${prof.employee_id}', '${fullName}')">Clear Voice Samples</button>` : ""}
+          ${isEnrolled ? `<button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #1d61e7;" onclick="openManageVoiceClipsModal('${prof.employee_id}', '${fullName}')">Manage Clips (${sampleCount})</button>` : ""}
+          ${isEnrolled ? `<button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteEmployeeVoiceSamples('${prof.employee_id}', '${fullName}')">Clear All</button>` : ""}
         </td>
       </tr>
     `;
@@ -1794,5 +1824,340 @@ async function purgeAllVoiceData() {
     }
   } catch (err) {
     showToast("Error purging voice data", "error");
+  }
+}
+
+/* ==========================================================================
+   METRIC TILE FILTER FOR VOICE REGISTERED
+   ========================================================================== */
+
+function filterVoiceRegistered() {
+  document.querySelectorAll("#view-employees .time-range-btn").forEach(b => b.classList.remove("active"));
+  const voiceEmpIds = voiceProfilesCache.filter(v => v.total_samples > 0).map(v => strId(v.employee_id));
+  const filtered = employeesCache.filter(e => voiceEmpIds.includes(strId(e.id)));
+  renderEmployeesTable(filtered);
+  showToast(`Showing ${filtered.length} voice-enrolled employees`, "info");
+}
+
+/* ==========================================================================
+   BULK CSV IMPORT LOGIC
+   ========================================================================== */
+
+function openBulkImportModal() {
+  openModal("bulkImportModal");
+}
+
+function downloadSampleCSVTemplate() {
+  const csvContent = "data:text/csv;charset=utf-8," +
+    "first_name,last_name,father_name,email,phone,date_of_birth,date_of_joining,location\n" +
+    "Rahul,Sharma,Ramesh Sharma,rahul.sharma@example.com,9876543210,1995-04-12,2024-01-15,New Delhi\n" +
+    "Priya,Verma,Suresh Verma,priya.verma@example.com,9876543211,1997-08-22,2024-02-01,Mumbai";
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "VoxAudit_Employee_Import_Template.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("Downloaded Sample CSV Template", "info");
+}
+
+async function submitBulkImportCSV(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById("bulkCsvFileInput");
+  if (!fileInput.files || fileInput.files.length === 0) {
+    return showToast("Please select a CSV file to upload", "error");
+  }
+
+  const file = fileInput.files[0];
+  const btnSubmit = document.getElementById("btnSubmitBulkImport");
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader"></i> Importing Staff...`; }
+
+  try {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length <= 1) {
+      throw new Error("CSV file is empty or missing data rows.");
+    }
+
+    const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+    const items = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(",").map(p => p.trim().replace(/^"|"$/g, ""));
+      if (parts.length < 1 || !parts[0]) continue;
+
+      const obj = {};
+      headers.forEach((h, idx) => {
+        if (parts[idx] !== undefined && parts[idx] !== "") {
+          obj[h] = parts[idx];
+        }
+      });
+
+      if (!obj.first_name) continue;
+      if (!obj.date_of_joining) {
+        obj.date_of_joining = new Date().toISOString().split("T")[0];
+      }
+
+      items.push(obj);
+    }
+
+    if (items.length === 0) {
+      throw new Error("No valid employee records found in CSV file.");
+    }
+
+    const res = await fetch("/api/v1/employees/bulk-import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(items)
+    });
+
+    if (!res.ok) {
+      throw new Error("Bulk import request failed");
+    }
+
+    const data = await res.json();
+    showToast(`Bulk Import Complete: ${data.imported_count} employee(s) created!`, "success");
+    closeModal("bulkImportModal");
+    fileInput.value = "";
+    loadEmployees();
+
+  } catch (err) {
+    showToast("CSV Import Error: " + err.message, "error");
+  } finally {
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="upload"></i> Upload & Create Staff`; }
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  }
+}
+
+/* ==========================================================================
+   QUICK DIRECT VOICE RECORDING MODAL LOGIC
+   ========================================================================== */
+
+let quickAudioChunks = [];
+let quickRecordedAudioBlob = null;
+let quickMediaRecorder = null;
+let quickMicTimerInterval = null;
+let quickRecordingSeconds = 0;
+
+function openQuickRecordModal(empId, empName) {
+  const emp = employeesCache.find(e => strId(e.id) === strId(empId));
+  document.getElementById("quickRecordEmpId").value = empId;
+  document.getElementById("quickRecordEmpName").textContent = empName;
+  document.getElementById("quickRecordEmpCode").textContent = emp?.employee_code || "AGNT-000000";
+  clearQuickMicRecording();
+  openModal("quickRecordModal");
+}
+
+async function startQuickMicRecording() {
+  quickAudioChunks = [];
+  quickRecordedAudioBlob = null;
+  quickRecordingSeconds = 0;
+
+  const btnStart = document.getElementById("btnQuickRecordStart");
+  const btnStop = document.getElementById("btnQuickRecordStop");
+  const btnClear = document.getElementById("btnQuickRecordClear");
+  const btnSubmit = document.getElementById("btnQuickRecordSubmit");
+  const statusText = document.getElementById("quickRecordStatusText");
+  const timerEl = document.getElementById("quickRecordTimer");
+  const preview = document.getElementById("quickRecordAudioPreview");
+
+  if (preview) preview.style.display = "none";
+  if (btnSubmit) btnSubmit.disabled = true;
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    quickMediaRecorder = new MediaRecorder(stream);
+
+    quickMediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) quickAudioChunks.push(event.data);
+    };
+
+    quickMediaRecorder.onstop = () => {
+      quickRecordedAudioBlob = new Blob(quickAudioChunks, { type: "audio/wav" });
+      const audioUrl = URL.createObjectURL(quickRecordedAudioBlob);
+      if (preview) {
+        preview.src = audioUrl;
+        preview.style.display = "block";
+      }
+      if (statusText) statusText.textContent = "Recording complete! Click 'Save Voice Sample'.";
+      if (btnClear) btnClear.style.display = "inline-block";
+      if (btnSubmit) btnSubmit.disabled = false;
+    };
+
+    quickMediaRecorder.start();
+    if (btnStart) btnStart.disabled = true;
+    if (btnStop) btnStop.disabled = false;
+    if (statusText) statusText.textContent = "Recording voice... Speak clearly into microphone.";
+
+    quickMicTimerInterval = setInterval(() => {
+      quickRecordingSeconds++;
+      const mins = String(Math.floor(quickRecordingSeconds / 60)).padStart(2, "0");
+      const secs = String(quickRecordingSeconds % 60).padStart(2, "0");
+      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+
+  } catch (err) {
+    showToast("Microphone access denied: " + err.message, "error");
+  }
+}
+
+function stopQuickMicRecording() {
+  if (quickMediaRecorder && quickMediaRecorder.state !== "inactive") {
+    quickMediaRecorder.stop();
+    quickMediaRecorder.stream.getTracks().forEach(track => track.stop());
+  }
+  clearInterval(quickMicTimerInterval);
+  const btnStart = document.getElementById("btnQuickRecordStart");
+  const btnStop = document.getElementById("btnQuickRecordStop");
+  if (btnStart) btnStart.disabled = false;
+  if (btnStop) btnStop.disabled = true;
+}
+
+function clearQuickMicRecording() {
+  quickAudioChunks = [];
+  quickRecordedAudioBlob = null;
+  quickRecordingSeconds = 0;
+  clearInterval(quickMicTimerInterval);
+
+  const statusText = document.getElementById("quickRecordStatusText");
+  const timerEl = document.getElementById("quickRecordTimer");
+  const preview = document.getElementById("quickRecordAudioPreview");
+  const btnClear = document.getElementById("btnQuickRecordClear");
+  const btnSubmit = document.getElementById("btnQuickRecordSubmit");
+
+  if (statusText) statusText.textContent = "Ready to record...";
+  if (timerEl) timerEl.textContent = "00:00";
+  if (preview) { preview.src = ""; preview.style.display = "none"; }
+  if (btnClear) btnClear.style.display = "none";
+  if (btnSubmit) btnSubmit.disabled = true;
+}
+
+async function submitQuickVoiceRecord() {
+  const empId = document.getElementById("quickRecordEmpId").value;
+  if (!empId || !quickRecordedAudioBlob) return showToast("No recorded voice sample", "error");
+
+  const btnSubmit = document.getElementById("btnQuickRecordSubmit");
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader"></i> Saving Voice...`; }
+
+  const formData = new FormData();
+  formData.append("employee_id", empId);
+  formData.append("sample_type", "ENROLLMENT");
+  formData.append("files", quickRecordedAudioBlob, `mic_quick_${Date.now()}.wav`);
+
+  try {
+    const res = await fetch("/api/v1/voice-samples/enroll", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Voice enrollment failed.");
+    }
+
+    showToast("Voice sample successfully registered!", "success");
+    closeModal("quickRecordModal");
+    loadEmployees();
+  } catch (err) {
+    showToast("Voice Enrollment Error: " + err.message, "error");
+  } finally {
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Save Voice Sample`; }
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  }
+}
+
+/* ==========================================================================
+   MANAGE INDIVIDUAL VOICE CLIPS & MILVUS VECTOR EMBEDDINGS LOGIC
+   ========================================================================== */
+
+async function openManageVoiceClipsModal(employeeId, empName) {
+  const subtitleEl = document.getElementById("manageVoiceClipsEmpSubtitle");
+  if (subtitleEl) subtitleEl.textContent = `Managing voice samples & Milvus embeddings for ${empName}`;
+
+  const listEl = document.getElementById("manageVoiceClipsList");
+  if (listEl) listEl.innerHTML = `<p style="text-align:center; padding: 20px; color:#64748b;">Loading voice sample clips...</p>`;
+
+  openModal("manageVoiceClipsModal");
+
+  try {
+    const res = await fetch(`/api/v1/voice-samples/employee/${employeeId}`);
+    if (!res.ok) throw new Error("Failed to fetch voice samples.");
+    const samples = await res.json();
+
+    if (!samples || samples.length === 0) {
+      listEl.innerHTML = `<div style="text-align:center; padding: 30px; color:#64748b;">No voice sample clips found for ${empName}.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = samples.map(s => {
+      const fileName = s.original_file_name || s.code || `voice_sample_${s.id.substring(0, 6)}.wav`;
+      const durStr = s.duration_seconds ? `${Math.round(s.duration_seconds)} seconds` : "Unknown duration";
+      const vecStatus = s.embedding_id ? `<span style="color:#059669; font-weight:600;">● Milvus Vector Embedded (192D)</span>` : `<span style="color:#eab308; font-weight:600;">Processing Embedding</span>`;
+
+      return `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div style="flex: 1; min-width: 240px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <i data-lucide="file-audio" style="color:#1d61e7; width:18px;"></i>
+              <strong style="font-size:14px; color:#0f172a;">${fileName}</strong>
+            </div>
+            <div style="font-size:12px; color:#64748b; line-height:1.4;">
+              Sample Code: <code>${s.code || s.id}</code> | Format: <strong>${s.audio_format || "wav"}</strong> | Duration: <strong>${durStr}</strong><br>
+              ${vecStatus}
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: 12px; color: #ef4444; border-color: #fca5a5; background: #fef2f2;" onclick="deleteSingleVoiceSample('${s.id}', '${fileName}', '${employeeId}', '${empName}')">
+              <i data-lucide="trash-2"></i> Delete Clip & Vector
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+
+  } catch (err) {
+    if (listEl) listEl.innerHTML = `<p style="color:#ef4444; text-align:center; padding:20px;">Error loading voice clips: ${err.message}</p>`;
+  }
+}
+
+async function deleteSingleVoiceSample(sampleId, sampleName, employeeId, empName) {
+  const confirmed = await showConfirmModal({
+    title: "Delete Voice Sample Clip & Vector",
+    message: `Are you sure you want to delete voice clip '${sampleName}'? This will permanently delete the audio file from MinIO storage and purge its 192D vector embedding from Milvus database.`,
+    confirmText: "Delete Voice Clip",
+    isDanger: true
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/v1/voice-samples/${sampleId}`, { method: "DELETE" });
+    if (!res.ok) {
+      throw new Error("Failed to delete voice sample clip.");
+    }
+
+    showToast(`Voice sample '${sampleName}' & Milvus embedding deleted`, "success");
+
+    // Refresh profile modal if open so main profile remains open on screen
+    const profileModalEl = document.getElementById("employeeProfileModal");
+    if (profileModalEl && profileModalEl.classList.contains("active")) {
+      openEmployeeProfileModal(employeeId);
+    }
+
+    // Refresh manage voice clips modal if open
+    const manageModalEl = document.getElementById("manageVoiceClipsModal");
+    if (manageModalEl && manageModalEl.classList.contains("active")) {
+      openManageVoiceClipsModal(employeeId, empName);
+    }
+
+    // Reload directory tables
+    loadVoiceEnrollmentPage();
+    loadEmployees();
+
+  } catch (err) {
+    showToast("Error deleting voice clip: " + err.message, "error");
   }
 }

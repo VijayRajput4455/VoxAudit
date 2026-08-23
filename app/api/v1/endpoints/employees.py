@@ -28,12 +28,39 @@ def create_employee(
 
     try:
         return service.create_employee(data)
-
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         )
+
+
+@router.post(
+    "/bulk-import",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Bulk import multiple employees",
+)
+def bulk_import_employees(
+    items: list[EmployeeCreate],
+    db: Session = Depends(get_db),
+):
+    service = EmployeeService(db)
+    created = []
+    errors = []
+
+    for idx, data in enumerate(items):
+        try:
+            emp = service.create_employee(data)
+            created.append(emp)
+        except Exception as exc:
+            errors.append({"row": idx + 1, "first_name": data.first_name, "error": str(exc)})
+
+    return {
+        "imported_count": len(created),
+        "error_count": len(errors),
+        "errors": errors,
+    }
 
 
 @router.get(

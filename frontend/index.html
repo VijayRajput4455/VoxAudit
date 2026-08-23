@@ -713,7 +713,7 @@
       <!-- ==================================================================== -->
       <div id="view-employees" class="page-view">
         <section class="metrics-grid-4" style="margin-bottom: 20px;">
-          <div class="metric-card">
+          <div class="metric-card" style="cursor: pointer;" onclick="filterEmpStatus('ALL')">
             <div class="metric-card-top">
               <div class="metric-card-info">
                 <span>TOTAL EMPLOYEES</span>
@@ -721,9 +721,9 @@
               </div>
               <div class="metric-icon-circle"><i data-lucide="users"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Active Staff</span></div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>All Registered Staff</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" style="cursor: pointer;" onclick="filterEmpStatus('ACTIVE')">
             <div class="metric-card-top">
               <div class="metric-card-info">
                 <span>ACTIVE AGENTS</span>
@@ -731,9 +731,19 @@
               </div>
               <div class="metric-icon-circle"><i data-lucide="check-circle-2"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="check"></i><span>Ready for Calls</span></div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>Operational Staff</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" style="cursor: pointer;" onclick="filterVoiceRegistered()">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>VOICE ENROLLED</span>
+                <h2 id="empMetricVoice">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="mic"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="mic"></i><span>Biometrics Registered</span></div>
+          </div>
+          <div class="metric-card" style="cursor: pointer;" onclick="showView('departments')">
             <div class="metric-card-top">
               <div class="metric-card-info">
                 <span>DEPARTMENTS</span>
@@ -741,17 +751,7 @@
               </div>
               <div class="metric-icon-circle"><i data-lucide="building-2"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="building-2"></i><span>Assigned Staff</span></div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-card-info">
-                <span>DESIGNATIONS</span>
-                <h2 id="empMetricDesigs">0</h2>
-              </div>
-              <div class="metric-icon-circle"><i data-lucide="award"></i></div>
-            </div>
-            <div class="metric-trend up"><i data-lucide="award"></i><span>Job Roles</span></div>
+            <div class="metric-trend up"><i data-lucide="building-2"></i><span>Org Units</span></div>
           </div>
         </section>
 
@@ -779,6 +779,7 @@
               </div>
 
               <button class="btn-secondary" onclick="exportEmployeesCSV()"><i data-lucide="download"></i> Export CSV</button>
+              <button class="btn-secondary" onclick="openBulkImportModal()"><i data-lucide="upload-cloud"></i> Bulk Import CSV</button>
               <button class="btn-primary" onclick="openAddEmployeeModal()"><i data-lucide="plus"></i> Add Employee</button>
             </div>
           </div>
@@ -792,13 +793,14 @@
                   <th>Department</th>
                   <th>Designation</th>
                   <th>Shift</th>
-                  <th>Voice Enrollment</th>
+                  <th>QA Performance</th>
+                  <th>Voice Profile</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="employeesTableBody">
-                <tr><td colspan="9" class="loading-cell">Loading employees...</td></tr>
+                <tr><td colspan="10" class="loading-cell">Loading employees...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1303,20 +1305,7 @@
     </div>
   </div>
 
-  <!-- CENTERED REUSABLE CONFIRMATION MODAL -->
-  <div class="modal-overlay" id="confirmModal">
-    <div class="modal-box" style="max-width: 440px; text-align: center; border-top: 4px solid #ef4444; padding: 24px;">
-      <div id="confirmModalIcon" style="font-size: 36px; margin-bottom: 12px; display: flex; justify-content: center;">
-        <i data-lucide="alert-triangle" style="color: #ef4444; width: 44px; height: 44px;"></i>
-      </div>
-      <h3 id="confirmModalTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Confirm Action</h3>
-      <p id="confirmModalMessage" style="font-size: 13.5px; color: #475569; margin-bottom: 24px; line-height: 1.5;">Are you sure you want to proceed?</p>
-      <div style="display: flex; gap: 12px; justify-content: center;">
-        <button type="button" class="btn-secondary" id="confirmModalCancelBtn" style="padding: 10px 24px; font-weight: 600;">Cancel</button>
-        <button type="button" class="btn-primary" id="confirmModalSubmitBtn" style="padding: 10px 24px; font-weight: 600; background: #ef4444; border-color: #ef4444;">Confirm</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- EMPLOYEE PROFILE & VOICE DETAILS MODAL -->
   <div class="modal-overlay" id="employeeProfileModal">
@@ -1336,6 +1325,121 @@
 
       <div class="modal-body" id="employeeProfileContent" style="padding: 0;">
         <!-- DYNAMICALLY POPULATED VIA JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK IMPORT CSV MODAL -->
+  <div class="modal-overlay" id="bulkImportModal">
+    <div class="modal-box" style="max-width: 520px; padding: 24px;">
+      <div class="modal-header" style="padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+        <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="upload-cloud" style="color: #1d61e7;"></i> Bulk Import Employees via CSV
+        </h3>
+        <button class="close-btn" onclick="closeModal('bulkImportModal')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 0;">
+        <p style="font-size: 13px; color: #475569; margin-bottom: 16px; line-height: 1.5;">
+          Upload a CSV file containing employee records. Employee codes (<code>AGNT-XXXXXX</code>) will be auto-generated by the backend generator.
+        </p>
+
+        <form id="bulkImportForm" onsubmit="submitBulkImportCSV(event)">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label style="font-weight: 600; font-size: 13px;">Select Employee CSV File *</label>
+            <input type="file" id="bulkCsvFileInput" accept=".csv" required style="width: 100%; padding: 12px; border: 2px dashed #cbd5e1; border-radius: 10px; background: #f8fafc;">
+          </div>
+
+          <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="downloadSampleCSVTemplate()"><i data-lucide="file-text"></i> Download Sample CSV Template</button>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('bulkImportModal')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btnSubmitBulkImport"><i data-lucide="upload"></i> Upload & Create Staff</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK VOICE RECORDING MODAL -->
+  <div class="modal-overlay" id="quickRecordModal">
+    <div class="modal-box" style="max-width: 480px; padding: 24px; text-align: center;">
+      <div class="modal-header" style="padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+        <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="mic" style="color: #1d61e7;"></i> Quick Staff Voice Enrollment
+        </h3>
+        <button class="close-btn" onclick="closeModal('quickRecordModal')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 0;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 18px;">
+          <strong style="font-size: 15px; color: #0f172a;" id="quickRecordEmpName">Alice Smith</strong><br>
+          <span style="font-size: 12px; font-family: monospace; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px;" id="quickRecordEmpCode">AGNT-000001</span>
+        </div>
+
+        <input type="hidden" id="quickRecordEmpId">
+
+        <div id="quickRecordStatusText" style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 10px;">Ready to record...</div>
+        <div id="quickRecordTimer" style="font-size: 28px; font-weight: 700; font-family: monospace; color: #1d61e7; margin-bottom: 16px;">00:00</div>
+
+        <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 16px;">
+          <button type="button" class="btn-primary" id="btnQuickRecordStart" onclick="startQuickMicRecording()"><i data-lucide="mic"></i> Record</button>
+          <button type="button" class="btn-secondary" id="btnQuickRecordStop" onclick="stopQuickMicRecording()" disabled style="color:#ef4444;"><i data-lucide="square"></i> Stop</button>
+          <button type="button" class="btn-secondary" id="btnQuickRecordClear" onclick="clearQuickMicRecording()" style="display:none;">Clear</button>
+        </div>
+
+        <audio id="quickRecordAudioPreview" controls style="display:none; width: 100%; margin-bottom: 18px; border-radius: 8px;"></audio>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeModal('quickRecordModal')">Cancel</button>
+          <button type="button" class="btn-primary" id="btnQuickRecordSubmit" onclick="submitQuickVoiceRecord()" disabled><i data-lucide="cpu"></i> Save Voice Sample</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE INDIVIDUAL VOICE CLIPS & EMBEDDINGS MODAL -->
+  <div class="modal-overlay" id="manageVoiceClipsModal">
+    <div class="modal-box modal-wide" style="max-width: 720px; padding: 24px;">
+      <div class="modal-header" style="padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: #eff6ff; color: #1d61e7; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            <i data-lucide="mic"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0;">Manage Enrolled Voice Clips</h3>
+            <span id="manageVoiceClipsEmpSubtitle" style="font-size: 12.5px; color: #64748b;">Delete individual voice audio files and Milvus vector embeddings</span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeModal('manageVoiceClipsModal')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 0;">
+        <div id="manageVoiceClipsList" style="max-height: 440px; overflow-y: auto;">
+          <!-- DYNAMICALLY POPULATED -->
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+          <small style="color: #64748b;">* Deleting a clip removes its storage file from MinIO and deletes its vector embedding from Milvus.</small>
+          <button class="btn-secondary" onclick="closeModal('manageVoiceClipsModal')">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTERED REUSABLE CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box" style="max-width: 440px; text-align: center; border-top: 4px solid #ef4444; padding: 24px;">
+      <div id="confirmModalIcon" style="font-size: 36px; margin-bottom: 12px; display: flex; justify-content: center;">
+        <i data-lucide="alert-triangle" style="color: #ef4444; width: 44px; height: 44px;"></i>
+      </div>
+      <h3 id="confirmModalTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Confirm Action</h3>
+      <p id="confirmModalMessage" style="font-size: 13.5px; color: #475569; margin-bottom: 24px; line-height: 1.5;">Are you sure you want to proceed?</p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn-secondary" id="confirmModalCancelBtn" style="padding: 10px 24px; font-weight: 600;">Cancel</button>
+        <button type="button" class="btn-primary" id="confirmModalSubmitBtn" style="padding: 10px 24px; font-weight: 600; background: #ef4444; border-color: #ef4444;">Confirm</button>
       </div>
     </div>
   </div>
