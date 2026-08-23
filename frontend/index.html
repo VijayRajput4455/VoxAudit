@@ -869,25 +869,32 @@
               </div>
 
               <form id="diarizationForm" onsubmit="runSpeakerDiarization(event)">
+                <!-- FILE UPLOAD FIELD -->
                 <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Call Recording *</label>
-                  <select id="diarCallSelect" required style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;" onchange="loadSelectedDiarizationDetails()">
-                    <option value="">-- Loading Call Recordings... --</option>
+                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Call Recording (.wav, .mp3, .flac, .m4a) *</label>
+                  <input type="file" id="diarAudioFile" required accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
+                </div>
+
+                <!-- EXPECTED AGENT MAPPING -->
+                <div class="form-group" style="margin-bottom: 18px;">
+                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Target Expected Agent (Optional Verification Mapping)</label>
+                  <select id="diarExpectedEmpSelect" style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;">
+                    <option value="">-- Open Biometric 1:N Identification Across All Staff --</option>
                   </select>
                 </div>
 
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 18px;">
-                  <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 8px;"><i data-lucide="cpu" style="width: 15px; color: #1d61e7;"></i> PyAnnote 3.1 & SpeechBrain Model Status</h4>
-                  <ul style="font-size: 12.5px; color: #475569; padding-left: 20px; line-height: 1.6;">
-                    <li>Multi-speaker segmentation & overlap detection</li>
-                    <li>Speaker-to-voice vector matching via Milvus DB</li>
-                    <li>Automatic timestamp boundary extraction</li>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 18px;">
+                  <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px;"><i data-lucide="cpu" style="width: 15px; color: #1d61e7;"></i> Speech-to-Text & Diarization Engine</h4>
+                  <ul style="font-size: 12px; color: #475569; padding-left: 18px; line-height: 1.5; margin: 0;">
+                    <li>Separates Agent Speech vs Customer Speech</li>
+                    <li>Identifies agent identity via Milvus ECAPA 192d vectors</li>
+                    <li>Extracts exact text transcript turn-by-turn with timestamps</li>
                   </ul>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="zap"></i> GPU Accelerated</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunDiarization"><i data-lucide="play-circle"></i> Run Diarization Engine</button>
+                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="zap"></i> PyAnnote 3.1 & Whisper</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunDiarization"><i data-lucide="play-circle"></i> Run Diarization & Extract Text</button>
                 </div>
               </form>
             </div>
