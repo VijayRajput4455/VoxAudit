@@ -58,10 +58,22 @@
           <span>Shifts</span>
         </a>
 
-        <div class="nav-section-title">VOICE MODULE</div>
+        <div class="nav-section-title">AI VOICE & QA ENGINE</div>
         <a href="#" class="nav-item" id="nav-voice-enrollment" onclick="showView('voice-enrollment', event)">
           <i data-lucide="mic"></i>
-          <span>Voice Enrollment</span>
+          <span>1. Voice Enrollment</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-diarization" onclick="showView('diarization', event)">
+          <i data-lucide="audio-lines"></i>
+          <span>2. Speaker Diarization</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-qa-analysis" onclick="showView('qa-analysis', event)">
+          <i data-lucide="award"></i>
+          <span>3. QA Quality Test</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-audits" onclick="showView('audits', event)">
+          <i data-lucide="file-audio"></i>
+          <span>Call Audits Log</span>
         </a>
       </nav>
 
@@ -462,34 +474,118 @@
       <!-- VIEW 2: CALL AUDITS PAGE -->
       <!-- ==================================================================== -->
       <div id="view-audits" class="page-view">
-        <div class="panel-card">
-          <div class="panel-header">
-            <div class="panel-title">
-              <h3>Customer Call Audits & Transcripts</h3>
-              <p>Real-time processing status, speaker diarization, and transcripts</p>
+        <!-- AUDITS METRICS GRID -->
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL CALL AUDITS</span>
+                <h2 id="audit-stat-total">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="file-audio"></i></div>
             </div>
-            <div class="header-actions">
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Customer Record Call Logs</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>COMPLETED AUDITS</span>
+                <h2 id="audit-stat-completed">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="check-circle-2"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>Fully Analyzed</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>AVERAGE QA SCORE</span>
+                <h2 id="audit-stat-avg-qa">0%</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="award"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Quality Standard</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>AUTO-MATCHED AGENTS</span>
+                <h2 id="audit-stat-identified">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="user-check"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="cpu"></i><span>Milvus Vector Matches</span></div>
+          </div>
+        </section>
+
+        <div class="panel-card">
+          <!-- AUDITS HEADER ROW 1: TITLE & ACTIONS -->
+          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
+            <div class="panel-title">
+              <h3>Customer Call Audits & Quality Directory</h3>
+              <p>Real-time AI processing, Milvus speaker identification, QA score cards, and transcripts</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div class="time-range-group">
+                <button class="time-range-btn active" id="btnAuditViewTable" onclick="switchAuditViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
+                <button class="time-range-btn" id="btnAuditViewGrid" onclick="switchAuditViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
+              </div>
+
               <button class="btn-secondary" onclick="loadCallAudits()"><i data-lucide="refresh-cw"></i> Refresh</button>
-              <button class="btn-primary" onclick="openAuditModal()"><i data-lucide="plus"></i> New Audit</button>
+              <button class="btn-primary" onclick="openAuditModal()"><i data-lucide="plus"></i> Submit Call Recording</button>
             </div>
           </div>
-          <div class="table-responsive">
+
+          <!-- AUDITS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+              <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="auditSearchInput" placeholder="Search call ID, agent name, QA score, status..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterAudits()">
+              </div>
+
+              <select id="auditDeptFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterAudits()">
+                <option value="">All Departments</option>
+              </select>
+
+              <select id="auditAgentFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterAudits()">
+                <option value="">All Agents</option>
+              </select>
+            </div>
+
+            <div class="time-range-group">
+              <button class="time-range-btn active" onclick="filterAuditStatus('ALL', this)">All Audits</button>
+              <button class="time-range-btn" onclick="filterAuditStatus('PASSED', this)">Passed (>=80%)</button>
+              <button class="time-range-btn" onclick="filterAuditStatus('FAILED', this)">Failed (&lt;80%)</button>
+              <button class="time-range-btn" onclick="filterAuditStatus('PROCESSING', this)">Processing</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" id="auditsTableView">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Call ID</th>
+                  <th>Call Reference</th>
                   <th>Duration</th>
                   <th>Language</th>
                   <th>Speakers</th>
                   <th>Matched Agent</th>
+                  <th>QA Score</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="auditsTableBody">
-                <tr><td colspan="7" class="loading-cell">Loading call audits from database...</td></tr>
+                <tr><td colspan="8" class="loading-cell">Loading call audits from database...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- AUDITS GRID VIEW CONTAINER -->
+          <div id="auditsGridView" style="display: none; padding-top: 16px;">
+            <div id="auditsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+              <!-- DYNAMICALLY POPULATED VIA JS -->
+            </div>
           </div>
         </div>
       </div>
@@ -706,6 +802,236 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- VIEW: SPEAKER DIARIZATION STUDIO PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-diarization" class="page-view">
+        <!-- METRICS GRID -->
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>DIARIZED CALLS</span>
+                <h2 id="diar-stat-calls">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="audio-lines"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>PyAnnote 3.1 Segmentation</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>SPEAKER TURNS</span>
+                <h2 id="diar-stat-turns">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="users"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Turn-by-Turn Audio</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>IDENTIFIED AGENTS</span>
+                <h2 id="diar-stat-matched">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="user-check"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="cpu"></i><span>Milvus 192d Matched</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>AVG CONFIDENCE</span>
+                <h2 id="diar-stat-conf">94.8%</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="shield-check"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="activity"></i><span>High Precision</span></div>
+          </div>
+        </section>
+
+        <!-- DUAL COLUMN LAYOUT: DIARIZATION CONTROLLER & SPEAKER FEED -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+          
+          <!-- CARD 1: RUN DIARIZATION PROCESSOR -->
+          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+            <div>
+              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                <div class="panel-title">
+                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="audio-lines"></i></span>
+                    Run Speaker Diarization & Separation
+                  </h3>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Separate agent & customer speakers and extract ECAPA embeddings</p>
+                </div>
+              </div>
+
+              <form id="diarizationForm" onsubmit="runSpeakerDiarization(event)">
+                <div class="form-group" style="margin-bottom: 18px;">
+                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Call Recording *</label>
+                  <select id="diarCallSelect" required style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;" onchange="loadSelectedDiarizationDetails()">
+                    <option value="">-- Loading Call Recordings... --</option>
+                  </select>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 18px;">
+                  <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 8px;"><i data-lucide="cpu" style="width: 15px; color: #1d61e7;"></i> PyAnnote 3.1 & SpeechBrain Model Status</h4>
+                  <ul style="font-size: 12.5px; color: #475569; padding-left: 20px; line-height: 1.6;">
+                    <li>Multi-speaker segmentation & overlap detection</li>
+                    <li>Speaker-to-voice vector matching via Milvus DB</li>
+                    <li>Automatic timestamp boundary extraction</li>
+                  </ul>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="zap"></i> GPU Accelerated</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunDiarization"><i data-lucide="play-circle"></i> Run Diarization Engine</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- CARD 2: DIARIZED SPEAKER TIMELINE & BIOMETRIC MATCH -->
+          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+            <div>
+              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                <div class="panel-title">
+                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="users"></i></span>
+                    Diarized Speaker Turns & Milvus Match
+                  </h3>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Identified agent identity and turn-by-turn speaker segments</p>
+                </div>
+              </div>
+
+              <div id="diarResultContainer">
+                <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+                  <i data-lucide="audio-lines" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
+                  <p style="font-size: 13.5px;">Select a call recording on the left to view diarized speaker turns and biometric matches.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- VIEW: QA QUALITY TEST & SCORECARDS PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-qa-analysis" class="page-view">
+        <!-- METRICS GRID -->
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>EVALUATED CALLS</span>
+                <h2 id="qa-stat-evals">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="award"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>QA Benchmark Tested</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>AVERAGE QA SCORE</span>
+                <h2 id="qa-stat-score">0%</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="target"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Quality Standard</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>COMPLIANCE PASS RATE</span>
+                <h2 id="qa-stat-compliance">100%</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="shield-check"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>Disclosures Met</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOP PERFORMER</span>
+                <h2 id="qa-stat-top-agent">--</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="star"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="award"></i><span>Highest Score Agent</span></div>
+          </div>
+        </section>
+
+        <!-- DUAL COLUMN LAYOUT: QA EVALUATION RUNNER & SCORECARD REPORT -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+          
+          <!-- CARD 1: RUN AI QA EVALUATION -->
+          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+            <div>
+              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                <div class="panel-title">
+                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="sparkles"></i></span>
+                    Run AI Quality Evaluation & Checklist Test
+                  </h3>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Evaluate call transcript against quality scorecard standards & compliance</p>
+                </div>
+              </div>
+
+              <form id="qaForm" onsubmit="runQaEvaluation(event)">
+                <div class="form-group" style="margin-bottom: 18px;">
+                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Call Audit Recording *</label>
+                  <select id="qaCallSelect" required style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;" onchange="loadSelectedQaDetails()">
+                    <option value="">-- Loading Calls... --</option>
+                  </select>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 18px;">
+                  <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 10px;"><i data-lucide="award" style="width: 15px; color: #1d61e7;"></i> 5-Category QA Scorecard Benchmark</h4>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #475569;">
+                    <div>✓ Greeting & Identification (15%)</div>
+                    <div>✓ Active Listening & Empathy (25%)</div>
+                    <div>✓ Solution Accuracy (30%)</div>
+                    <div>✓ Mandatory Compliance (20%)</div>
+                    <div>✓ Professional Closure (10%)</div>
+                  </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="cpu"></i> OpenAI / Gemini QA Audit Engine</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunQa"><i data-lucide="award"></i> Run Quality Test</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- CARD 2: QA REPORT & SCORECARD BREAKDOWN -->
+          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+            <div>
+              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+                <div class="panel-title">
+                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="target"></i></span>
+                    QA Scorecard & Compliance Report
+                  </h3>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Detailed Category breakdown, checklist compliance, and coaching notes</p>
+                </div>
+              </div>
+
+              <div id="qaReportContainer">
+                <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+                  <i data-lucide="award" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
+                  <p style="font-size: 13.5px;">Select a call recording on the left to view its QA scorecard & evaluation details.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <!-- ==================================================================== -->
