@@ -110,31 +110,136 @@ class CallProcessor:
         logger.info(f"Whisper detected language '{info.language}' with {len(words)} word timestamps.")
         return words, info.language
 
-    def fallback_diarize(self, waveform: torch.Tensor, sample_rate: int) -> List[Dict[str, Any]]:
-        """Fallback VAD-based speaker segmentation when Pyannote gated model token is unavailable."""
-        logger.info("Running VAD fallback speaker segmentation...")
+    def fallback_diarize(self, waveform: torch.Tensor, sample_rate: int, words: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+        """Acoustic ECAPA voice verification and sentence-boundary speaker turn diarization."""
         duration_seconds = len(waveform) / float(sample_rate)
 
-        chunk_duration = 10.0
+        if not words:
+            return [{
+                "start": 0.0,
+                "end": round(duration_seconds, 2),
+                "speaker": "SPEAKER_00",
+            }]
+
+        logger.info("Executing acoustic ECAPA & phrase-boundary speaker turn segmentation...")
+
+        # 1. Group words into initial phrase chunks based on silence gaps
+        raw_chunks = []
+        chunk_words = [words[0]]
+        chunk_start = words[0]["start"]
+        prev_end = words[0]["end"]
+
+        for i in range(1, len(words)):
+            w = words[i]
+            gap = w["start"] - prev_end
+            prev_word_str = words[i - 1]["word"]
+            is_sentence_end = prev_word_str.endswith((".", "?", "!"))
+
+            # Split into phrase boundary if silence gap >= 0.6s or sentence boundary with gap >= 0.4s
+            if gap >= 0.6 or (is_sentence_end and gap >= 0.4):
+                raw_chunks.append({
+                    "start": chunk_start,
+                    "end": prev_end,
+                })
+                chunk_start = w["start"]
+
+            prev_end = w["end"]
+
+        raw_chunks.append({
+            "start": chunk_start,
+            "end": prev_end,
+        })
+
+        # 2. Compute ECAPA embedding for each phrase chunk (if snippet duration >= 0.4s)
+        chunk_embeddings = []
+        for chunk in raw_chunks:
+            s_idx = max(0, int(chunk["start"] * sample_rate))
+            e_idx = min(len(waveform), int(chunk["end"] * sample_rate))
+            chunk_wav = waveform[s_idx:e_idx]
+
+            emb = None
+            if len(chunk_wav) >= int(sample_rate * 0.4):
+                try:
+                    emb = self.generate_speaker_embedding(chunk_wav, sample_rate)
+                except Exception as exc:
+                    logger.warning(f"Error computing chunk embedding: {exc}")
+
+            chunk_embeddings.append(emb)
+
+        # 3. Cluster phrase chunks into speaker turns using acoustic similarity or Milvus agent vector search
+        threshold = getattr(settings, "SPEAKER_MATCH_THRESHOLD", 0.50)
         speaker_segments = []
-        current_time = 0.0
-        turn_idx = 0
+        current_speaker_idx = 0
+        known_speaker_embeddings: List[np.ndarray] = []
 
-        while current_time < duration_seconds:
-            end_time = min(duration_seconds, current_time + chunk_duration)
-            speaker_label = f"SPEAKER_{turn_idx % 2:02d}"
+        for i, chunk in enumerate(raw_chunks):
+            emb = chunk_embeddings[i]
+            assigned_speaker = None
+
+            if emb is not None:
+                # 3a. Search against enrolled employee vectors in Milvus first
+                try:
+                    matches = self.milvus_repo.search_vectors(query_embedding=emb, top_k=1)
+                    if matches and matches[0].get("similarity_score", 0.0) >= threshold:
+                        assigned_speaker = "SPEAKER_AGENT"
+                except Exception:
+                    pass
+
+                # 3b. If not matched to Agent in Milvus, compare with known speaker cluster centroids
+                if assigned_speaker is None:
+                    if not known_speaker_embeddings:
+                        known_speaker_embeddings.append(emb)
+                        assigned_speaker = "SPEAKER_00"
+                    else:
+                        best_sim = -1.0
+                        best_spk_idx = 0
+                        for spk_idx, k_emb in enumerate(known_speaker_embeddings):
+                            sim = float(np.dot(emb, k_emb) / (np.linalg.norm(emb) * np.linalg.norm(k_emb) + 1e-9))
+                            if sim > best_sim:
+                                best_sim = sim
+                                best_spk_idx = spk_idx
+
+                        # If similarity to existing speaker is high (>= 0.55), assign to that speaker
+                        if best_sim >= 0.55:
+                            assigned_speaker = f"SPEAKER_{best_spk_idx:02d}"
+                            # Update cluster embedding with running mean
+                            known_speaker_embeddings[best_spk_idx] = 0.8 * known_speaker_embeddings[best_spk_idx] + 0.2 * emb
+                            known_speaker_embeddings[best_spk_idx] /= np.linalg.norm(known_speaker_embeddings[best_spk_idx])
+                        else:
+                            # New speaker detected!
+                            if len(known_speaker_embeddings) < 2:
+                                known_speaker_embeddings.append(emb)
+                                best_spk_idx = len(known_speaker_embeddings) - 1
+                            assigned_speaker = f"SPEAKER_{best_spk_idx:02d}"
+
+            if assigned_speaker is None:
+                assigned_speaker = f"SPEAKER_{current_speaker_idx % 2:02d}"
+
             speaker_segments.append({
-                "start": round(current_time, 2),
-                "end": round(end_time, 2),
-                "speaker": speaker_label,
+                "start": round(chunk["start"], 2),
+                "end": round(chunk["end"], 2),
+                "speaker": assigned_speaker,
             })
-            current_time = end_time
-            turn_idx += 1
 
-        return speaker_segments
+        # 4. Merge continuous segments belonging to the same speaker
+        merged_segments = []
+        if not speaker_segments:
+            return merged_segments
 
-    def diarize(self, audio_path: str) -> List[Dict[str, Any]]:
-        """Runs Pyannote speaker diarization (or fallback VAD) to segment audio by speaker turns."""
+        curr_seg = speaker_segments[0]
+        for seg in speaker_segments[1:]:
+            if seg["speaker"] == curr_seg["speaker"]:
+                curr_seg["end"] = seg["end"]
+            else:
+                merged_segments.append(curr_seg)
+                curr_seg = seg
+        merged_segments.append(curr_seg)
+
+        return merged_segments
+
+
+    def diarize(self, audio_path: str, words: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+        """Runs Pyannote speaker diarization (or smart pause VAD) to segment audio by speaker turns."""
         data, sample_rate = sf.read(audio_path)
         waveform = torch.from_numpy(data).float()
 
@@ -143,14 +248,23 @@ class CallProcessor:
 
         token = getattr(settings, "HF_TOKEN", "") or os.getenv("HF_TOKEN")
         if not token:
-            logger.info("HF_TOKEN not set. Utilizing fast VAD speaker diarization...")
-            return self.fallback_diarize(waveform, sample_rate)
+            logger.info("HF_TOKEN not set. Utilizing smart pause & sentence boundary speaker diarization...")
+            return self.fallback_diarize(waveform, sample_rate, words=words)
+
 
         try:
             pipeline = self.get_diarization_pipeline()
             logger.info(f"Running Pyannote speaker diarization on '{audio_path}'...")
-            waveform_input = waveform.unsqueeze(0)
-            audio_dict = {"waveform": waveform_input, "sample_rate": sample_rate}
+
+            # Resample audio to 16kHz for optimal Pyannote diarization precision
+            if sample_rate != 16000:
+                resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
+                waveform_16k = resampler(waveform.unsqueeze(0)).squeeze(0)
+            else:
+                waveform_16k = waveform
+
+            waveform_input = waveform_16k.unsqueeze(0)
+            audio_dict = {"waveform": waveform_input, "sample_rate": 16000}
 
             output = pipeline(audio_dict, num_speakers=2)
             diarization = getattr(output, "exclusive_speaker_diarization", output)
@@ -164,13 +278,13 @@ class CallProcessor:
                 })
 
             if not speaker_segments:
-                return self.fallback_diarize(waveform, sample_rate)
+                return self.fallback_diarize(waveform, sample_rate, words=words)
 
             logger.info(f"Pyannote Diarization produced {len(speaker_segments)} speaker segments.")
             return speaker_segments
         except Exception as exc:
             logger.warning(f"Pyannote diarization warning: {str(exc)}. Using fallback VAD diarizer...")
-            return self.fallback_diarize(waveform, sample_rate)
+            return self.fallback_diarize(waveform, sample_rate, words=words)
 
     def extract_speaker_audio(
         self,
@@ -219,20 +333,28 @@ class CallProcessor:
         speaker_audio: Dict[str, torch.Tensor],
         sample_rate: int,
         threshold: float = 0.50,
+        expected_employee_id: Optional[UUID] = None,
     ) -> Tuple[Dict[str, str], Optional[str]]:
         """Matches extracted speaker embeddings against enrolled employees in Milvus vector space.
         Uses exact best-candidate threshold matching: only the highest scoring speaker is mapped to the Agent,
-        while all other speakers are mapped to 'Customer'.
+        while all other speakers are mapped to 'Customer'. If expected_employee_id is provided,
+        filters Milvus search specifically to that employee.
         """
         logger.info("Identifying speakers against Milvus enrolled vector database...")
         speaker_scores: Dict[str, Tuple[float, str, str]] = {}
         speaker_names: Dict[str, str] = {}
         matched_employee_id = None
+        filter_expr = f'employee_id == "{str(expected_employee_id)}"' if expected_employee_id else None
 
         # Step 1: For each diarized speaker, find its highest cosine similarity match in Milvus
         for speaker, audio in speaker_audio.items():
+            duration = len(audio) / float(sample_rate)
+            if duration < 0.5:
+                logger.warning(f"Speaker '{speaker}' audio snippet too short ({duration:.2f}s) for embedding generation.")
+                continue
+
             embedding = self.generate_speaker_embedding(audio, sample_rate)
-            matches = self.milvus_repo.search_vectors(query_embedding=embedding, top_k=1)
+            matches = self.milvus_repo.search_vectors(query_embedding=embedding, top_k=1, filter_expression=filter_expr)
 
             if matches:
                 top_match = matches[0]
@@ -250,8 +372,11 @@ class CallProcessor:
 
         if not speaker_scores:
             logger.info("No enrolled employee vector matches found. All speakers set to Customer.")
+            customer_count = 1
             for speaker in speaker_audio:
-                speaker_names[speaker] = "Customer"
+                label = "Customer" if len(speaker_audio) <= 2 else f"Customer {customer_count}"
+                speaker_names[speaker] = label
+                customer_count += 1
             return speaker_names, None
 
         # Step 2: Find which diarized speaker has the absolute highest similarity score to an enrolled Agent
@@ -268,11 +393,14 @@ class CallProcessor:
         else:
             logger.info(f"No speaker passed similarity threshold ({threshold}). All speakers labeled as Customer.")
 
-        # Step 4: Every other speaker is the Customer
+        # Step 4: Every other speaker is labeled as Customer
+        customer_count = 1
         for speaker in speaker_audio:
             if speaker not in speaker_names:
-                speaker_names[speaker] = "Customer"
-                logger.info(f"Speaker '{speaker}' labeled as 'Customer'")
+                label = "Customer" if len(speaker_audio) <= 2 else f"Customer {customer_count}"
+                speaker_names[speaker] = label
+                customer_count += 1
+                logger.info(f"Speaker '{speaker}' labeled as '{label}'")
 
         return speaker_names, matched_employee_id
 
@@ -341,8 +469,12 @@ class CallProcessor:
         for word in aligned_words[1:]:
             same_speaker = word["speaker"] == current["speaker"]
             gap = word["start"] - current["end"]
+            prev_has_punctuation = current["text"].endswith((".", "?", "!"))
 
-            if same_speaker and gap <= 1.5:
+            # Merge words if same speaker AND pause <= 0.6s AND not sentence boundary
+            should_merge = same_speaker and gap <= 0.6 and not (prev_has_punctuation and gap >= 0.3)
+
+            if should_merge:
                 current["end"] = word["end"]
                 current["text"] += " " + word["word"]
             else:
@@ -357,9 +489,92 @@ class CallProcessor:
         conversation.append(current)
         return conversation
 
-    def process_call(self, audio_path: str) -> Dict[str, Any]:
-        """Runs end-to-end Call Processing pipeline on audio file."""
-        logger.info(f"Starting Call Processing Pipeline for '{audio_path}'...")
+
+    def verify_and_refine_turns(
+        self,
+        raw_conversation: List[Dict[str, Any]],
+        waveform: torch.Tensor,
+        sample_rate: int,
+        macro_speaker_names: Dict[str, str],
+        threshold: float = 0.50,
+        expected_employee_id: Optional[UUID] = None,
+    ) -> List[Dict[str, Any]]:
+        """Refines diarization turns by running direct per-turn ECAPA voice embedding
+        verification against enrolled employee vectors in Milvus.
+        """
+        if not raw_conversation:
+            return []
+
+        logger.info("Executing per-turn ECAPA acoustic embedding verification...")
+        refined_turns = []
+        filter_expr = f'employee_id == "{str(expected_employee_id)}"' if expected_employee_id else None
+
+        for turn in raw_conversation:
+            s_sample = max(0, int(turn["start"] * sample_rate))
+            e_sample = min(len(waveform), int(turn["end"] * sample_rate))
+            turn_waveform = waveform[s_sample:e_sample]
+            turn_duration = len(turn_waveform) / float(sample_rate)
+
+            diarized_speaker = turn["speaker"]
+            fallback_name = macro_speaker_names.get(diarized_speaker, "Customer")
+            speaker_name = fallback_name
+
+            # Verify turn audio snippet with ECAPA embedding if snippet duration is >= 0.4s
+            if turn_duration >= 0.4:
+                try:
+                    turn_emb = self.generate_speaker_embedding(turn_waveform, sample_rate)
+                    matches = self.milvus_repo.search_vectors(query_embedding=turn_emb, top_k=1, filter_expression=filter_expr)
+
+                    if matches:
+                        top_match = matches[0]
+                        similarity = top_match.get("similarity_score", 0.0)
+                        emp_id_str = top_match.get("employee_id")
+
+                        if similarity >= 0.40 and emp_id_str:
+                            emp = self.employee_repo.get_by_id(UUID(emp_id_str))
+                            if emp:
+                                speaker_name = f"{emp.first_name} {emp.last_name}".strip()
+                        else:
+                            speaker_name = "Customer"
+                except Exception as exc:
+                    logger.warning(f"Turn embedding verification exception ({turn['start']}s - {turn['end']}s): {str(exc)}")
+
+            refined_turns.append({
+                "start": round(turn["start"], 2),
+                "end": round(turn["end"], 2),
+                "speaker": diarized_speaker,
+                "speaker_name": speaker_name,
+                "text": turn["text"].strip(),
+            })
+
+        # Merge continuous turns belonging to the same verified speaker
+        merged_turns = []
+        if not refined_turns:
+            return []
+
+        curr = refined_turns[0]
+        for t in refined_turns[1:]:
+            same_speaker = t["speaker_name"] == curr["speaker_name"]
+            gap = t["start"] - curr["end"]
+            if same_speaker and gap <= 2.5:
+                curr["end"] = t["end"]
+                curr["text"] += " " + t["text"]
+            else:
+                merged_turns.append(curr)
+                curr = t
+        merged_turns.append(curr)
+
+        return merged_turns
+
+    def process_call(
+        self,
+        audio_path: str,
+        expected_employee_id: Optional[UUID] = None,
+    ) -> Dict[str, Any]:
+        """Runs end-to-end Call Processing pipeline on audio file.
+        If expected_employee_id is provided, voice verification is targeted specifically against that agent.
+        """
+        logger.info(f"Starting Call Processing Pipeline for '{audio_path}' (Expected Agent: '{expected_employee_id}')...")
 
         # 1. Load full audio waveform
         data, sample_rate = sf.read(audio_path)
@@ -371,15 +586,24 @@ class CallProcessor:
         # 2. Whisper Speech-to-Text Transcription
         words, detected_language = self.transcribe(audio_path)
 
-        # 3. Pyannote Speaker Diarization
-        speaker_segments = self.diarize(audio_path)
+        # 3. Speaker Diarization with Word Pause Boundary Precision
+        speaker_segments = self.diarize(audio_path, words=words)
 
         # 4. Extract Speaker Audio Chunks
         speaker_audio = self.extract_speaker_audio(waveform, sample_rate, speaker_segments)
 
         # 5. ECAPA Embedding & Milvus Speaker Identification
         threshold = getattr(settings, "SPEAKER_MATCH_THRESHOLD", 0.50)
-        speaker_names, identified_employee_id = self.identify_speakers(speaker_audio, sample_rate, threshold=threshold)
+        speaker_names, identified_employee_id = self.identify_speakers(
+            speaker_audio,
+            sample_rate,
+            threshold=threshold,
+            expected_employee_id=expected_employee_id,
+        )
+
+        # Use expected_employee_id if provided and matched
+        if expected_employee_id and not identified_employee_id:
+            identified_employee_id = str(expected_employee_id)
 
         # 6. Align Words with Speakers
         aligned_words = self.align_words_with_speakers(words, speaker_segments)
@@ -387,20 +611,17 @@ class CallProcessor:
         # 7. Build Conversation Turns
         raw_conversation = self.build_conversation(aligned_words)
 
-        # 8. Format Final Speaker-Attributed Transcript
-        transcript_turns = []
-        for turn in raw_conversation:
-            diarized_speaker = turn["speaker"]
-            real_name = speaker_names.get(diarized_speaker, "Customer")
-            transcript_turns.append({
-                "start": round(turn["start"], 2),
-                "end": round(turn["end"], 2),
-                "speaker": diarized_speaker,
-                "speaker_name": real_name,
-                "text": turn["text"].strip(),
-            })
+        # 8. Per-Turn ECAPA Acoustic Voice Verification & Turn Merging
+        transcript_turns = self.verify_and_refine_turns(
+            raw_conversation=raw_conversation,
+            waveform=waveform,
+            sample_rate=sample_rate,
+            macro_speaker_names=speaker_names,
+            threshold=threshold,
+            expected_employee_id=expected_employee_id,
+        )
 
-        logger.info(f"Call processing complete. Generated {len(transcript_turns)} transcript turns.")
+        logger.info(f"Call processing complete. Generated {len(transcript_turns)} verified transcript turns.")
 
         return {
             "duration_seconds": duration_seconds,
