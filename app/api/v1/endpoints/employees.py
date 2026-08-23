@@ -96,6 +96,7 @@ def get_employee(
     return employee
 
 
+@router.put("/{employee_id}", response_model=EmployeeResponse)
 @router.patch(
     "/{employee_id}",
     response_model=EmployeeResponse,

@@ -83,6 +83,7 @@ def get_designation(
     return designation
 
 
+@router.put("/{designation_id}", response_model=DesignationResponse)
 @router.patch(
     "/{designation_id}",
     response_model=DesignationResponse,

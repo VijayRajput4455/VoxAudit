@@ -1178,3 +1178,16 @@ code {
   gap: 20px;
   width: 100%;
 }
+
+.status-pill.clickable-status {
+  cursor: default !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.status-pill.clickable-status:hover {
+  cursor: default !important;
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  filter: brightness(0.95);
+}

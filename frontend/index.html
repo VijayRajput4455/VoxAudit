@@ -995,21 +995,47 @@
         </section>
 
         <div class="panel-card">
-          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+          <!-- DESIGNATIONS HEADER ROW 1: TITLE & ACTIONS -->
+          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Designations & Roles Directory</h3>
               <p>Manage job roles, codes, and department assignments</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" onclick="filterDesigStatus('ALL', this)">All Roles</button>
-                <button class="time-range-btn" onclick="filterDesigStatus('ACTIVE', this)">Active</button>
-                <button class="time-range-btn" onclick="filterDesigStatus('INACTIVE', this)">Inactive</button>
+                <button class="time-range-btn active" id="btnDesigViewTable" onclick="switchDesigViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
+                <button class="time-range-btn" id="btnDesigViewGrid" onclick="switchDesigViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
+
               <button class="btn-primary" onclick="openAddDesignationModal()"><i data-lucide="plus"></i> Add Designation</button>
             </div>
           </div>
-          <div class="table-responsive">
+
+          <!-- DESIGNATIONS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+              <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="desigSearchInput" placeholder="Search designation title, code, description..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterDesignations()">
+              </div>
+
+              <select id="desigDeptFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDesignations()">
+                <option value="">All Departments</option>
+              </select>
+
+              <select id="desigCodeFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDesignations()">
+                <option value="">All Role Codes</option>
+              </select>
+            </div>
+
+            <div class="time-range-group">
+              <button class="time-range-btn active" onclick="filterDesigStatus('ALL', this)">All Roles</button>
+              <button class="time-range-btn" onclick="filterDesigStatus('ACTIVE', this)">Active</button>
+              <button class="time-range-btn" onclick="filterDesigStatus('INACTIVE', this)">Inactive</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" id="designationsTableView">
             <table class="data-table">
               <thead>
                 <tr>
@@ -1017,14 +1043,22 @@
                   <th>Designation Title</th>
                   <th>Department</th>
                   <th>Description</th>
+                  <th>Staff Count</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="designationsTableBody">
-                <tr><td colspan="6" class="loading-cell">Loading designations...</td></tr>
+                <tr><td colspan="7" class="loading-cell">Loading designations...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- DESIGNATIONS GRID VIEW CONTAINER -->
+          <div id="designationsGridView" style="display: none; padding-top: 16px;">
+            <div id="designationsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+              <!-- DYNAMICALLY POPULATED VIA JS -->
+            </div>
           </div>
         </div>
       </div>
@@ -1077,22 +1111,44 @@
         </section>
 
         <div class="panel-card">
-          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+          <!-- SHIFTS HEADER ROW 1: TITLE & ACTIONS -->
+          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Work Shifts & Rosters</h3>
               <p>Manage work schedules, shift timings, and timezones</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" onclick="filterShiftStatus('ALL', this)">All Shifts</button>
-                <button class="time-range-btn" onclick="filterShiftStatus('ACTIVE', this)">Active</button>
-                <button class="time-range-btn" onclick="filterShiftStatus('INACTIVE', this)">Inactive</button>
+                <button class="time-range-btn active" id="btnShiftViewTable" onclick="switchShiftViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
+                <button class="time-range-btn" id="btnShiftViewGrid" onclick="switchShiftViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
+
               <button class="btn-secondary" onclick="seedDefaultShifts()"><i data-lucide="sparkles"></i> Seed Defaults</button>
               <button class="btn-primary" onclick="openAddShiftModal()"><i data-lucide="plus"></i> Add Shift</button>
             </div>
           </div>
-          <div class="table-responsive">
+
+          <!-- SHIFTS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+              <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="shiftSearchInput" placeholder="Search shift name, code, timezone..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterShifts()">
+              </div>
+
+              <select id="shiftCodeFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterShifts()">
+                <option value="">All Shift Codes</option>
+              </select>
+            </div>
+
+            <div class="time-range-group">
+              <button class="time-range-btn active" onclick="filterShiftStatus('ALL', this)">All Shifts</button>
+              <button class="time-range-btn" onclick="filterShiftStatus('ACTIVE', this)">Active</button>
+              <button class="time-range-btn" onclick="filterShiftStatus('INACTIVE', this)">Inactive</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" id="shiftsTableView">
             <table class="data-table">
               <thead>
                 <tr>
@@ -1101,14 +1157,22 @@
                   <th>Start Time</th>
                   <th>End Time</th>
                   <th>Timezone</th>
+                  <th>Staff Count</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="shiftsTableBody">
-                <tr><td colspan="7" class="loading-cell">Loading shifts...</td></tr>
+                <tr><td colspan="8" class="loading-cell">Loading shifts...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- SHIFTS GRID VIEW CONTAINER -->
+          <div id="shiftsGridView" style="display: none; padding-top: 16px;">
+            <div id="shiftsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+              <!-- DYNAMICALLY POPULATED VIA JS -->
+            </div>
           </div>
         </div>
       </div>

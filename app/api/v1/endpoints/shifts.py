@@ -82,6 +82,7 @@ def get_shift(
     return shift
 
 
+@router.put("/{shift_id}", response_model=ShiftResponse)
 @router.patch(
     "/{shift_id}",
     response_model=ShiftResponse,

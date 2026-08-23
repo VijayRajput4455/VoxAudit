@@ -440,6 +440,56 @@ function filterDepartments() {
   renderDepartmentsTable(filtered);
 }
 
+async function toggleEmployeeStatus(empId, currentStatus, empName, event) {
+  if (event) event.stopPropagation();
+
+  const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+  const emp = employeesCache.find(e => strId(e.id) === strId(empId));
+  if (emp) emp.status = newStatus;
+  filterEmployees();
+
+  try {
+    const res = await fetch(`/api/v1/employees/${empId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error("Failed to update employee status");
+
+    showToast(`${empName} status updated to ${newStatus}`, "success");
+  } catch (err) {
+    if (emp) emp.status = currentStatus;
+    filterEmployees();
+    showToast("Error updating status: " + err.message, "error");
+  }
+}
+
+async function toggleDepartmentStatus(deptId, currentStatus, deptName, event) {
+  if (event) event.stopPropagation();
+
+  const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+  const dept = departmentsCache.find(d => strId(d.id) === strId(deptId));
+  if (dept) dept.status = newStatus;
+  filterDepartments();
+
+  try {
+    const res = await fetch(`/api/v1/departments/${deptId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error("Failed to update department status");
+
+    showToast(`${deptName} status updated to ${newStatus}`, "success");
+  } catch (err) {
+    if (dept) dept.status = currentStatus;
+    filterDepartments();
+    showToast("Error updating department status: " + err.message, "error");
+  }
+}
+
 function renderDepartmentsTable(list) {
   populateDeptFilterDropdowns();
   const tbody = document.getElementById("departmentsTableBody");
@@ -467,8 +517,8 @@ function renderDepartmentsTable(list) {
           <td><code>${dept.code}</code></td>
           <td><strong>${dept.name}</strong></td>
           <td>${dept.description || "N/A"}</td>
-          <td><span class="status-pill badge-completed" style="font-size:11.5px;"><i data-lucide="users" style="width:12px;"></i> ${empCount} Staff</span></td>
-          <td><span class="status-pill ${dept.status === "ACTIVE" ? "badge-active" : "badge-inactive"}">${dept.status}</span></td>
+          <td><span class="status-pill badge-completed" style="font-size:11.5px;">${empCount} Staff</span></td>
+          <td><span class="status-pill clickable-status ${dept.status === "ACTIVE" ? "badge-active" : "badge-inactive"}" title="Click to toggle status" onclick="toggleDepartmentStatus('${dept.id}', '${dept.status}', '${dept.name}')">${dept.status}</span></td>
           <td>
             <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditDepartmentModal('${dept.id}')">Edit</button>
             <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteDepartment('${dept.id}', '${dept.name}')">Delete</button>
@@ -497,7 +547,7 @@ function renderDepartmentsTable(list) {
                 <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.25;">${dept.name}</h3>
               </div>
             </div>
-            <span class="status-pill ${dept.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;">${dept.status}</span>
+            <span class="status-pill clickable-status ${dept.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;" title="Click to toggle status" onclick="toggleDepartmentStatus('${dept.id}', '${dept.status}', '${dept.name}')">${dept.status}</span>
           </div>
 
           <!-- DESCRIPTION -->
@@ -591,6 +641,48 @@ async function deleteDepartment(id, name) {
 }
 
 /* DESIGNATIONS */
+let desigViewMode = "table";
+let currentDesigStatusFilter = "ALL";
+
+function switchDesigViewMode(mode, btn) {
+  desigViewMode = mode;
+  const btnTable = document.getElementById("btnDesigViewTable");
+  const btnGrid = document.getElementById("btnDesigViewGrid");
+  const tableView = document.getElementById("designationsTableView");
+  const gridView = document.getElementById("designationsGridView");
+
+  if (mode === "table") {
+    if (btnTable) btnTable.classList.add("active");
+    if (btnGrid) btnGrid.classList.remove("active");
+    if (tableView) tableView.style.display = "block";
+    if (gridView) gridView.style.display = "none";
+  } else {
+    if (btnGrid) btnGrid.classList.add("active");
+    if (btnTable) btnTable.classList.remove("active");
+    if (tableView) tableView.style.display = "none";
+    if (gridView) gridView.style.display = "block";
+  }
+  filterDesignations();
+}
+
+function populateDesigFilterDropdowns() {
+  const desigDeptFilter = document.getElementById("desigDeptFilter");
+  if (desigDeptFilter) {
+    const curr = desigDeptFilter.value;
+    desigDeptFilter.innerHTML = `<option value="">All Departments</option>` +
+      departmentsCache.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+    if (curr) desigDeptFilter.value = curr;
+  }
+
+  const desigCodeFilter = document.getElementById("desigCodeFilter");
+  if (desigCodeFilter) {
+    const curr = desigCodeFilter.value;
+    desigCodeFilter.innerHTML = `<option value="">All Role Codes</option>` +
+      designationsCache.map(d => `<option value="${d.code}">${d.code}</option>`).join("");
+    if (curr) desigCodeFilter.value = curr;
+  }
+}
+
 async function loadDesignations() {
   const tbody = document.getElementById("designationsTableBody");
   if (!tbody) return;
@@ -602,14 +694,75 @@ async function loadDesignations() {
     const res = await fetch("/api/v1/designations/");
     if (!res.ok) throw new Error("Failed");
     designationsCache = await res.json();
+    populateDesigFilterDropdowns();
     renderDesignationsTable(designationsCache);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6" style="color: #ef4444; text-align: center;">Error loading designations</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Error loading designations</td></tr>`;
+  }
+}
+
+function filterDesigStatus(status, btnEl) {
+  currentDesigStatusFilter = status;
+  if (btnEl && btnEl.parentElement) {
+    btnEl.parentElement.querySelectorAll(".time-range-btn").forEach((b) => b.classList.remove("active"));
+    btnEl.classList.add("active");
+  }
+  filterDesignations();
+}
+
+function filterDesignations() {
+  const query = document.getElementById("desigSearchInput")?.value.toLowerCase().trim() || "";
+  const deptVal = document.getElementById("desigDeptFilter")?.value || "";
+  const codeVal = document.getElementById("desigCodeFilter")?.value || "";
+
+  const filtered = designationsCache.filter(desig => {
+    const code = (desig.code || "").toLowerCase();
+    const name = (desig.name || "").toLowerCase();
+    const desc = (desig.description || "").toLowerCase();
+    const deptObj = departmentsCache.find(d => strId(d.id) === strId(desig.department_id));
+    const deptName = (deptObj ? deptObj.name : "general").toLowerCase();
+
+    const matchQuery = !query || code.includes(query) || name.includes(query) || desc.includes(query) || deptName.includes(query);
+    const matchDept = !deptVal || strId(desig.department_id) === strId(deptVal);
+    const matchCode = !codeVal || (desig.code || "").toUpperCase() === codeVal.toUpperCase();
+    const matchStatus = currentDesigStatusFilter === "ALL" || desig.status === currentDesigStatusFilter;
+
+    return matchQuery && matchDept && matchCode && matchStatus;
+  });
+
+  renderDesignationsTable(filtered);
+}
+
+async function toggleDesignationStatus(desigId, currentStatus, desigName, event) {
+  if (event) event.stopPropagation();
+
+  const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+  const desig = designationsCache.find(d => strId(d.id) === strId(desigId));
+  if (desig) desig.status = newStatus;
+  filterDesignations();
+
+  try {
+    const res = await fetch(`/api/v1/designations/${desigId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error("Failed to update designation status");
+
+    showToast(`${desigName} role status updated to ${newStatus}`, "success");
+  } catch (err) {
+    if (desig) desig.status = currentStatus;
+    filterDesignations();
+    showToast("Error updating designation status: " + err.message, "error");
   }
 }
 
 function renderDesignationsTable(list) {
+  populateDesigFilterDropdowns();
+
   const tbody = document.getElementById("designationsTableBody");
+  const gridContainer = document.getElementById("designationsGridContainer");
 
   const totalEl = document.getElementById("desig-stat-total");
   const activeEl = document.getElementById("desig-stat-active");
@@ -621,40 +774,99 @@ function renderDesignationsTable(list) {
   if (genEl) genEl.textContent = designationsCache.filter((d) => !d.department_id).length;
 
   if (!list || list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">No designations found. Click "+ Add Designation" to create one.</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">No designations found. Click "+ Add Designation" to create one.</td></tr>`;
+    if (gridContainer) gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; color:#64748b;">No designations found.</div>`;
     return;
   }
-  tbody.innerHTML = list.map((desig) => {
-    const dept = departmentsCache.find((d) => strId(d.id) === strId(desig.department_id));
-    return `
-      <tr>
-        <td><code>${desig.code}</code></td>
-        <td><strong>${desig.name}</strong></td>
-        <td>${dept ? dept.name : "General"}</td>
-        <td>${desig.description || "N/A"}</td>
-        <td><span class="status-pill ${desig.status === "ACTIVE" ? "badge-active" : "badge-inactive"}">${desig.status}</span></td>
-        <td>
-          <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditDesignationModal('${desig.id}')">Edit</button>
-          <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteDesignation('${desig.id}', '${desig.name}')">Delete</button>
-        </td>
-      </tr>
-    `;
-  }).join("");
+
+  // Populate Table View
+  if (tbody) {
+    tbody.innerHTML = list.map((desig) => {
+      const dept = departmentsCache.find((d) => strId(d.id) === strId(desig.department_id));
+      const empCount = employeesCache.filter(e => strId(e.designation_id) === strId(desig.id)).length;
+      return `
+        <tr>
+          <td><code>${desig.code}</code></td>
+          <td><strong>${desig.name}</strong></td>
+          <td>${dept ? dept.name : "General"}</td>
+          <td>${desig.description || "N/A"}</td>
+          <td><span class="status-pill badge-completed" style="font-size:11.5px;">${empCount} Staff</span></td>
+          <td><span class="status-pill clickable-status ${desig.status === "ACTIVE" ? "badge-active" : "badge-inactive"}" title="Click to toggle status" onclick="toggleDesignationStatus('${desig.id}', '${desig.status}', '${desig.name}', event)">${desig.status}</span></td>
+          <td>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditDesignationModal('${desig.id}')">Edit</button>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteDesignation('${desig.id}', '${desig.name}')">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  // Populate Grid View Cards
+  if (gridContainer) {
+    gridContainer.innerHTML = list.map((desig) => {
+      const dept = departmentsCache.find((d) => strId(d.id) === strId(desig.department_id));
+      const empCount = employeesCache.filter(e => strId(e.designation_id) === strId(desig.id)).length;
+      const deptName = dept ? dept.name : "General Role";
+
+      return `
+        <div class="metric-card" style="padding: 22px; border-radius: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 14px rgba(0,0,0,0.04);">
+          <!-- TOP ROW: ICON, CODE & STATUS -->
+          <div class="metric-card-top" style="margin-bottom: 14px;">
+            <div style="display: flex; gap: 14px; align-items: flex-start; min-width: 0; flex: 1;">
+              <div style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #1d61e7, #3b82f6); color: #ffffff; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(29, 97, 231, 0.2);">
+                <i data-lucide="award"></i>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <code style="font-size: 11px; font-weight: 700; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-bottom: 3px;">${desig.code}</code>
+                <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.25; word-break: break-word;">${desig.name}</h3>
+              </div>
+            </div>
+            <span class="status-pill clickable-status ${desig.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;" title="Click to toggle status" onclick="toggleDesignationStatus('${desig.id}', '${desig.status}', '${desig.name}', event)">${desig.status}</span>
+          </div>
+
+          <!-- DESCRIPTION -->
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 14px; line-height: 1.4; word-break: break-word;">${desig.description || 'No description provided.'}</p>
+
+          <!-- DETAILS GRID: DEPARTMENT, STAFF COUNT -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; margin: 12px 0;">
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">DEPARTMENT</span>
+              <strong style="color:#0f172a; font-size:13px; word-break:break-word; display:block;">${deptName}</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">STAFF MEMBERS</span>
+              <strong style="color:#0f172a; font-size:14px; display:block;">${empCount} Staff</strong>
+            </div>
+          </div>
+
+          <!-- FOOTER ACTION BUTTONS -->
+          <div style="display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+            <button class="btn-secondary" style="flex: 1; padding: 8px 14px; font-size: 12.5px; justify-content: center;" onclick="openEditDesignationModal('${desig.id}')"><i data-lucide="edit-3" style="width: 14px;"></i> Edit</button>
+            <button class="btn-secondary" style="padding: 8px 12px; font-size: 12.5px; color: #ef4444;" onclick="deleteDesignation('${desig.id}', '${desig.name}')"><i data-lucide="trash-2" style="width: 14px;"></i> Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
-function filterDesigStatus(status, btnEl) {
-  if (btnEl && btnEl.parentElement) {
-    btnEl.parentElement.querySelectorAll(".time-range-btn").forEach((b) => b.classList.remove("active"));
-    btnEl.classList.add("active");
+async function openAddDesignationModal() {
+  if (departmentsCache.length === 0) {
+    try {
+      const res = await fetch("/api/v1/departments/");
+      if (res.ok) departmentsCache = await res.json();
+    } catch (e) {}
   }
-  if (status === "ALL") {
-    renderDesignationsTable(designationsCache);
-  } else {
-    renderDesignationsTable(designationsCache.filter((d) => d.status === status));
-  }
-}
 
-function openAddDesignationModal() {
+  const deptSel = document.getElementById("desigDeptSelect");
+  if (deptSel) {
+    deptSel.innerHTML = `<option value="">-- None / General --</option>` +
+      departmentsCache.map(d => `<option value="${d.id}">${d.name} (${d.code})</option>`).join("");
+    deptSel.value = "";
+  }
+
   document.getElementById("desigModalTitle").innerHTML = `<i data-lucide="award"></i> Add Designation`;
   document.getElementById("desigId").value = "";
   document.getElementById("desigCode").value = "";
@@ -664,9 +876,24 @@ function openAddDesignationModal() {
   openModal("designationModal");
 }
 
-function openEditDesignationModal(id) {
+async function openEditDesignationModal(id) {
+  if (departmentsCache.length === 0) {
+    try {
+      const res = await fetch("/api/v1/departments/");
+      if (res.ok) departmentsCache = await res.json();
+    } catch (e) {}
+  }
+
   const desig = designationsCache.find((d) => strId(d.id) === strId(id));
   if (!desig) return;
+
+  const deptSel = document.getElementById("desigDeptSelect");
+  if (deptSel) {
+    deptSel.innerHTML = `<option value="">-- None / General --</option>` +
+      departmentsCache.map(d => `<option value="${d.id}">${d.name} (${d.code})</option>`).join("");
+    deptSel.value = desig.department_id || "";
+  }
+
   document.getElementById("desigModalTitle").innerHTML = `<i data-lucide="edit"></i> Edit Designation`;
   document.getElementById("desigId").value = desig.id;
   document.getElementById("desigCode").value = desig.code;
@@ -718,6 +945,40 @@ async function deleteDesignation(id, name) {
 }
 
 /* SHIFTS */
+let shiftViewMode = "table";
+let currentShiftStatusFilter = "ALL";
+
+function switchShiftViewMode(mode, btn) {
+  shiftViewMode = mode;
+  const btnTable = document.getElementById("btnShiftViewTable");
+  const btnGrid = document.getElementById("btnShiftViewGrid");
+  const tableView = document.getElementById("shiftsTableView");
+  const gridView = document.getElementById("shiftsGridView");
+
+  if (mode === "table") {
+    if (btnTable) btnTable.classList.add("active");
+    if (btnGrid) btnGrid.classList.remove("active");
+    if (tableView) tableView.style.display = "block";
+    if (gridView) gridView.style.display = "none";
+  } else {
+    if (btnGrid) btnGrid.classList.add("active");
+    if (btnTable) btnTable.classList.remove("active");
+    if (tableView) tableView.style.display = "none";
+    if (gridView) gridView.style.display = "block";
+  }
+  filterShifts();
+}
+
+function populateShiftFilterDropdowns() {
+  const shiftCodeFilter = document.getElementById("shiftCodeFilter");
+  if (shiftCodeFilter) {
+    const curr = shiftCodeFilter.value;
+    shiftCodeFilter.innerHTML = `<option value="">All Shift Codes</option>` +
+      shiftsCache.map(s => `<option value="${s.code}">${s.code}</option>`).join("");
+    if (curr) shiftCodeFilter.value = curr;
+  }
+}
+
 async function loadShifts() {
   const tbody = document.getElementById("shiftsTableBody");
   if (!tbody) return;
@@ -725,14 +986,72 @@ async function loadShifts() {
     const res = await fetch("/api/v1/shifts/");
     if (!res.ok) throw new Error("Failed");
     shiftsCache = await res.json();
+    populateShiftFilterDropdowns();
     renderShiftsTable(shiftsCache);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Error loading shifts</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center;">Error loading shifts</td></tr>`;
+  }
+}
+
+function filterShiftStatus(status, btnEl) {
+  currentShiftStatusFilter = status;
+  if (btnEl && btnEl.parentElement) {
+    btnEl.parentElement.querySelectorAll(".time-range-btn").forEach((b) => b.classList.remove("active"));
+    btnEl.classList.add("active");
+  }
+  filterShifts();
+}
+
+function filterShifts() {
+  const query = document.getElementById("shiftSearchInput")?.value.toLowerCase().trim() || "";
+  const codeVal = document.getElementById("shiftCodeFilter")?.value || "";
+
+  const filtered = shiftsCache.filter(shift => {
+    const code = (shift.code || "").toLowerCase();
+    const name = (shift.name || "").toLowerCase();
+    const tz = (shift.timezone || "").toLowerCase();
+    const times = `${shift.start_time} ${shift.end_time}`.toLowerCase();
+
+    const matchQuery = !query || code.includes(query) || name.includes(query) || tz.includes(query) || times.includes(query);
+    const matchCode = !codeVal || (shift.code || "").toUpperCase() === codeVal.toUpperCase();
+    const matchStatus = currentShiftStatusFilter === "ALL" || shift.status === currentShiftStatusFilter;
+
+    return matchQuery && matchCode && matchStatus;
+  });
+
+  renderShiftsTable(filtered);
+}
+
+async function toggleShiftStatus(shiftId, currentStatus, shiftName, event) {
+  if (event) event.stopPropagation();
+
+  const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+  const shift = shiftsCache.find(s => strId(s.id) === strId(shiftId));
+  if (shift) shift.status = newStatus;
+  filterShifts();
+
+  try {
+    const res = await fetch(`/api/v1/shifts/${shiftId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error("Failed to update shift status");
+
+    showToast(`${shiftName} status updated to ${newStatus}`, "success");
+  } catch (err) {
+    if (shift) shift.status = currentStatus;
+    filterShifts();
+    showToast("Error updating shift status: " + err.message, "error");
   }
 }
 
 function renderShiftsTable(list) {
+  populateShiftFilterDropdowns();
+
   const tbody = document.getElementById("shiftsTableBody");
+  const gridContainer = document.getElementById("shiftsGridContainer");
 
   const totalEl = document.getElementById("shift-stat-total");
   const activeEl = document.getElementById("shift-stat-active");
@@ -740,35 +1059,82 @@ function renderShiftsTable(list) {
   if (activeEl) activeEl.textContent = shiftsCache.filter((s) => s.status === "ACTIVE").length;
 
   if (!list || list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">No shifts found. Click "+ Add Shift" or "Seed Defaults".</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No shifts found. Click "+ Add Shift" or "Seed Defaults".</td></tr>`;
+    if (gridContainer) gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; color:#64748b;">No shifts found.</div>`;
     return;
   }
-  tbody.innerHTML = list.map((s) => `
-    <tr>
-      <td><code>${s.code}</code></td>
-      <td><strong>${s.name}</strong></td>
-      <td><span class="status-pill badge-active">🕒 ${s.start_time}</span></td>
-      <td><span class="status-pill badge-inactive">🌙 ${s.end_time}</span></td>
-      <td><small>${s.timezone}</small></td>
-      <td><span class="status-pill ${s.status === "ACTIVE" ? "badge-active" : "badge-inactive"}">${s.status}</span></td>
-      <td>
-        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditShiftModal('${s.id}')">Edit</button>
-        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteShift('${s.id}', '${s.name}')">Delete</button>
-      </td>
-    </tr>
-  `).join("");
-}
 
-function filterShiftStatus(status, btnEl) {
-  if (btnEl && btnEl.parentElement) {
-    btnEl.parentElement.querySelectorAll(".time-range-btn").forEach((b) => b.classList.remove("active"));
-    btnEl.classList.add("active");
+  // Populate Table View
+  if (tbody) {
+    tbody.innerHTML = list.map((s) => {
+      const empCount = employeesCache.filter(e => strId(e.shift_id) === strId(s.id)).length;
+      return `
+        <tr>
+          <td><code>${s.code}</code></td>
+          <td><strong>${s.name}</strong></td>
+          <td><span class="status-pill badge-completed" style="font-size:11.5px;">🕒 ${s.start_time}</span></td>
+          <td><span class="status-pill badge-inactive" style="font-size:11.5px;">🌙 ${s.end_time}</span></td>
+          <td><small style="color: #64748b; font-weight:600;">${s.timezone}</small></td>
+          <td><span class="status-pill badge-completed" style="font-size:11.5px;">${empCount} Staff</span></td>
+          <td><span class="status-pill clickable-status ${s.status === "ACTIVE" ? "badge-active" : "badge-inactive"}" title="Click to toggle status" onclick="toggleShiftStatus('${s.id}', '${s.status}', '${s.name}', event)">${s.status}</span></td>
+          <td>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditShiftModal('${s.id}')">Edit</button>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteShift('${s.id}', '${s.name}')">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
-  if (status === "ALL") {
-    renderShiftsTable(shiftsCache);
-  } else {
-    renderShiftsTable(shiftsCache.filter((s) => s.status === status));
+
+  // Populate Grid View Cards
+  if (gridContainer) {
+    gridContainer.innerHTML = list.map((s) => {
+      const empCount = employeesCache.filter(e => strId(e.shift_id) === strId(s.id)).length;
+      return `
+        <div class="metric-card" style="padding: 22px; border-radius: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 14px rgba(0,0,0,0.04);">
+          <!-- TOP ROW: ICON, CODE & STATUS -->
+          <div class="metric-card-top" style="margin-bottom: 14px;">
+            <div style="display: flex; gap: 14px; align-items: flex-start; min-width: 0; flex: 1;">
+              <div style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #1d61e7, #3b82f6); color: #ffffff; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(29, 97, 231, 0.2);">
+                <i data-lucide="clock"></i>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <code style="font-size: 11px; font-weight: 700; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-bottom: 3px;">${s.code}</code>
+                <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.25; word-break: break-word;">${s.name}</h3>
+              </div>
+            </div>
+            <span class="status-pill clickable-status ${s.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;" title="Click to toggle status" onclick="toggleShiftStatus('${s.id}', '${s.status}', '${s.name}', event)">${s.status}</span>
+          </div>
+
+          <!-- SHIFT TIMINGS BANNER -->
+          <div style="font-size: 13.5px; font-weight: 700; color: #1d61e7; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;">
+            <span><i data-lucide="clock" style="width: 14px; vertical-align: middle; margin-right: 4px;"></i> ${s.start_time} - ${s.end_time}</span>
+            <span style="font-size: 11px; font-weight: 600; color: #3b82f6;">${s.timezone}</span>
+          </div>
+
+          <!-- DETAILS GRID: TIMINGS, TIMEZONE, ASSIGNED AGENTS -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; margin: 12px 0;">
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">TIMEZONE</span>
+              <strong style="color:#0f172a; font-size:13px; word-break:break-word; display:block;">${s.timezone}</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">ASSIGNED AGENTS</span>
+              <strong style="color:#0f172a; font-size:14px; display:block;">${empCount} Staff</strong>
+            </div>
+          </div>
+
+          <!-- FOOTER ACTION BUTTONS -->
+          <div style="display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+            <button class="btn-secondary" style="flex: 1; padding: 8px 14px; font-size: 12.5px; justify-content: center;" onclick="openEditShiftModal('${s.id}')"><i data-lucide="edit-3" style="width: 14px;"></i> Edit</button>
+            <button class="btn-secondary" style="padding: 8px 12px; font-size: 12.5px; color: #ef4444;" onclick="deleteShift('${s.id}', '${s.name}')"><i data-lucide="trash-2" style="width: 14px;"></i> Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
   }
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
 function openAddShiftModal() {
@@ -1139,7 +1505,7 @@ function renderEmployeesTable(list) {
         <td>${shift}</td>
         <td>${qaBadge}</td>
         <td>${voiceBadge}</td>
-        <td><span class="status-pill ${statusClass}">${emp.status}</span></td>
+        <td><span class="status-pill clickable-status ${statusClass}" title="Click to toggle status" onclick="toggleEmployeeStatus('${emp.id}', '${emp.status}', '${fullName}')">${emp.status}</span></td>
         <td>
           <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEmployeeProfileModal('${emp.id}')">Profile</button>
           <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditEmployeeModal('${emp.id}')">Edit</button>
@@ -1192,7 +1558,7 @@ function renderEmployeesTable(list) {
                 ${subName ? `<small style="color: #64748b; font-size: 12px; display: block; margin-top: 2px;">${subName}</small>` : ""}
               </div>
             </div>
-            <span class="status-pill ${statusClass}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;">${emp.status}</span>
+            <span class="status-pill clickable-status ${statusClass}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;" title="Click to toggle status" onclick="toggleEmployeeStatus('${emp.id}', '${emp.status}', '${fullName}')">${emp.status}</span>
           </div>
 
           <!-- ENRICHED 6-FIELD DETAILS GRID -->

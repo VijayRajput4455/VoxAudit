@@ -83,6 +83,7 @@ def get_department(
     return department
 
 
+@router.put("/{department_id}", response_model=DepartmentResponse)
 @router.patch(
     "/{department_id}",
     response_model=DepartmentResponse,
