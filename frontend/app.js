@@ -3147,51 +3147,7 @@ function loadSelectedDiarizationDetails() {
   }
 
   const call = auditsCache.find(c => strId(c.id) === strId(callId));
-  if (!call) return;
-
-  const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
-  const identName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Auto-Matching Speaker...";
-  const confText = call.identification_confidence ? `${Math.round(call.identification_confidence * 100)}% Match` : "94.2% Match";
-
-  const transcriptJson = call.transcript_json || {};
-  const segments = transcriptJson.segments || [
-    { speaker: "SPEAKER_00", start: 0, end: 4.5, text: "Hello! Thank you for calling VoxAudit Customer Support. My name is Alice." },
-    { speaker: "SPEAKER_01", start: 4.8, end: 9.2, text: "Hi, I am calling regarding my recent account billing query." }
-  ];
-
-  container.innerHTML = `
-    <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 14px; padding: 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-      <div>
-        <span style="font-size: 11px; font-weight: 700; color: #1d61e7; text-transform: uppercase; display: block; margin-bottom: 2px;">BIOMETRIC MATCHED AGENT</span>
-        <strong style="font-size: 15px; color: #0f172a;">${identName}</strong>
-      </div>
-      <span class="status-pill badge-completed" style="font-size: 12px;"><i data-lucide="shield-check" style="width: 13px;"></i> ${confText}</span>
-    </div>
-
-    <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-      <span><i data-lucide="audio-lines" style="width: 14px; color: #1d61e7;"></i> Diarized Speaker Turns (${segments.length} Segments)</span>
-    </h4>
-
-    <div style="display: flex; flex-direction: column; gap: 10px; max-height: 360px; overflow-y: auto; padding-right: 4px;">
-      ${segments.map(s => {
-        const isAgent = s.speaker === "SPEAKER_00" || s.speaker === "SPEAKER_AGENT";
-        const badgeBg = isAgent ? "#dbeafe" : "#f1f5f9";
-        const badgeColor = isAgent ? "#1e40af" : "#334155";
-        const label = isAgent ? `Agent (${identName})` : "Customer / Speaker 2";
-        return `
-          <div style="background: ${isAgent ? '#f8fafc' : '#ffffff'}; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="background: ${badgeBg}; color: ${badgeColor}; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">${label}</span>
-              <small style="font-family: monospace; color: #94a3b8; font-size: 11px;">${s.start}s - ${s.end}s</small>
-            </div>
-            <p style="font-size: 13px; color: #334155; margin: 0; line-height: 1.4;">${s.text}</p>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
-
-  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  renderRealDiarizationData(call);
 }
 
 async function runSpeakerDiarization(e) {
@@ -3209,14 +3165,14 @@ async function runSpeakerDiarization(e) {
   const fileToSend = fileInput.files[0];
   const filename = fileToSend.name;
 
-  showToast(`Uploading ${filename} & running PyAnnote 3.1 Diarization...`, "info");
+  showToast(`Uploading ${filename} & processing audio diarization...`, "info");
 
   if (container) {
     container.innerHTML = `
       <div style="text-align: center; padding: 50px 20px;">
         <div style="width: 48px; height: 48px; border: 4px solid #1d61e7; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-        <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">Processing Audio Diarization & Speech-to-Text...</h4>
-        <p style="font-size: 12.5px; color: #64748b; margin: 0;">1. Whisper STT Transcript Extraction<br>2. PyAnnote 3.1 Speaker Diarization<br>3. Milvus 192d Biometric Matching</p>
+        <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">Uploading & Processing Audio Diarization...</h4>
+        <p style="font-size: 12.5px; color: #64748b; margin: 0;">1. Storing Audio & Extracting Speech-to-Text<br>2. PyAnnote 3.1 Multi-Speaker Separation<br>3. Milvus 192d Biometric Identification</p>
       </div>`;
   }
 
@@ -3236,36 +3192,145 @@ async function runSpeakerDiarization(e) {
     }
 
     const result = await res.json();
-    showToast("Call recording submitted! Database record created.", "success");
+    showToast("Call recording uploaded & processing job created", "success");
 
-    await loadCallAudits();
-    renderExtractedDiarizationResult(result.id, filename, expEmpId);
+    // Poll status and render real database record
+    pollAndRenderDiarizationResult(result.id, filename);
 
   } catch (err) {
-    showToast("Call audit created! Extracting speaker turns...", "success");
-    renderExtractedDiarizationResult(null, filename, expEmpId);
+    showToast("Error processing call audio: " + err.message, "error");
+    if (container) {
+      container.innerHTML = `
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 16px; padding: 24px; text-align: center;">
+          <i data-lucide="alert-circle" style="width: 36px; height: 36px; color: #ef4444; margin-bottom: 8px;"></i>
+          <h4 style="font-size: 15px; font-weight: 700; color: #991b1b; margin-bottom: 4px;">Upload & Processing Error</h4>
+          <p style="font-size: 13px; color: #7f1d1d; margin: 0;">${err.message}</p>
+        </div>`;
+      if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+    }
   }
 }
 
-function renderExtractedDiarizationResult(callId, filename, expEmpId) {
+async function pollAndRenderDiarizationResult(callJobId, originalFilename) {
   const container = document.getElementById("diarResultContainer");
   if (!container) return;
 
-  const matchedEmp = expEmpId 
-    ? employeesCache.find(e => strId(e.id) === strId(expEmpId))
-    : employeesCache[0];
+  let attempts = 0;
+  const maxAttempts = 15;
 
-  const agentName = matchedEmp ? `${matchedEmp.first_name} ${matchedEmp.last_name || ""}` : "Alice Smith";
-  const empCode = matchedEmp ? matchedEmp.employee_code : "AGNT-001";
-  const deptName = (matchedEmp ? departmentsCache.find(d => strId(d.id) === strId(matchedEmp.department_id))?.name : null) || "Customer Care";
+  const checkStatus = async () => {
+    try {
+      const res = await fetch(`/api/v1/calls/${callJobId}`);
+      if (!res.ok) throw new Error("Failed to fetch call status");
+      
+      const callData = await res.json();
+      
+      if (callData.status === "COMPLETED") {
+        renderRealDiarizationData(callData);
+        await loadCallAudits();
+        showToast("Speaker Diarization completed & verified!", "success");
+        return;
+      } else if (callData.status === "FAILED") {
+        container.innerHTML = `
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 16px; padding: 24px; text-align: center;">
+            <i data-lucide="alert-triangle" style="width: 40px; height: 40px; color: #ef4444; margin-bottom: 10px;"></i>
+            <h4 style="font-size: 16px; font-weight: 700; color: #991b1b; margin-bottom: 6px;">Diarization & STT Processing Failed</h4>
+            <p style="font-size: 13px; color: #7f1d1d; margin: 0;">${callData.error_message || "Error processing call audio file."}</p>
+          </div>`;
+        if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+        return;
+      }
 
-  const sampleSegments = [
-    { speaker: "SPEAKER_00", start: "00:00", end: "00:04", label: `Agent (${agentName})`, isAgent: true, text: "Thank you for calling Customer Care. My name is " + agentName + ". How can I assist you today?" },
-    { speaker: "SPEAKER_01", start: "00:05", end: "00:11", label: "Customer (Speaker 2)", isAgent: false, text: "Hi, I noticed a discrepancy on my monthly statement for account #9482. Can you help verify this?" },
-    { speaker: "SPEAKER_00", start: "00:12", end: "00:18", label: `Agent (${agentName})`, isAgent: true, text: "I would be glad to check that for you right away. May I please verify your full name and security pin?" },
-    { speaker: "SPEAKER_01", start: "00:19", end: "00:25", label: "Customer (Speaker 2)", isAgent: false, text: "Sure, my name is Robert Johnson, pin is 4920." },
-    { speaker: "SPEAKER_00", start: "00:26", end: "00:32", label: `Agent (${agentName})`, isAgent: true, text: "Thank you, Robert. I have pulled up your statement and adjusted the charge. Is there anything else I can help with?" }
-  ];
+      attempts++;
+      if (attempts < maxAttempts) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 50px 20px;">
+            <div style="width: 48px; height: 48px; border: 4px solid #1d61e7; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+            <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">Diarizing & Transcribing Audio (${attempts * 2}s)...</h4>
+            <p style="font-size: 12.5px; color: #64748b; margin: 0;">1. Whisper STT Speech-to-Text<br>2. PyAnnote 3.1 Multi-Speaker Separation<br>3. Milvus ECAPA 192d Biometric Matching</p>
+          </div>`;
+        setTimeout(checkStatus, 2000);
+      } else {
+        renderRealDiarizationData(callData);
+      }
+    } catch (err) {
+      console.error("Polling error:", err);
+    }
+  };
+
+  checkStatus();
+}
+
+function renderRealDiarizationData(call) {
+  const container = document.getElementById("diarResultContainer");
+  if (!container) return;
+
+  if (!call) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+        <i data-lucide="audio-lines" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
+        <p style="font-size: 13.5px;">No diarization details available.</p>
+      </div>`;
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+    return;
+  }
+
+  const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
+  const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Unidentified Agent";
+  const empCode = identEmp ? identEmp.employee_code : (call.identified_employee_id ? "AGNT-EMP" : "N/A");
+  const deptName = (identEmp ? departmentsCache.find(d => strId(d.id) === strId(identEmp.department_id))?.name : null) || "General";
+
+  const confPercent = call.identification_confidence !== null && call.identification_confidence !== undefined
+    ? Math.round(call.identification_confidence * 100)
+    : 0;
+
+  const confBadge = call.identified_employee_id
+    ? `<span class="status-pill badge-completed" style="font-size: 12px; padding: 4px 10px; display: inline-block; margin-bottom: 4px;"><i data-lucide="shield-check" style="width: 13px; vertical-align: middle;"></i> ${confPercent}% Match</span>`
+    : `<span class="status-pill badge-pending" style="font-size: 12px; padding: 4px 10px; display: inline-block; margin-bottom: 4px;"><i data-lucide="help-circle" style="width: 13px; vertical-align: middle;"></i> Open Speaker</span>`;
+
+  const transcriptJson = call.transcript_json || {};
+  let turns = transcriptJson.turns || transcriptJson.segments || [];
+
+  if (typeof turns === "string") {
+    try { turns = JSON.parse(turns); } catch (e) { turns = []; }
+  }
+
+  const filename = call.audio_filename || "call_recording.wav";
+
+  if (!turns || turns.length === 0) {
+    container.innerHTML = `
+      <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px; padding: 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(29, 97, 231, 0.08);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 48px; height: 48px; border-radius: 14px; background: #1d61e7; color: #fff; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(29, 97, 231, 0.25);">
+            ${agentName.charAt(0)}
+          </div>
+          <div>
+            <span style="font-size: 10.5px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">MILVUS BIOMETRIC IDENTIFIED AGENT</span>
+            <h3 style="font-size: 17px; font-weight: 800; color: #0f172a; margin: 0;">${agentName} <small style="font-size: 12px; color: #64748b;">(${empCode})</small></h3>
+            <span style="font-size: 12px; color: #475569; font-weight: 600;">Department: ${deptName}</span>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          ${confBadge}
+        </div>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 24px; text-align: center; color: #64748b;">
+        <i data-lucide="file-audio" style="width: 32px; height: 32px; color: #94a3b8; margin-bottom: 8px;"></i>
+        <p style="font-size: 13px; margin: 0;">Status: <strong>${call.status}</strong>. Transcript turns are being extracted in the background.</p>
+      </div>`;
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+    return;
+  }
+
+  const fmtTime = (sec) => {
+    if (sec === null || sec === undefined) return "00:00";
+    if (typeof sec === "string" && sec.includes(":")) return sec;
+    const s = Math.floor(Number(sec));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+  };
 
   container.innerHTML = `
     <!-- IDENTIFIED AGENT BANNER -->
@@ -3281,29 +3346,38 @@ function renderExtractedDiarizationResult(callId, filename, expEmpId) {
         </div>
       </div>
       <div style="text-align: right;">
-        <span class="status-pill badge-completed" style="font-size: 12px; padding: 4px 10px; display: inline-block; margin-bottom: 4px;"><i data-lucide="shield-check" style="width: 13px; vertical-align: middle;"></i> 96.4% Match</span>
-        <small style="display: block; font-size: 11px; color: #64748b; font-family: monospace;">Cosine Dist: 0.18</small>
+        ${confBadge}
+        <small style="display: block; font-size: 11px; color: #64748b; font-family: monospace; margin-top: 2px;">Status: ${call.status}</small>
       </div>
     </div>
 
     <!-- DIARIZED TRANSCRIPT TURNS -->
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-      <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;"><i data-lucide="audio-lines" style="width: 15px; color: #1d61e7; vertical-align: middle;"></i> Extracted Speaker Segments (${sampleSegments.length} Turns)</h4>
+      <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;"><i data-lucide="audio-lines" style="width: 15px; color: #1d61e7; vertical-align: middle;"></i> Extracted Speaker Segments (${turns.length} Turns)</h4>
       <code style="font-size: 11px; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px;">${filename}</code>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 4px;">
-      ${sampleSegments.map(s => `
-        <div style="background: ${s.isAgent ? '#f8fafc' : '#ffffff'}; border: 1px solid ${s.isAgent ? '#dbeafe' : '#e2e8f0'}; border-radius: 14px; padding: 14px; transition: all 0.2s ease;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="background: ${s.isAgent ? '#dbeafe' : '#f1f5f9'}; color: ${s.isAgent ? '#1e40af' : '#334155'}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
-              <i data-lucide="${s.isAgent ? 'headphone-off' : 'user'}" style="width: 12px;"></i> ${s.label}
-            </span>
-            <small style="font-family: monospace; color: #64748b; font-size: 11.5px; font-weight: 600;">${s.start} - ${s.end}</small>
+      ${turns.map((t) => {
+        const spk = t.speaker || t.speaker_label || "SPEAKER_00";
+        const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
+        const label = isAgent ? `Agent (${agentName})` : "Customer / Speaker 2";
+        const textContent = t.text || t.transcript || t.content || "";
+        const startTime = fmtTime(t.start);
+        const endTime = fmtTime(t.end);
+
+        return `
+          <div style="background: ${isAgent ? '#f8fafc' : '#ffffff'}; border: 1px solid ${isAgent ? '#dbeafe' : '#e2e8f0'}; border-radius: 14px; padding: 14px; transition: all 0.2s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="background: ${isAgent ? '#dbeafe' : '#f1f5f9'}; color: ${isAgent ? '#1e40af' : '#334155'}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
+                <i data-lucide="${isAgent ? 'headphone-off' : 'user'}" style="width: 12px;"></i> ${label}
+              </span>
+              <small style="font-family: monospace; color: #64748b; font-size: 11.5px; font-weight: 600;">${startTime} - ${endTime}</small>
+            </div>
+            <p style="font-size: 13.5px; color: #334155; margin: 0; line-height: 1.45; font-weight: 500;">${textContent}</p>
           </div>
-          <p style="font-size: 13.5px; color: #334155; margin: 0; line-height: 1.45; font-weight: 500;">${s.text}</p>
-        </div>
-      `).join("")}
+        `;
+      }).join("")}
     </div>
   `;
 
