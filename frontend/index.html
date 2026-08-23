@@ -759,15 +759,26 @@
           <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
             <div class="panel-title">
               <h3>Employees & Agents Directory</h3>
-              <p>Manage staff profiles, department mappings, designations, and shifts</p>
+              <p>Manage staff profiles, department mappings, designations, shifts, and voice enrollment</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-              <input type="text" id="empSearchInput" placeholder="Search name, code, email..." style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12px;" oninput="filterEmployees()">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <input type="text" id="empSearchInput" placeholder="Search name, code, email..." style="padding: 7px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; width: 180px;" oninput="filterEmployees()">
+              
+              <select id="empDeptFilter" style="padding: 7px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
+                <option value="">All Departments</option>
+              </select>
+
+              <select id="empDesigFilter" style="padding: 7px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
+                <option value="">All Roles</option>
+              </select>
+
               <div class="time-range-group">
                 <button class="time-range-btn active" onclick="filterEmpStatus('ALL', this)">All</button>
                 <button class="time-range-btn" onclick="filterEmpStatus('ACTIVE', this)">Active</button>
                 <button class="time-range-btn" onclick="filterEmpStatus('INACTIVE', this)">Inactive</button>
               </div>
+
+              <button class="btn-secondary" onclick="exportEmployeesCSV()"><i data-lucide="download"></i> Export CSV</button>
               <button class="btn-primary" onclick="openAddEmployeeModal()"><i data-lucide="plus"></i> Add Employee</button>
             </div>
           </div>
@@ -781,12 +792,13 @@
                   <th>Department</th>
                   <th>Designation</th>
                   <th>Shift</th>
+                  <th>Voice Enrollment</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="employeesTableBody">
-                <tr><td colspan="8" class="loading-cell">Loading employees...</td></tr>
+                <tr><td colspan="9" class="loading-cell">Loading employees...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1302,6 +1314,28 @@
       <div style="display: flex; gap: 12px; justify-content: center;">
         <button type="button" class="btn-secondary" id="confirmModalCancelBtn" style="padding: 10px 24px; font-weight: 600;">Cancel</button>
         <button type="button" class="btn-primary" id="confirmModalSubmitBtn" style="padding: 10px 24px; font-weight: 600; background: #ef4444; border-color: #ef4444;">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMPLOYEE PROFILE & VOICE DETAILS MODAL -->
+  <div class="modal-overlay" id="employeeProfileModal">
+    <div class="modal-box modal-wide" style="max-width: 760px; padding: 24px;">
+      <div class="modal-header" style="padding-bottom: 14px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div id="empProfileAvatar" style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #1d61e7, #3b82f6); color: #ffffff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center;">
+            EP
+          </div>
+          <div>
+            <h3 id="empProfileTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0;">Employee Profile</h3>
+            <span id="empProfileCodeBadge" style="font-size: 12px; font-family: monospace; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px; font-weight: 600;">AGNT-000000</span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeModal('employeeProfileModal')">&times;</button>
+      </div>
+
+      <div class="modal-body" id="employeeProfileContent" style="padding: 0;">
+        <!-- DYNAMICALLY POPULATED VIA JS -->
       </div>
     </div>
   </div>

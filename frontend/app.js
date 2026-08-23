@@ -845,27 +845,34 @@ function strId(id) { return id ? String(id).toLowerCase() : ""; }
    EMPLOYEE MANAGEMENT LOGIC
    ========================================================================== */
 
+let voiceProfilesCache = [];
+
 async function loadEmployees() {
   const tbody = document.getElementById("employeesTableBody");
-  if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">Loading employees...</td></tr>`;
+  if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="loading-cell">Loading employees...</td></tr>`;
 
   try {
-    const [empRes, deptRes, desigRes, shiftRes] = await Promise.all([
+    const [empRes, deptRes, desigRes, shiftRes, voiceRes] = await Promise.all([
       fetch("/api/v1/employees/"),
       fetch("/api/v1/departments/"),
       fetch("/api/v1/designations/"),
-      fetch("/api/v1/shifts/")
+      fetch("/api/v1/shifts/"),
+      fetch("/api/v1/voice-samples/summary/all")
     ]);
 
     if (empRes.ok) employeesCache = await empRes.json();
     if (deptRes.ok) departmentsCache = await deptRes.json();
     if (desigRes.ok) designationsCache = await desigRes.json();
     if (shiftRes.ok) shiftsCache = await shiftRes.json();
+    if (voiceRes.ok) {
+      const summary = await voiceRes.json();
+      voiceProfilesCache = summary.profiles || [];
+    }
 
-    renderEmployeesTable(employeesCache);
     populateDropdowns();
+    renderEmployeesTable(employeesCache);
   } catch (err) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center;">Error loading employees</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="color: #ef4444; text-align: center;">Error loading employees</td></tr>`;
   }
 }
 
@@ -886,6 +893,18 @@ function populateDropdowns() {
   if (empShiftSel) {
     empShiftSel.innerHTML = `<option value="">-- Select Shift --</option>` +
       shiftsCache.map(s => `<option value="${s.id}">${s.name} (${s.code})</option>`).join("");
+  }
+
+  const empDeptFilter = document.getElementById("empDeptFilter");
+  if (empDeptFilter) {
+    empDeptFilter.innerHTML = `<option value="">All Departments</option>` +
+      departmentsCache.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+  }
+
+  const empDesigFilter = document.getElementById("empDesigFilter");
+  if (empDesigFilter) {
+    empDesigFilter.innerHTML = `<option value="">All Roles</option>` +
+      designationsCache.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
   }
 
   const auditEmpSel = document.getElementById("auditEmployeeSelect");
@@ -915,7 +934,7 @@ function renderEmployeesTable(list) {
   if (desigsEl) desigsEl.textContent = new Set(list.map(e => e.designation_id).filter(Boolean)).size;
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">No employees found. Click "+ Add Employee" to create one.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="loading-cell">No employees found. Click "+ Add Employee" to create one.</td></tr>`;
     return;
   }
 
@@ -926,41 +945,213 @@ function renderEmployeesTable(list) {
     const fullName = `${emp.first_name} ${emp.last_name || ""}`.trim();
     const contactInfo = emp.email || emp.phone || "--";
     const statusClass = emp.status === "ACTIVE" ? "badge-completed" : "badge-inactive";
+    const subName = emp.father_name ? `<br><small style="color: #64748b; font-size: 11px;">S/o ${emp.father_name}</small>` : "";
+
+    const vProf = voiceProfilesCache.find(v => strId(v.employee_id) === strId(emp.id));
+    const sampleCount = vProf ? vProf.total_samples : 0;
+    const voiceBadge = sampleCount > 0 
+      ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="mic" style="width:11px;"></i> ${sampleCount} Clip(s)</span>`
+      : `<span class="status-pill badge-inactive" style="font-size:11px;">No Voice</span>`;
 
     return `
       <tr>
         <td><code>${emp.employee_code}</code></td>
-        <td><strong>${fullName}</strong></td>
-        <td>${contactInfo}</td>
+        <td><strong>${fullName}</strong>${subName}</td>
+        <td><small>${contactInfo}</small></td>
         <td>${dept}</td>
         <td>${desig}</td>
         <td>${shift}</td>
+        <td>${voiceBadge}</td>
         <td><span class="status-pill ${statusClass}">${emp.status}</span></td>
         <td>
+          <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEmployeeProfileModal('${emp.id}')">Profile</button>
           <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditEmployeeModal('${emp.id}')">Edit</button>
           <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteEmployee('${emp.id}', '${fullName}')">Delete</button>
         </td>
       </tr>
     `;
   }).join("");
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+let currentEmpStatusFilter = "ALL";
+
+function filterEmpStatus(status, btn) {
+  currentEmpStatusFilter = status;
+  document.querySelectorAll("#view-employees .time-range-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  filterEmployees();
 }
 
 function filterEmployees() {
   const query = document.getElementById("empSearchInput")?.value.toLowerCase().trim() || "";
-  const filtered = employeesCache.filter(e =>
-    e.employee_code.toLowerCase().includes(query) ||
-    `${e.first_name} ${e.last_name || ""}`.toLowerCase().includes(query) ||
-    (e.email && e.email.toLowerCase().includes(query)) ||
-    (e.phone && e.phone.includes(query))
-  );
+  const deptFilter = document.getElementById("empDeptFilter")?.value || "";
+  const desigFilter = document.getElementById("empDesigFilter")?.value || "";
+
+  const filtered = employeesCache.filter(e => {
+    const code = (e.employee_code || "").toLowerCase();
+    const fname = (e.first_name || "").toLowerCase();
+    const lname = (e.last_name || "").toLowerCase();
+    const faname = (e.father_name || "").toLowerCase();
+    const fullName = `${fname} ${lname}`.trim();
+    const email = (e.email || "").toLowerCase();
+    const phone = (e.phone || "").toLowerCase();
+    const location = (e.location || "").toLowerCase();
+
+    const deptName = (departmentsCache.find(d => strId(d.id) === strId(e.department_id))?.name || "").toLowerCase();
+    const desigName = (designationsCache.find(d => strId(d.id) === strId(e.designation_id))?.name || "").toLowerCase();
+
+    const matchQuery = !query ||
+      code.includes(query) ||
+      fname.includes(query) ||
+      lname.includes(query) ||
+      fullName.includes(query) ||
+      faname.includes(query) ||
+      email.includes(query) ||
+      phone.includes(query) ||
+      location.includes(query) ||
+      deptName.includes(query) ||
+      desigName.includes(query);
+
+    const matchDept = !deptFilter || strId(e.department_id) === strId(deptFilter);
+    const matchDesig = !desigFilter || strId(e.designation_id) === strId(desigFilter);
+    const matchStatus = currentEmpStatusFilter === "ALL" || e.status === currentEmpStatusFilter;
+
+    return matchQuery && matchDept && matchDesig && matchStatus;
+  });
+
   renderEmployeesTable(filtered);
 }
 
-function filterEmpStatus(status, btn) {
-  document.querySelectorAll("#view-employees .time-range-btn").forEach(b => b.classList.remove("active"));
-  if (btn) btn.classList.add("active");
-  if (status === "ALL") renderEmployeesTable(employeesCache);
-  else renderEmployeesTable(employeesCache.filter(e => e.status === status));
+function exportEmployeesCSV() {
+  if (!employeesCache || employeesCache.length === 0) {
+    return showToast("No employees to export", "error");
+  }
+
+  const headers = ["Employee Code", "First Name", "Last Name", "Father Name", "Date of Birth", "Email", "Phone", "Date of Joining", "Department", "Designation", "Shift", "Location", "Status"];
+  const rows = employeesCache.map(e => {
+    const dept = departmentsCache.find(d => strId(d.id) === strId(e.department_id))?.name || "";
+    const desig = designationsCache.find(d => strId(d.id) === strId(e.designation_id))?.name || "";
+    const shift = shiftsCache.find(s => strId(s.id) === strId(e.shift_id))?.name || "";
+    const dob = e.date_of_birth ? String(e.date_of_birth).split("T")[0] : "";
+    const doj = e.date_of_joining ? String(e.date_of_joining).split("T")[0] : "";
+
+    return [
+      `"${e.employee_code || ''}"`,
+      `"${e.first_name || ''}"`,
+      `"${e.last_name || ''}"`,
+      `"${e.father_name || ''}"`,
+      `"${dob}"`,
+      `"${e.email || ''}"`,
+      `"${e.phone || ''}"`,
+      `"${doj}"`,
+      `"${dept}"`,
+      `"${desig}"`,
+      `"${shift}"`,
+      `"${e.location || ''}"`,
+      `"${e.status || ''}"`
+    ].join(",");
+  });
+
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `VoxAudit_Employees_Directory_${new Date().toISOString().split("T")[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("Employees directory exported to CSV", "success");
+}
+
+async function openEmployeeProfileModal(id) {
+  const emp = employeesCache.find(e => strId(e.id) === strId(id));
+  if (!emp) return;
+
+  const fullName = `${emp.first_name} ${emp.last_name || ""}`.trim();
+  const initials = `${emp.first_name[0] || ""}${emp.last_name ? emp.last_name[0] : ""}`.toUpperCase() || "EP";
+  const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "--";
+  const desig = designationsCache.find(d => strId(d.id) === strId(emp.designation_id))?.name || "--";
+  const shift = shiftsCache.find(s => strId(s.id) === strId(emp.shift_id))?.name || "--";
+  const dob = emp.date_of_birth ? String(emp.date_of_birth).split("T")[0] : "Not Specified";
+  const doj = emp.date_of_joining ? String(emp.date_of_joining).split("T")[0] : "--";
+
+  document.getElementById("empProfileAvatar").textContent = initials;
+  document.getElementById("empProfileTitle").textContent = fullName;
+  document.getElementById("empProfileCodeBadge").textContent = emp.employee_code || "AGNT-000000";
+
+  const content = document.getElementById("employeeProfileContent");
+  content.innerHTML = `<p style="text-align:center; padding: 20px; color:#64748b;">Loading profile details and voice embeddings...</p>`;
+
+  openModal("employeeProfileModal");
+
+  let voiceSamples = [];
+  try {
+    const res = await fetch(`/api/v1/voice-samples/employee/${emp.id}`);
+    if (res.ok) voiceSamples = await res.json();
+  } catch (err) {}
+
+  const voiceCount = voiceSamples.length;
+  const isEnrolled = voiceCount > 0;
+  const voiceBadge = isEnrolled
+    ? `<span class="status-pill badge-completed">ENROLLED (${voiceCount} Clips)</span>`
+    : `<span class="status-pill badge-inactive">NOT ENROLLED</span>`;
+
+  let samplesListHtml = isEnrolled
+    ? voiceSamples.map(s => `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong style="font-size:13px; color:#1e293b;">${s.original_file_name || s.code}</strong>
+            <div style="font-size:11px; color:#64748b;">Format: ${s.audio_format || "wav"} | Duration: ${s.duration_seconds ? Math.round(s.duration_seconds) + "s" : "--"}</div>
+          </div>
+          <span class="status-pill badge-completed" style="font-size:11px;">${s.status}</span>
+        </div>
+      `).join("")
+    : `<p style="font-size:13px; color:#64748b; margin:0;">No voice samples enrolled yet. Go to Voice Enrollment tab to register voice samples.</p>`;
+
+  content.innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+      
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+        <h4 style="font-size:13px; font-weight:700; color:#1d61e7; margin-bottom:12px; display:flex; align-items:center; gap:6px;"><i data-lucide="user"></i> Personal & Contact Info</h4>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size:12.5px;">
+          <div><span style="color:#64748b;">Father's Name:</span><br><strong>${emp.father_name || "--"}</strong></div>
+          <div><span style="color:#64748b;">Date of Birth:</span><br><strong>${dob}</strong></div>
+          <div><span style="color:#64748b;">Email:</span><br><strong>${emp.email || "--"}</strong></div>
+          <div><span style="color:#64748b;">Phone:</span><br><strong>${emp.phone || "--"}</strong></div>
+          <div><span style="color:#64748b;">Location:</span><br><strong>${emp.location || "--"}</strong></div>
+          <div><span style="color:#64748b;">Status:</span><br><strong style="color:${emp.status === 'ACTIVE' ? '#059669':'#ef4444'};">${emp.status}</strong></div>
+        </div>
+      </div>
+
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+        <h4 style="font-size:13px; font-weight:700; color:#1d61e7; margin-bottom:12px; display:flex; align-items:center; gap:6px;"><i data-lucide="building-2"></i> Organization Mapping</h4>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size:12.5px;">
+          <div><span style="color:#64748b;">Department:</span><br><strong>${dept}</strong></div>
+          <div><span style="color:#64748b;">Designation:</span><br><strong>${desig}</strong></div>
+          <div><span style="color:#64748b;">Shift Schedule:</span><br><strong>${shift}</strong></div>
+          <div><span style="color:#64748b;">Joining Date:</span><br><strong>${doj}</strong></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h4 style="font-size:13px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:6px;"><i data-lucide="mic"></i> Enrolled Voice Samples</h4>
+        ${voiceBadge}
+      </div>
+      ${samplesListHtml}
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; padding-top:14px; border-top:1px solid #e2e8f0;">
+      <button class="btn-secondary" onclick="closeModal('employeeProfileModal')">Close</button>
+      <button class="btn-primary" onclick="closeModal('employeeProfileModal'); selectEmployeeForEnrollment('${emp.id}'); showView('voice-enrollment');">+ Add Voice Sample</button>
+    </div>
+  `;
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
 function openAddEmployeeModal() {
