@@ -910,6 +910,12 @@ function populateDropdowns() {
       designationsCache.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
   }
 
+  const empShiftFilter = document.getElementById("empShiftFilter");
+  if (empShiftFilter) {
+    empShiftFilter.innerHTML = `<option value="">All Shifts</option>` +
+      shiftsCache.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+  }
+
   const auditEmpSel = document.getElementById("auditEmployeeSelect");
   if (auditEmpSel) {
     auditEmpSel.innerHTML = `<option value="">-- Open Identification (Milvus Auto-Match) --</option>` +
@@ -1130,6 +1136,7 @@ function filterEmployees() {
   const query = document.getElementById("empSearchInput")?.value.toLowerCase().trim() || "";
   const deptFilter = document.getElementById("empDeptFilter")?.value || "";
   const desigFilter = document.getElementById("empDesigFilter")?.value || "";
+  const shiftFilter = document.getElementById("empShiftFilter")?.value || "";
 
   const filtered = employeesCache.filter(e => {
     const code = (e.employee_code || "").toLowerCase();
@@ -1143,6 +1150,7 @@ function filterEmployees() {
 
     const deptName = (departmentsCache.find(d => strId(d.id) === strId(e.department_id))?.name || "").toLowerCase();
     const desigName = (designationsCache.find(d => strId(d.id) === strId(e.designation_id))?.name || "").toLowerCase();
+    const shiftName = (shiftsCache.find(s => strId(s.id) === strId(e.shift_id))?.name || "").toLowerCase();
 
     const matchQuery = !query ||
       code.includes(query) ||
@@ -1154,13 +1162,15 @@ function filterEmployees() {
       phone.includes(query) ||
       location.includes(query) ||
       deptName.includes(query) ||
-      desigName.includes(query);
+      desigName.includes(query) ||
+      shiftName.includes(query);
 
     const matchDept = !deptFilter || strId(e.department_id) === strId(deptFilter);
     const matchDesig = !desigFilter || strId(e.designation_id) === strId(desigFilter);
+    const matchShift = !shiftFilter || strId(e.shift_id) === strId(shiftFilter);
     const matchStatus = currentEmpStatusFilter === "ALL" || e.status === currentEmpStatusFilter;
 
-    return matchQuery && matchDept && matchDesig && matchStatus;
+    return matchQuery && matchDept && matchDesig && matchShift && matchStatus;
   });
 
   renderEmployeesTable(filtered);
