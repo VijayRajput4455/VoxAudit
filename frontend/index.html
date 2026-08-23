@@ -880,35 +880,69 @@
         </section>
 
         <div class="panel-card">
-          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+          <!-- DEPARTMENTS HEADER ROW 1: TITLE & ACTIONS -->
+          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Departments Directory</h3>
-              <p>Manage organizational departments and codes</p>
+              <p>Manage organizational departments, hierarchy, and department codes</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" onclick="filterDeptStatus('ALL', this)">All Statuses</button>
-                <button class="time-range-btn" onclick="filterDeptStatus('ACTIVE', this)">Active</button>
-                <button class="time-range-btn" onclick="filterDeptStatus('INACTIVE', this)">Inactive</button>
+                <button class="time-range-btn active" id="btnDeptViewTable" onclick="switchDeptViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
+                <button class="time-range-btn" id="btnDeptViewGrid" onclick="switchDeptViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
+
               <button class="btn-primary" onclick="openAddDepartmentModal()"><i data-lucide="plus"></i> Add Department</button>
             </div>
           </div>
-          <div class="table-responsive">
+
+          <!-- DEPARTMENTS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+              <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="deptSearchInput" placeholder="Search department name, code, description..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterDepartments()">
+              </div>
+
+              <select id="deptSelectFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDepartments()">
+                <option value="">All Departments</option>
+              </select>
+
+              <select id="deptCodeFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDepartments()">
+                <option value="">All Department Codes</option>
+              </select>
+            </div>
+
+            <div class="time-range-group">
+              <button class="time-range-btn active" onclick="filterDeptStatus('ALL', this)">All Statuses</button>
+              <button class="time-range-btn" onclick="filterDeptStatus('ACTIVE', this)">Active</button>
+              <button class="time-range-btn" onclick="filterDeptStatus('INACTIVE', this)">Inactive</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" id="departmentsTableView">
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Code</th>
                   <th>Department Name</th>
                   <th>Description</th>
+                  <th>Staff Count</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="departmentsTableBody">
-                <tr><td colspan="5" class="loading-cell">Loading departments...</td></tr>
+                <tr><td colspan="6" class="loading-cell">Loading departments...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- DEPARTMENTS GRID VIEW CONTAINER -->
+          <div id="departmentsGridView" style="display: none; padding-top: 16px;">
+            <div id="departmentsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+              <!-- DYNAMICALLY POPULATED VIA JS -->
+            </div>
           </div>
         </div>
       </div>

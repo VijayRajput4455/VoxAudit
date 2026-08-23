@@ -361,14 +361,89 @@ async function loadDepartments() {
     const res = await fetch("/api/v1/departments/");
     if (!res.ok) throw new Error("Failed");
     departmentsCache = await res.json();
+    populateDeptFilterDropdowns();
     renderDepartmentsTable(departmentsCache);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color: #ef4444; text-align: center;">Error loading departments</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="color: #ef4444; text-align: center;">Error loading departments</td></tr>`;
   }
 }
 
+function populateDeptFilterDropdowns() {
+  const deptSelectFilter = document.getElementById("deptSelectFilter");
+  if (deptSelectFilter) {
+    const curr = deptSelectFilter.value;
+    deptSelectFilter.innerHTML = `<option value="">All Departments</option>` +
+      departmentsCache.map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+    if (curr) deptSelectFilter.value = curr;
+  }
+
+  const deptCodeFilter = document.getElementById("deptCodeFilter");
+  if (deptCodeFilter) {
+    const curr = deptCodeFilter.value;
+    deptCodeFilter.innerHTML = `<option value="">All Department Codes</option>` +
+      departmentsCache.map(d => `<option value="${d.code}">${d.code}</option>`).join("");
+    if (curr) deptCodeFilter.value = curr;
+  }
+}
+
+let deptViewMode = "table";
+let currentDeptStatusFilter = "ALL";
+
+function switchDeptViewMode(mode, btn) {
+  deptViewMode = mode;
+  const btnTable = document.getElementById("btnDeptViewTable");
+  const btnGrid = document.getElementById("btnDeptViewGrid");
+  const tableView = document.getElementById("departmentsTableView");
+  const gridView = document.getElementById("departmentsGridView");
+
+  if (mode === "table") {
+    if (btnTable) btnTable.classList.add("active");
+    if (btnGrid) btnGrid.classList.remove("active");
+    if (tableView) tableView.style.display = "block";
+    if (gridView) gridView.style.display = "none";
+  } else {
+    if (btnGrid) btnGrid.classList.add("active");
+    if (btnTable) btnTable.classList.remove("active");
+    if (tableView) tableView.style.display = "none";
+    if (gridView) gridView.style.display = "block";
+  }
+  filterDepartments();
+}
+
+function filterDeptStatus(status, btnEl) {
+  currentDeptStatusFilter = status;
+  if (btnEl && btnEl.parentElement) {
+    btnEl.parentElement.querySelectorAll(".time-range-btn").forEach((b) => b.classList.remove("active"));
+    btnEl.classList.add("active");
+  }
+  filterDepartments();
+}
+
+function filterDepartments() {
+  const query = document.getElementById("deptSearchInput")?.value.toLowerCase().trim() || "";
+  const deptSelectVal = document.getElementById("deptSelectFilter")?.value || "";
+  const deptCodeVal = document.getElementById("deptCodeFilter")?.value || "";
+
+  const filtered = departmentsCache.filter(dept => {
+    const code = (dept.code || "").toLowerCase();
+    const name = (dept.name || "").toLowerCase();
+    const desc = (dept.description || "").toLowerCase();
+
+    const matchQuery = !query || code.includes(query) || name.includes(query) || desc.includes(query);
+    const matchDeptSelect = !deptSelectVal || strId(dept.id) === strId(deptSelectVal);
+    const matchDeptCode = !deptCodeVal || (dept.code || "").toUpperCase() === deptCodeVal.toUpperCase();
+    const matchStatus = currentDeptStatusFilter === "ALL" || dept.status === currentDeptStatusFilter;
+
+    return matchQuery && matchDeptSelect && matchDeptCode && matchStatus;
+  });
+
+  renderDepartmentsTable(filtered);
+}
+
 function renderDepartmentsTable(list) {
+  populateDeptFilterDropdowns();
   const tbody = document.getElementById("departmentsTableBody");
+  const gridContainer = document.getElementById("departmentsGridContainer");
   
   const totalEl = document.getElementById("dept-stat-total");
   const activeEl = document.getElementById("dept-stat-active");
@@ -378,33 +453,79 @@ function renderDepartmentsTable(list) {
   if (rolesEl) rolesEl.textContent = designationsCache.length || 0;
 
   if (!list || list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="loading-cell">No departments found. Click "+ Add Department" to create one.</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">No departments found. Click "+ Add Department" to create one.</td></tr>`;
+    if (gridContainer) gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; color:#64748b;">No departments found.</div>`;
     return;
   }
-  tbody.innerHTML = list.map((dept) => `
-    <tr>
-      <td><code>${dept.code}</code></td>
-      <td><strong>${dept.name}</strong></td>
-      <td>${dept.description || "N/A"}</td>
-      <td><span class="status-pill ${dept.status === "ACTIVE" ? "badge-active" : "badge-inactive"}">${dept.status}</span></td>
-      <td>
-        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditDepartmentModal('${dept.id}')">Edit</button>
-        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteDepartment('${dept.id}', '${dept.name}')">Delete</button>
-      </td>
-    </tr>
-  `).join("");
-}
 
-function filterDeptStatus(status, btnEl) {
-  if (btnEl && btnEl.parentElement) {
-    btnEl.parentElement.querySelectorAll(".time-range-btn").forEach((b) => b.classList.remove("active"));
-    btnEl.classList.add("active");
+  // Populate Table View
+  if (tbody) {
+    tbody.innerHTML = list.map((dept) => {
+      const empCount = employeesCache.filter(e => strId(e.department_id) === strId(dept.id)).length;
+      return `
+        <tr>
+          <td><code>${dept.code}</code></td>
+          <td><strong>${dept.name}</strong></td>
+          <td>${dept.description || "N/A"}</td>
+          <td><span class="status-pill badge-completed" style="font-size:11.5px;"><i data-lucide="users" style="width:12px;"></i> ${empCount} Staff</span></td>
+          <td><span class="status-pill ${dept.status === "ACTIVE" ? "badge-active" : "badge-inactive"}">${dept.status}</span></td>
+          <td>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditDepartmentModal('${dept.id}')">Edit</button>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteDepartment('${dept.id}', '${dept.name}')">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
-  if (status === "ALL") {
-    renderDepartmentsTable(departmentsCache);
-  } else {
-    renderDepartmentsTable(departmentsCache.filter((d) => d.status === status));
+
+  // Populate Grid View Cards
+  if (gridContainer) {
+    gridContainer.innerHTML = list.map((dept) => {
+      const empCount = employeesCache.filter(e => strId(e.department_id) === strId(dept.id)).length;
+      const desigCount = designationsCache.filter(d => strId(d.department_id) === strId(dept.id)).length;
+
+      return `
+        <div class="metric-card" style="padding: 22px; border-radius: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 14px rgba(0,0,0,0.04);">
+          <!-- TOP ROW: ICON, CODE & STATUS -->
+          <div class="metric-card-top" style="margin-bottom: 14px;">
+            <div style="display: flex; gap: 14px; align-items: flex-start; min-width: 0; flex: 1;">
+              <div style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #1d61e7, #3b82f6); color: #ffffff; font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(29, 97, 231, 0.2);">
+                <i data-lucide="building-2"></i>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <code style="font-size: 11px; font-weight: 700; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px; display: inline-block; margin-bottom: 3px;">${dept.code}</code>
+                <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.25;">${dept.name}</h3>
+              </div>
+            </div>
+            <span class="status-pill ${dept.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}" style="font-size: 11px; flex-shrink: 0; margin-left: 8px;">${dept.status}</span>
+          </div>
+
+          <!-- DESCRIPTION -->
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 14px; line-height: 1.4; word-break: break-word;">${dept.description || 'No description provided.'}</p>
+
+          <!-- DETAILS GRID: STAFF COUNT, MAPPED ROLES -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; margin: 12px 0;">
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">STAFF MEMBERS</span>
+              <strong style="color:#0f172a; font-size:14px; display:block;">${empCount} Staff</strong>
+            </div>
+            <div>
+              <span style="color:#94a3b8; font-size:10.5px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:2px;">MAPPED ROLES</span>
+              <strong style="color:#0f172a; font-size:14px; display:block;">${desigCount} Roles</strong>
+            </div>
+          </div>
+
+          <!-- FOOTER ACTION BUTTONS -->
+          <div style="display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+            <button class="btn-secondary" style="flex: 1; padding: 8px 14px; font-size: 12.5px; justify-content: center;" onclick="openEditDepartmentModal('${dept.id}')"><i data-lucide="edit-3" style="width: 14px;"></i> Edit</button>
+            <button class="btn-secondary" style="padding: 8px 12px; font-size: 12.5px; color: #ef4444;" onclick="deleteDepartment('${dept.id}', '${dept.name}')"><i data-lucide="trash-2" style="width: 14px;"></i> Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
   }
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
 function openAddDepartmentModal() {
