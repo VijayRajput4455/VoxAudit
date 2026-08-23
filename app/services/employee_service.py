@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.employee import Employee
 from app.repositories.employee_repository import EmployeeRepository
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate
+from app.services.code_generator import CodeGenerator, CodePrefix
 
 
 class EmployeeService:
@@ -18,18 +19,17 @@ class EmployeeService:
         data: EmployeeCreate,
     ) -> Employee:
 
-        existing_employee = self.repository.get_by_code(
-            data.employee_code
-        )
-
-        if existing_employee:
-            raise ValueError(
-                f"Employee code "
-                f"'{data.employee_code}' already exists."
-            )
+        # Generate unique sequential AGNT-XXXXXX code automatically if not specified
+        emp_code = data.employee_code
+        if not emp_code:
+            emp_code = CodeGenerator.generate_code(self.db, CodePrefix.EMPLOYEE)
+        else:
+            existing_employee = self.repository.get_by_code(emp_code)
+            if existing_employee:
+                raise ValueError(f"Employee code '{emp_code}' already exists.")
 
         employee = Employee(
-            employee_code=data.employee_code,
+            employee_code=emp_code,
             first_name=data.first_name,
             last_name=data.last_name,
             father_name=data.father_name,

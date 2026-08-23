@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class DesignationCreate(BaseModel):
-    code: str
+    code: str | None = None
     name: str
     department_id: UUID | None = None
     description: str | None = None

@@ -36,6 +36,18 @@ def create_designation(
         )
 
 
+@router.post(
+    "/seed",
+    response_model=list[DesignationResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def seed_designations(
+    db: Session = Depends(get_db),
+):
+    service = DesignationService(db)
+    return service.seed_default_designations()
+
+
 @router.get(
     "/",
     response_model=list[DesignationResponse],
@@ -44,8 +56,10 @@ def get_designations(
     db: Session = Depends(get_db),
 ):
     service = DesignationService(db)
-
-    return service.get_designations()
+    designations = service.get_designations()
+    if not designations:
+        return service.seed_default_designations()
+    return designations
 
 
 @router.get(

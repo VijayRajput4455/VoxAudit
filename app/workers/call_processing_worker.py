@@ -86,11 +86,18 @@ class CallProcessingWorker(BaseWorker):
                 tmp_file.write(audio_bytes)
                 temp_audio_path = tmp_file.name
 
-            # Instantiate CallProcessor if not injected
-            call_processor = self.processor if self.processor is not None else CallProcessor(db_session=db_session)
+            # Extract optional expected_employee_id
+            expected_emp_id = None
+            if payload.get("expected_employee_id"):
+                try:
+                    expected_emp_id = UUID(payload.get("expected_employee_id"))
+                except Exception:
+                    pass
+            elif call_job.employee_id:
+                expected_emp_id = call_job.employee_id
 
             # Run full Call Processing pipeline (Whisper + Pyannote + ECAPA + Milvus + Word Alignment)
-            result = call_processor.process_call(temp_audio_path)
+            result = call_processor.process_call(temp_audio_path, expected_employee_id=expected_emp_id)
 
             # Update PostgreSQL CallJob record
             call_job.duration_seconds = result.get("duration_seconds")

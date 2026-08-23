@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ShiftCreate(BaseModel):
-    code: str
+    code: str | None = None
     name: str
     start_time: time
     end_time: time

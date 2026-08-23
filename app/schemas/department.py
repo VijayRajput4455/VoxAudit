@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class DepartmentCreate(BaseModel):
-    code: str
+    code: str | None = None
     name: str
     description: str | None = None
     status: str = "ACTIVE"

@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,7 @@ router = APIRouter()
 )
 def process_call_audio(
     file: UploadFile = File(...),
+    expected_employee_id: Optional[UUID] = Form(None),
     db: Session = Depends(get_db),
 ) -> CallSubmissionResponse:
     """Submits a customer support call audio file for asynchronous processing."""
@@ -44,6 +45,7 @@ def process_call_audio(
             original_file_name=file.filename,
             file_size=file_size,
             content_type=file.content_type or "audio/wav",
+            expected_employee_id=expected_employee_id,
         )
         return CallSubmissionResponse(
             id=call_job.id,

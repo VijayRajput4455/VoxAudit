@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class EmployeeCreate(BaseModel):
-    employee_code: str
+    employee_code: str | None = None
 
     first_name: str
     last_name: str | None = None

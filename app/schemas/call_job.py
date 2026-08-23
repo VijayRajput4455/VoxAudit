@@ -42,6 +42,8 @@ class CallJobResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    code: Optional[str] = None
+    audit_code: Optional[str] = None
     original_file_name: str
     storage_key: str
     audio_format: Optional[str] = None

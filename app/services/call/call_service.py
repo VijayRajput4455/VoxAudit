@@ -11,6 +11,7 @@ from app.integrations.minio.storage import MinioStorage
 from app.integrations.rabbitmq.publisher import RabbitMQPublisher
 from app.models.call_job import CallJob
 from app.repositories.employee_repository import EmployeeRepository
+from app.services.code_generator import CodeGenerator, CodePrefix
 
 logger = get_logger(__name__)
 
@@ -35,6 +36,7 @@ class CallService:
         original_file_name: str,
         file_size: int,
         content_type: str = "audio/wav",
+        expected_employee_id: Optional[UUID] = None,
     ) -> CallJob:
         """Stores call audio in MinIO, saves CallJob record in PostgreSQL (status=PENDING),
         and publishes an asynchronous call processing job to RabbitMQ. Returns immediately.
@@ -48,6 +50,7 @@ class CallService:
         call_id = uuid4()
         extension = original_file_name.split(".")[-1] if "." in original_file_name else "wav"
         storage_key = f"calls/{call_id}.{extension}"
+        call_code = CodeGenerator.generate_code(self.db, CodePrefix.CALL)
 
         # 3. Upload call audio file to MinIO storage
         try:
@@ -65,9 +68,11 @@ class CallService:
         # 4. Create PostgreSQL CallJob record (status = PENDING)
         call_job = CallJob(
             id=call_id,
+            code=call_code,
             original_file_name=original_file_name,
             storage_key=storage_key,
             audio_format=extension.lower(),
+            identified_employee_id=expected_employee_id,
             status="PENDING",
         )
 
@@ -93,6 +98,7 @@ class CallService:
             "call_id": str(call_job.id),
             "storage_bucket": settings.MINIO_BUCKET,
             "storage_key": storage_key,
+            "expected_employee_id": str(expected_employee_id) if expected_employee_id else None,
             "attempt": 1,
         }
 

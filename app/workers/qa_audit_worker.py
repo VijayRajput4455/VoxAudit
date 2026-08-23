@@ -94,8 +94,13 @@ class QAAuditWorker(BaseWorker):
             call_job.qa_score = float(overall_score) if overall_score is not None else 50.0
             call_job.qa_scorecard_json = scorecard
 
+            # Automatically assign AUDT-XXXXXX code if not assigned
+            if not call_job.audit_code:
+                from app.services.code_generator import CodeGenerator, CodePrefix
+                call_job.audit_code = CodeGenerator.generate_code(db_session, CodePrefix.AUDIT)
+
             # Update transcript_json to also include qa_scorecard reference
-            updated_transcript = dict(call_job.transcript_json)
+            updated_transcript = dict(call_job.transcript_json) if call_job.transcript_json else {}
             updated_transcript["qa_scorecard"] = scorecard
             call_job.transcript_json = updated_transcript
 

@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VoxAudit - AI Conversation Intelligence & Voice Audit Platform</title>
+  <title>VoxAudit - AI-Powered Call Analysis & Voice Audit</title>
   
-  <!-- Fonts -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -16,7 +16,7 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Custom Styles -->
+  <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -24,541 +24,979 @@
     
     <!-- SIDEBAR -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="logo-box">
-          <div class="logo-icon">
-            <i data-lucide="activity"></i>
-          </div>
-          <span class="logo-text">VoxAudit</span>
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <i data-lucide="activity"></i>
+        </div>
+        <div class="brand-title">
+          <h2>VOICE AUDIT</h2>
+          <span>AI-Powered Call Analysis</span>
         </div>
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-group">
-          <a href="#" class="nav-item active">
-            <i data-lucide="layout-dashboard"></i>
-            <span>Dashboard</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="file-audio"></i>
-            <span>Audits</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="message-square"></i>
-            <span>Conversations</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="bell"></i>
-            <span>Alerts</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="bar-chart-3"></i>
-            <span>Analytics</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="file-text"></i>
-            <span>Reports</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="git-fork"></i>
-            <span>Pipelines</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="settings"></i>
-            <span>Settings</span>
-          </a>
-        </div>
+        <a href="#" class="nav-item active" id="nav-dashboard" onclick="showView('dashboard', event)">
+          <i data-lucide="layout-grid"></i>
+          <span>Dashboard</span>
+        </a>
 
-        <div class="nav-section-title">AI MODULES</div>
-
-        <div class="nav-group">
-          <a href="#" class="nav-item" onclick="openEnrollmentModal(event)">
-            <i data-lucide="mic"></i>
-            <span>Voice Enrollment</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="transcribe"></i>
-            <span>Transcription</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="users"></i>
-            <span>Speaker Diarization</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="smile"></i>
-            <span>Sentiment Analysis</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="target"></i>
-            <span>Intent Detection</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="layers"></i>
-            <span>Topic Modeling</span>
-          </a>
-          <a href="#" class="nav-item">
-            <i data-lucide="shield-check"></i>
-            <span>Compliance Check</span>
-          </a>
-        </div>
+        <div class="nav-section-title">ORGANIZATION</div>
+        <a href="#" class="nav-item" id="nav-employees" onclick="showView('employees', event)">
+          <i data-lucide="users"></i>
+          <span>Employees</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-departments" onclick="showView('departments', event)">
+          <i data-lucide="building-2"></i>
+          <span>Departments</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-designations" onclick="showView('designations', event)">
+          <i data-lucide="award"></i>
+          <span>Designations</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-shifts" onclick="showView('shifts', event)">
+          <i data-lucide="clock"></i>
+          <span>Shifts</span>
+        </a>
       </nav>
 
-      <!-- SIDEBAR BOTTOM CARD -->
+      <!-- SIDEBAR FOOTER -->
       <div class="sidebar-footer">
-        <div class="ai-banner-card">
-          <div class="ai-banner-content">
-            <h3>VoxAudit AI</h3>
-            <p>Smart audit. Clear insights. Better conversations.</p>
-            <button class="ai-banner-btn" onclick="openVoiceSummaryModal()">
-              Explore AI Insights <i data-lucide="arrow-right"></i>
-            </button>
+        <div class="theme-toggle-card">
+          <i data-lucide="sun"></i> Light Mode
+        </div>
+
+        <div class="admin-profile-card">
+          <div class="admin-icon">
+            <i data-lucide="shield"></i>
           </div>
-          <div class="ai-bot-avatar">
-            <div class="bot-glow"></div>
-            <i data-lucide="bot"></i>
+          <div class="admin-info">
+            <span class="admin-name">Admin Console</span>
+            <span class="admin-role">System Administrator</span>
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- MAIN CONTENT AREA -->
+    <!-- MAIN CONTENT -->
     <main class="main-content">
       
       <!-- TOP HEADER -->
       <header class="top-header">
         <div class="header-left">
-          <button class="mobile-menu-toggle">
-            <i data-lucide="menu"></i>
-          </button>
-          <div class="welcome-box">
-            <h1>Welcome back, Vijay! 👋</h1>
-            <p>Monitor, analyze and improve every conversation.</p>
-          </div>
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle">Welcome back, Admin! Here's what's happening today.</p>
         </div>
 
         <div class="header-right">
-          <div class="date-picker-badge">
+          <div class="date-selector-box">
             <i data-lucide="calendar"></i>
-            <span>Aug 15 - Aug 21, 2026</span>
-            <i data-lucide="chevron-down" class="chevron"></i>
+            <span>Sunday, August 23, 2026</span>
           </div>
 
-          <button class="btn-primary" onclick="openAuditModal()">
-            <i data-lucide="plus"></i>
-            <span>New Audit</span>
-          </button>
+          <!-- TOP HEADER DASHBOARD TOGGLES -->
+          <div class="time-range-group">
+            <button class="time-range-btn active" onclick="switchDashboardPeriod('WEEK', this)">This Week</button>
+            <button class="time-range-btn" onclick="switchDashboardPeriod('MONTH', this)">This Month</button>
+            <button class="time-range-btn" onclick="switchDashboardPeriod('YEAR', this)">This Year</button>
+          </div>
 
-          <button class="icon-btn notification-btn">
-            <i data-lucide="bell"></i>
-            <span class="notification-badge"></span>
-          </button>
-
-          <div class="user-avatar-box">
-            <div class="user-avatar">
-              <span>VR</span>
-              <span class="status-indicator"></span>
-            </div>
+          <div class="header-actions">
+            <button class="icon-btn">
+              <i data-lucide="search"></i>
+            </button>
+            <button class="icon-btn">
+              <i data-lucide="bell"></i>
+              <span class="notification-badge"></span>
+            </button>
+            <button class="btn-primary" onclick="openAuditModal()">
+              <i data-lucide="plus"></i> New Audit
+            </button>
           </div>
         </div>
       </header>
 
-      <!-- DASHBOARD METRICS GRID (5 CARDS) -->
-      <section class="metrics-grid">
+      <!-- ==================================================================== -->
+      <!-- VIEW 1: DASHBOARD PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-dashboard" class="page-view active">
         
-        <!-- CARD 1: TOTAL AUDITS -->
-        <div class="metric-card card-purple">
-          <div class="metric-info">
-            <span class="metric-label">Total Audits</span>
-            <h2 class="metric-value" id="stat-total-audits">128</h2>
-            <div class="metric-trend trend-up">
+        <!-- TOP 4 METRIC CARDS -->
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          
+          <!-- CARD 1: TOTAL AUDITS -->
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL AUDITS</span>
+                <h2 id="stat-total-audits">124</h2>
+              </div>
+              <div class="metric-icon-circle">
+                <i data-lucide="mic"></i>
+              </div>
+            </div>
+            <div class="metric-trend up">
               <i data-lucide="trending-up"></i>
-              <span>↑ 18.6% vs last 7 days</span>
+              <span>↑ 18.5% vs last period</span>
             </div>
           </div>
-          <div class="metric-icon icon-purple">
-            <i data-lucide="volume-2"></i>
-          </div>
-        </div>
 
-        <!-- CARD 2: CONVERSATIONS -->
-        <div class="metric-card card-blue">
-          <div class="metric-info">
-            <span class="metric-label">Conversations</span>
-            <h2 class="metric-value" id="stat-conversations">1,245</h2>
-            <div class="metric-trend trend-up">
+          <!-- CARD 2: AVERAGE ACCURACY -->
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>AVERAGE ACCURACY</span>
+                <h2 id="stat-avg-accuracy">92%</h2>
+              </div>
+              <div class="metric-icon-circle">
+                <i data-lucide="target"></i>
+              </div>
+            </div>
+            <div class="metric-trend up">
               <i data-lucide="trending-up"></i>
-              <span>↑ 24.3% vs last 7 days</span>
+              <span>↑ 6.3% vs last period</span>
             </div>
           </div>
-          <div class="metric-icon icon-blue">
-            <i data-lucide="message-square"></i>
-          </div>
-        </div>
 
-        <!-- CARD 3: AVG SENTIMENT SCORE -->
-        <div class="metric-card card-green">
-          <div class="metric-info">
-            <span class="metric-label">Avg. Sentiment Score</span>
-            <h2 class="metric-value" id="stat-avg-sentiment">4.2/5</h2>
-            <div class="metric-trend trend-up">
+          <!-- CARD 3: PASS RATE -->
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>PASS RATE</span>
+                <h2 id="stat-pass-rate">89%</h2>
+              </div>
+              <div class="metric-icon-circle">
+                <i data-lucide="shield-check"></i>
+              </div>
+            </div>
+            <div class="metric-trend up">
               <i data-lucide="trending-up"></i>
-              <span>↑ 8.7% vs last 7 days</span>
+              <span>↑ 7.8% vs last period</span>
             </div>
           </div>
-          <div class="metric-icon icon-green">
-            <i data-lucide="smile"></i>
-          </div>
-        </div>
 
-        <!-- CARD 4: CRITICAL ALERTS -->
-        <div class="metric-card card-orange">
-          <div class="metric-info">
-            <span class="metric-label">Critical Alerts</span>
-            <h2 class="metric-value" id="stat-critical-alerts">23</h2>
-            <div class="metric-trend trend-down">
+          <!-- CARD 4: ISSUES FOUND -->
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>ISSUES FOUND</span>
+                <h2 id="stat-issues-found">16</h2>
+              </div>
+              <div class="metric-icon-circle" style="background: #fef2f2; color: #ef4444;">
+                <i data-lucide="alert-triangle"></i>
+              </div>
+            </div>
+            <div class="metric-trend down">
               <i data-lucide="trending-down"></i>
-              <span>↓ 12.5% vs last 7 days</span>
+              <span>↓ 12.7% vs last period</span>
             </div>
           </div>
-          <div class="metric-icon icon-orange">
-            <i data-lucide="alert-triangle"></i>
-          </div>
-        </div>
 
-        <!-- CARD 5: COMPLIANCE SCORE -->
-        <div class="metric-card card-pink">
-          <div class="metric-info">
-            <span class="metric-label">Compliance Score</span>
-            <h2 class="metric-value" id="stat-compliance">91%</h2>
-            <div class="metric-trend trend-up">
-              <i data-lucide="trending-up"></i>
-              <span>↑ 6.3% vs last 7 days</span>
+        </section>
+
+        <!-- ROW 1: AUDITS OVER TIME & AUDITS BY STATUS -->
+        <section class="grid-2-1" style="margin-bottom: 20px;">
+          
+          <!-- AUDITS OVER TIME LINE CHART WITH TOGGLE -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>Audits Over Time</h3>
+              </div>
+              <div class="time-range-group">
+                <button class="time-range-btn active" onclick="updateChartPeriod('7D', this)">7 Days</button>
+                <button class="time-range-btn" onclick="updateChartPeriod('30D', this)">30 Days</button>
+                <button class="time-range-btn" onclick="updateChartPeriod('90D', this)">90 Days</button>
+              </div>
+            </div>
+            <div style="height: 200px;">
+              <canvas id="auditsOverTimeChart"></canvas>
             </div>
           </div>
-          <div class="metric-icon icon-pink">
-            <i data-lucide="shield-check"></i>
+
+          <!-- AUDITS BY STATUS DONUT CHART -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>Audits by Status</h3>
+              </div>
+              <select class="select-filter">
+                <option>This Week</option>
+                <option>This Month</option>
+              </select>
+            </div>
+            <div class="donut-wrapper">
+              <div class="donut-chart-box">
+                <canvas id="auditsStatusChart"></canvas>
+                <div class="donut-center-label">
+                  <h4 id="donut-center-total">124</h4>
+                  <span>Audits</span>
+                </div>
+              </div>
+              <div class="chart-legend">
+                <div class="legend-row">
+                  <div class="legend-left"><span class="legend-dot dot-green"></span> Completed</div>
+                  <strong id="legend-completed">89 (71.8%)</strong>
+                </div>
+                <div class="legend-row">
+                  <div class="legend-left"><span class="legend-dot dot-yellow"></span> Pending</div>
+                  <strong id="legend-pending">18 (14.5%)</strong>
+                </div>
+                <div class="legend-row">
+                  <div class="legend-left"><span class="legend-dot dot-red"></span> Failed / Issues</div>
+                  <strong id="legend-failed">17 (13.7%)</strong>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-      </section>
+        </section>
 
-      <!-- ROW 1: AUDIT OVERVIEW CHART & RECENT ALERTS -->
-      <section class="dashboard-row row-2-cols">
-        
-        <!-- AUDIT OVERVIEW CHART -->
-        <div class="panel-card chart-panel">
+        <!-- ROW 2: TOP MODEL REQUESTS, CATEGORY SHARE, SYSTEM HEALTH -->
+        <section class="grid-3-cols" style="margin-bottom: 20px;">
+          
+          <!-- TOP MODEL REQUESTS -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>Top Model Requests</h3>
+              </div>
+              <select class="select-filter"><option>This Week</option></select>
+            </div>
+            <div class="progress-list">
+              <div class="progress-item">
+                <div class="model-name"><i data-lucide="cpu" style="width:14px;"></i> Whisper Large V3</div>
+                <div class="progress-bar-container"><div class="progress-fill" style="width: 78%;"></div></div>
+                <div class="model-count">48 (38%)</div>
+              </div>
+              <div class="progress-item">
+                <div class="model-name"><i data-lucide="zap" style="width:14px;"></i> GPT-4o Mini</div>
+                <div class="progress-bar-container"><div class="progress-fill" style="width: 55%;"></div></div>
+                <div class="model-count">32 (25%)</div>
+              </div>
+              <div class="progress-item">
+                <div class="model-name"><i data-lucide="sparkles" style="width:14px;"></i> Gemini 1.5 Pro</div>
+                <div class="progress-bar-container"><div class="progress-fill" style="width: 40%;"></div></div>
+                <div class="model-count">24 (19%)</div>
+              </div>
+              <div class="progress-item">
+                <div class="model-name"><i data-lucide="bot" style="width:14px;"></i> Claude 3.5 Sonnet</div>
+                <div class="progress-bar-container"><div class="progress-fill" style="width: 32%;"></div></div>
+                <div class="model-count">20 (16%)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CATEGORY SHARE -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>Category Share</h3>
+                <p style="font-size: 11px; color:#94a3b8;">8 Categories</p>
+              </div>
+            </div>
+            <div class="donut-wrapper">
+              <div class="donut-chart-box">
+                <canvas id="categoryShareChart"></canvas>
+                <div class="donut-center-label">
+                  <h4>124</h4>
+                  <span>Audits</span>
+                </div>
+              </div>
+              <div class="chart-legend" style="font-size: 11.5px;">
+                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-blue"></span> Agent Comm.</div><span>32 (25.8%)</span></div>
+                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-purple"></span> Customer Exp.</div><span>28 (22.6%)</span></div>
+                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-green"></span> Compliance</div><span>24 (19.4%)</span></div>
+                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-yellow"></span> Product Knowl.</div><span>20 (16.1%)</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SYSTEM HEALTH -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">
+                <h3>System Health</h3>
+              </div>
+              <span style="font-size: 11.5px; font-weight: 700; color: #059669;">● All Systems Operational</span>
+            </div>
+            <div class="health-list">
+              <div class="health-item">
+                <div class="health-name"><i data-lucide="server"></i> API Service</div>
+                <span class="badge-operational">Operational</span>
+              </div>
+              <div class="health-item">
+                <div class="health-name"><i data-lucide="cpu"></i> Worker Service</div>
+                <span class="badge-operational">Operational</span>
+              </div>
+              <div class="health-item">
+                <div class="health-name"><i data-lucide="layers"></i> RabbitMQ</div>
+                <span class="badge-operational">Operational</span>
+              </div>
+              <div class="health-item">
+                <div class="health-name"><i data-lucide="database"></i> Milvus 192D DB</div>
+                <span class="badge-operational">Operational</span>
+              </div>
+              <div class="health-item">
+                <div class="health-name"><i data-lucide="hard-drive"></i> MinIO Storage</div>
+                <span class="badge-operational">Operational</span>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ROW 3: RECENT AUDIT ACTIVITY TABLE WITH STATUS TOGGLE -->
+        <section class="grid-2-1">
+          
+          <div class="panel-card">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+              <div class="panel-title">
+                <h3>Recent Audit Activity</h3>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <!-- DASHBOARD RECENT AUDITS STATUS TOGGLES -->
+                <div class="time-range-group">
+                  <button class="time-range-btn active" onclick="filterDashboardAudits('ALL', this)">All</button>
+                  <button class="time-range-btn" onclick="filterDashboardAudits('COMPLETED', this)">Completed</button>
+                  <button class="time-range-btn" onclick="filterDashboardAudits('PENDING', this)">Pending</button>
+                  <button class="time-range-btn" onclick="filterDashboardAudits('FAILED', this)">Issues</button>
+                </div>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="showView('audits')">View All</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Audit ID</th>
+                    <th>Call ID</th>
+                    <th>Agent</th>
+                    <th>Status</th>
+                    <th>Score</th>
+                    <th>Completed At</th>
+                  </tr>
+                </thead>
+                <tbody id="dashAuditsBody">
+                  <tr>
+                    <td><code>AUD-2026-000124</code></td>
+                    <td><code>CALL-0009876</code></td>
+                    <td><strong>Vijay Rajput</strong></td>
+                    <td><span class="status-pill badge-completed">Completed</span></td>
+                    <td><strong>92%</strong></td>
+                    <td>23-Aug-2026 02:45 PM</td>
+                  </tr>
+                  <tr>
+                    <td><code>AUD-2026-000123</code></td>
+                    <td><code>CALL-0009875</code></td>
+                    <td><strong>Jane Smith</strong></td>
+                    <td><span class="status-pill badge-completed">Completed</span></td>
+                    <td><strong>88%</strong></td>
+                    <td>23-Aug-2026 01:32 PM</td>
+                  </tr>
+                  <tr>
+                    <td><code>AUD-2026-000122</code></td>
+                    <td><code>CALL-0009874</code></td>
+                    <td><strong>Mike Johnson</strong></td>
+                    <td><span class="status-pill badge-pending">Pending</span></td>
+                    <td><strong>--</strong></td>
+                    <td>23-Aug-2026 12:58 PM</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- QUICK ACTIONS & AI INSIGHTS BANNER -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="panel-card">
+              <div class="panel-header" style="margin-bottom: 12px;">
+                <div class="panel-title"><h3>Quick Actions</h3></div>
+              </div>
+              <div class="quick-actions-grid">
+                <div class="action-tile" onclick="openAuditModal()">
+                  <i data-lucide="upload-cloud"></i>
+                  <span>Upload Audio</span>
+                </div>
+                <div class="action-tile" onclick="showView('employees')">
+                  <i data-lucide="users"></i>
+                  <span>Employees</span>
+                </div>
+                <div class="action-tile" onclick="showView('departments')">
+                  <i data-lucide="building-2"></i>
+                  <span>Departments</span>
+                </div>
+                <div class="action-tile" onclick="showView('designations')">
+                  <i data-lucide="award"></i>
+                  <span>Designations</span>
+                </div>
+                <div class="action-tile" onclick="showView('shifts')">
+                  <i data-lucide="clock"></i>
+                  <span>Shifts</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-banner-bottom">
+              <div class="ai-banner-left">
+                <i data-lucide="bot"></i>
+                <div>
+                  <h4>AI-Powered Insights</h4>
+                  <p>Get actionable insights and improve audit quality with AI.</p>
+                </div>
+              </div>
+              <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="openVoiceSummaryModal()">Learn More</button>
+            </div>
+          </div>
+
+        </section>
+
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- VIEW 2: CALL AUDITS PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-audits" class="page-view">
+        <div class="panel-card">
           <div class="panel-header">
-            <div class="panel-title-box">
-              <h3>Audit Overview</h3>
+            <div class="panel-title">
+              <h3>Customer Call Audits & Transcripts</h3>
+              <p>Real-time processing status, speaker diarization, and transcripts</p>
             </div>
-            <div class="panel-controls">
-              <div class="select-pill">
-                <span>Daily</span>
-                <i data-lucide="chevron-down"></i>
-              </div>
-              <div class="select-pill">
-                <span>Audits</span>
-                <i data-lucide="chevron-down"></i>
-              </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="loadCallAudits()"><i data-lucide="refresh-cw"></i> Refresh</button>
+              <button class="btn-primary" onclick="openAuditModal()"><i data-lucide="plus"></i> New Audit</button>
             </div>
           </div>
-          <div class="chart-container">
-            <canvas id="auditOverviewChart"></canvas>
-          </div>
-        </div>
-
-        <!-- RECENT ALERTS PANEL -->
-        <div class="panel-card alerts-panel">
-          <div class="panel-header">
-            <h3>Recent Alerts</h3>
-            <a href="#" class="view-all-link">View all</a>
-          </div>
-          <div class="alerts-list">
-            
-            <div class="alert-item alert-danger">
-              <div class="alert-icon-box">
-                <i data-lucide="alert-circle"></i>
-              </div>
-              <div class="alert-content">
-                <h4>Compliance Violation</h4>
-                <p>Refund policy not followed</p>
-              </div>
-              <span class="alert-time">10m ago</span>
-            </div>
-
-            <div class="alert-item alert-warning">
-              <div class="alert-icon-box">
-                <i data-lucide="frown"></i>
-              </div>
-              <div class="alert-content">
-                <h4>Negative Sentiment Detected</h4>
-                <p>High customer dissatisfaction</p>
-              </div>
-              <span class="alert-time">25m ago</span>
-            </div>
-
-            <div class="alert-item alert-info">
-              <div class="alert-icon-box">
-                <i data-lucide="shield-alert"></i>
-              </div>
-              <div class="alert-content">
-                <h4>PII Detected</h4>
-                <p>Potential customer data shared</p>
-              </div>
-              <span class="alert-time">1h ago</span>
-            </div>
-
-            <div class="alert-item alert-purple">
-              <div class="alert-icon-box">
-                <i data-lucide="clock"></i>
-              </div>
-              <div class="alert-content">
-                <h4>Long Hold Time</h4>
-                <p>Customer waited for 8+ minutes</p>
-              </div>
-              <span class="alert-time">2h ago</span>
-            </div>
-
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Call ID</th>
+                  <th>Duration</th>
+                  <th>Language</th>
+                  <th>Speakers</th>
+                  <th>Matched Agent</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="auditsTableBody">
+                <tr><td colspan="7" class="loading-cell">Loading call audits from database...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-      </section>
-
-      <!-- ROW 2: SENTIMENT DISTRIBUTION, TOP INTENTS, RECENT AUDITS -->
-      <section class="dashboard-row row-3-cols">
-        
-        <!-- SENTIMENT DISTRIBUTION DONUT CHART -->
-        <div class="panel-card sentiment-panel">
-          <div class="panel-header">
-            <h3>Sentiment Distribution</h3>
+      <!-- ==================================================================== -->
+      <!-- VIEW: EMPLOYEES MANAGEMENT PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-employees" class="page-view">
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL EMPLOYEES</span>
+                <h2 id="empMetricTotal">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="users"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Active Staff</span></div>
           </div>
-          <div class="donut-chart-wrapper">
-            <div class="chart-box">
-              <canvas id="sentimentDonutChart"></canvas>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>ACTIVE AGENTS</span>
+                <h2 id="empMetricActive">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="check-circle-2"></i></div>
             </div>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-dot green"></span>
-                <span class="legend-name">Positive</span>
-                <span class="legend-val">45%</span>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>Ready for Calls</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>DEPARTMENTS</span>
+                <h2 id="empMetricDepts">0</h2>
               </div>
-              <div class="legend-item">
-                <span class="legend-dot blue"></span>
-                <span class="legend-name">Neutral</span>
-                <span class="legend-val">30%</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot orange"></span>
-                <span class="legend-name">Negative</span>
-                <span class="legend-val">15%</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot red"></span>
-                <span class="legend-name">Very Negative</span>
-                <span class="legend-val">10%</span>
-              </div>
+              <div class="metric-icon-circle"><i data-lucide="building-2"></i></div>
             </div>
+            <div class="metric-trend up"><i data-lucide="building-2"></i><span>Assigned Staff</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>DESIGNATIONS</span>
+                <h2 id="empMetricDesigs">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="award"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="award"></i><span>Job Roles</span></div>
+          </div>
+        </section>
+
+        <div class="panel-card">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3>Employees & Agents Directory</h3>
+              <p>Manage staff profiles, department mappings, designations, and shifts</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <input type="text" id="empSearchInput" placeholder="Search name, code, email..." style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12px;" oninput="filterEmployees()">
+              <div class="time-range-group">
+                <button class="time-range-btn active" onclick="filterEmpStatus('ALL', this)">All</button>
+                <button class="time-range-btn" onclick="filterEmpStatus('ACTIVE', this)">Active</button>
+                <button class="time-range-btn" onclick="filterEmpStatus('INACTIVE', this)">Inactive</button>
+              </div>
+              <button class="btn-primary" onclick="openAddEmployeeModal()"><i data-lucide="plus"></i> Add Employee</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Employee Code</th>
+                  <th>Full Name</th>
+                  <th>Contact Info</th>
+                  <th>Department</th>
+                  <th>Designation</th>
+                  <th>Shift</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="employeesTableBody">
+                <tr><td colspan="8" class="loading-cell">Loading employees...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-        <!-- TOP INTENTS PROGRESS BARS -->
-        <div class="panel-card intents-panel">
-          <div class="panel-header">
-            <h3>Top Intents</h3>
+      <!-- ==================================================================== -->
+      <!-- VIEW 3: DEPARTMENTS MANAGEMENT PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-departments" class="page-view">
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL DEPARTMENTS</span>
+                <h2 id="dept-stat-total">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="building-2"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Organization Units</span></div>
           </div>
-          <div class="intents-list">
-            
-            <div class="intent-item">
-              <div class="intent-label-box">
-                <span class="intent-name">Refund Request</span>
-                <span class="intent-percentage">32%</span>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>ACTIVE DEPARTMENTS</span>
+                <h2 id="dept-stat-active">0</h2>
               </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: 32%;"></div>
-              </div>
+              <div class="metric-icon-circle"><i data-lucide="check-circle-2"></i></div>
             </div>
-
-            <div class="intent-item">
-              <div class="intent-label-box">
-                <span class="intent-name">Order Status</span>
-                <span class="intent-percentage">24%</span>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Operational</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>MAPPED ROLES</span>
+                <h2 id="dept-stat-roles">0</h2>
               </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: 24%;"></div>
-              </div>
+              <div class="metric-icon-circle"><i data-lucide="award"></i></div>
             </div>
-
-            <div class="intent-item">
-              <div class="intent-label-box">
-                <span class="intent-name">Billing Issue</span>
-                <span class="intent-percentage">18%</span>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Designation Mappings</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>HEALTH STATUS</span>
+                <h2>100%</h2>
               </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: 18%;"></div>
-              </div>
+              <div class="metric-icon-circle"><i data-lucide="activity"></i></div>
             </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>System Active</span></div>
+          </div>
+        </section>
 
-            <div class="intent-item">
-              <div class="intent-label-box">
-                <span class="intent-name">Product Inquiry</span>
-                <span class="intent-percentage">14%</span>
-              </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: 14%;"></div>
-              </div>
+        <div class="panel-card">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3>Departments Directory</h3>
+              <p>Manage organizational departments and codes</p>
             </div>
-
-            <div class="intent-item">
-              <div class="intent-label-box">
-                <span class="intent-name">Other</span>
-                <span class="intent-percentage">12%</span>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div class="time-range-group">
+                <button class="time-range-btn active" onclick="filterDeptStatus('ALL', this)">All Statuses</button>
+                <button class="time-range-btn" onclick="filterDeptStatus('ACTIVE', this)">Active</button>
+                <button class="time-range-btn" onclick="filterDeptStatus('INACTIVE', this)">Inactive</button>
               </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: 12%;"></div>
-              </div>
+              <button class="btn-primary" onclick="openAddDepartmentModal()"><i data-lucide="plus"></i> Add Department</button>
             </div>
-
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Department Name</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="departmentsTableBody">
+                <tr><td colspan="5" class="loading-cell">Loading departments...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-        <!-- RECENT AUDITS LIST -->
-        <div class="panel-card audits-list-panel">
-          <div class="panel-header">
-            <h3>Recent Audits</h3>
-            <a href="#" class="view-all-link">View all</a>
+      <!-- ==================================================================== -->
+      <!-- VIEW 4: DESIGNATIONS MANAGEMENT PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-designations" class="page-view">
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL DESIGNATIONS</span>
+                <h2 id="desig-stat-total">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="award"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Job Roles</span></div>
           </div>
-          <div class="audits-list">
-            
-            <div class="audit-row-item">
-              <button class="play-btn">
-                <i data-lucide="play"></i>
-              </button>
-              <div class="audit-meta">
-                <h4>Customer call - Refund issue</h4>
-                <p>Aug 21, 2026 · 10:30 AM · 08:24</p>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>ACTIVE ROLES</span>
+                <h2 id="desig-stat-active">0</h2>
               </div>
-              <span class="badge badge-positive">Positive</span>
-              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+              <div class="metric-icon-circle"><i data-lucide="check-circle-2"></i></div>
             </div>
-
-            <div class="audit-row-item">
-              <button class="play-btn">
-                <i data-lucide="play"></i>
-              </button>
-              <div class="audit-meta">
-                <h4>Sales call - Product demo</h4>
-                <p>Aug 21, 2026 · 09:15 AM · 12:18</p>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Operational</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>DEPT MAPPED</span>
+                <h2 id="desig-stat-mapped">0</h2>
               </div>
-              <span class="badge badge-neutral">Neutral</span>
-              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+              <div class="metric-icon-circle"><i data-lucide="building-2"></i></div>
             </div>
-
-            <div class="audit-row-item">
-              <button class="play-btn">
-                <i data-lucide="play"></i>
-              </button>
-              <div class="audit-meta">
-                <h4>Customer call - Late delivery</h4>
-                <p>Aug 20, 2026 · 04:45 PM · 06:31</p>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Assigned</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>GENERAL ROLES</span>
+                <h2 id="desig-stat-general">0</h2>
               </div>
-              <span class="badge badge-negative">Negative</span>
-              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+              <div class="metric-icon-circle"><i data-lucide="user-check"></i></div>
             </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Unmapped</span></div>
+          </div>
+        </section>
 
-            <div class="audit-row-item">
-              <button class="play-btn">
-                <i data-lucide="play"></i>
-              </button>
-              <div class="audit-meta">
-                <h4>Support call - Payment failure</h4>
-                <p>Aug 20, 2026 · 02:20 PM · 07:12</p>
+        <div class="panel-card">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3>Designations & Roles Directory</h3>
+              <p>Manage job roles, codes, and department assignments</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div class="time-range-group">
+                <button class="time-range-btn active" onclick="filterDesigStatus('ALL', this)">All Roles</button>
+                <button class="time-range-btn" onclick="filterDesigStatus('ACTIVE', this)">Active</button>
+                <button class="time-range-btn" onclick="filterDesigStatus('INACTIVE', this)">Inactive</button>
               </div>
-              <span class="badge badge-positive">Positive</span>
-              <button class="more-btn"><i data-lucide="more-vertical"></i></button>
+              <button class="btn-primary" onclick="openAddDesignationModal()"><i data-lucide="plus"></i> Add Designation</button>
             </div>
-
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Designation Title</th>
+                  <th>Department</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="designationsTableBody">
+                <tr><td colspan="6" class="loading-cell">Loading designations...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-      </section>
-
-      <!-- BOTTOM FEATURE CAROUSEL / BANNER -->
-      <section class="bottom-intelligence-banner">
-        <div class="banner-left">
-          <div class="robot-glow-box">
-            <i data-lucide="bot"></i>
+      <!-- ==================================================================== -->
+      <!-- VIEW 5: SHIFTS MANAGEMENT PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-shifts" class="page-view">
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL SHIFTS</span>
+                <h2 id="shift-stat-total">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="clock"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Roster Schedules</span></div>
           </div>
-          <div class="banner-text">
-            <h3>AI-Powered Conversation Intelligence</h3>
-            <p>VoxAudit uses advanced AI to help you understand every conversation and improve customer experience.</p>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>ACTIVE SHIFTS</span>
+                <h2 id="shift-stat-active">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="sun"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Operational</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>SHIFT HOURS</span>
+                <h2>8 Hours</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="calendar"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Standard Roster</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TIMEZONE</span>
+                <h2>UTC / IST</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="globe"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Global Support</span></div>
+          </div>
+        </section>
+
+        <div class="panel-card">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3>Work Shifts & Rosters</h3>
+              <p>Manage work schedules, shift timings, and timezones</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div class="time-range-group">
+                <button class="time-range-btn active" onclick="filterShiftStatus('ALL', this)">All Shifts</button>
+                <button class="time-range-btn" onclick="filterShiftStatus('ACTIVE', this)">Active</button>
+                <button class="time-range-btn" onclick="filterShiftStatus('INACTIVE', this)">Inactive</button>
+              </div>
+              <button class="btn-secondary" onclick="seedDefaultShifts()"><i data-lucide="sparkles"></i> Seed Defaults</button>
+              <button class="btn-primary" onclick="openAddShiftModal()"><i data-lucide="plus"></i> Add Shift</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Shift Name</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                  <th>Timezone</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="shiftsTableBody">
+                <tr><td colspan="7" class="loading-cell">Loading shifts...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
-
-        <div class="banner-feature-pills">
-          <div class="feature-pill">
-            <i data-lucide="volume-2"></i>
-            <span>Accurate Transcription</span>
-          </div>
-          <div class="feature-pill">
-            <i data-lucide="users"></i>
-            <span>Speaker Diarization</span>
-          </div>
-          <div class="feature-pill">
-            <i data-lucide="smile"></i>
-            <span>Sentiment Analysis</span>
-          </div>
-          <div class="feature-pill">
-            <i data-lucide="shield-check"></i>
-            <span>Compliance Check</span>
-          </div>
-          <div class="feature-pill">
-            <i data-lucide="sparkles"></i>
-            <span>Actionable Insights</span>
-          </div>
-        </div>
-      </section>
+      </div>
 
     </main>
   </div>
 
-  <!-- MODAL: VOICE ENROLLMENT STUDIO -->
-  <div class="modal-overlay" id="enrollmentModal">
-    <div class="modal-box">
+  <!-- MODALS -->
+  <div class="modal-overlay" id="employeeModal">
+    <div class="modal-box modal-xl">
       <div class="modal-header">
-        <h3><i data-lucide="mic"></i> Voice Sample Enrollment Studio</h3>
-        <button class="close-btn" onclick="closeModal('enrollmentModal')">&times;</button>
+        <h3 id="empModalTitle"><i data-lucide="users"></i> Add Employee</h3>
+        <button class="close-btn" onclick="closeModal('employeeModal')">&times;</button>
       </div>
-      <div class="modal-body">
-        <form id="enrollmentForm">
-          <div class="form-group">
-            <label>Select Employee</label>
-            <select id="enrollEmployeeSelect" required>
-              <option value="">-- Loading Employees... --</option>
-            </select>
-          </div>
+      <div class="modal-body" style="padding: 28px 32px;">
+        <form id="employeeForm" onsubmit="saveEmployee(event)">
+          <input type="hidden" id="empId">
 
-          <div class="form-group">
-            <label>Voice Recording Audio Files (Select 1 or Multiple Files)</label>
-            <div class="file-dropzone" onclick="document.getElementById('enrollFiles').click()">
-              <i data-lucide="upload-cloud"></i>
-              <p>Drag & Drop audio files (.wav, .mp3) or <strong>Browse Files</strong></p>
-              <input type="file" id="enrollFiles" multiple accept="audio/*" style="display: none;" onchange="handleFileSelect(this)">
+          <!-- Section 1: Basic Profile -->
+          <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="user" style="width: 16px; height: 16px;"></i> Personal & Profile Info
+            </h4>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Employee Code</label>
+                <input type="text" id="empCode" placeholder="Auto-generated if blank (e.g. AGNT-000001)">
+              </div>
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>First Name *</label>
+                <input type="text" id="empFirstName" required placeholder="e.g. Alice">
+              </div>
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Last Name</label>
+                <input type="text" id="empLastName" placeholder="e.g. Smith">
+              </div>
             </div>
-            <div id="fileListPreview" class="file-preview-list"></div>
           </div>
 
-          <div class="modal-actions">
-            <button type="button" class="btn-secondary" onclick="closeModal('enrollmentModal')">Cancel</button>
-            <button type="submit" class="btn-primary" id="btnEnrollSubmit">
-              <i data-lucide="send"></i> Enroll Voice Samples
-            </button>
+          <!-- Section 2: Contact & Joining Details -->
+          <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="mail" style="width: 16px; height: 16px;"></i> Contact & Employment Info
+            </h4>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Email Address</label>
+                <input type="email" id="empEmail" placeholder="alice.smith@company.com">
+              </div>
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Phone Number</label>
+                <input type="tel" id="empPhone" placeholder="+1 (555) 000-0000">
+              </div>
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Date of Joining *</label>
+                <input type="date" id="empDateJoining" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Organization & Role Assignment -->
+          <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="building-2" style="width: 16px; height: 16px;"></i> Organization & Schedule Mapping
+            </h4>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Department</label>
+                <select id="empDeptSelect"><option value="">-- Select Department --</option></select>
+              </div>
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Designation</label>
+                <select id="empDesigSelect"><option value="">-- Select Designation --</option></select>
+              </div>
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>Work Shift</label>
+                <select id="empShiftSelect"><option value="">-- Select Shift --</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Location & Status -->
+          <div>
+            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="map-pin" style="width: 16px; height: 16px;"></i> Location & Operational Status
+            </h4>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <div class="form-group" style="flex:2; min-width:280px;">
+                <label>Work Location</label>
+                <input type="text" id="empLocation" placeholder="e.g. New York HQ / Remote Office">
+              </div>
+              <div class="form-group" style="flex:1; min-width:180px;">
+                <label>Status</label>
+                <select id="empStatus">
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+            <button type="button" class="btn-secondary" style="padding: 10px 20px;" onclick="closeModal('employeeModal')">Cancel</button>
+            <button type="submit" class="btn-primary" style="padding: 10px 24px;" id="btnEmpSubmit"><i data-lucide="check"></i> Save Employee Profile</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: NEW CALL AUDIT -->
+  <div class="modal-overlay" id="departmentModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="deptModalTitle"><i data-lucide="building-2"></i> Add Department</h3>
+        <button class="close-btn" onclick="closeModal('departmentModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="departmentForm" onsubmit="saveDepartment(event)">
+          <input type="hidden" id="deptId">
+          <div class="form-group"><label>Department Code *</label><input type="text" id="deptCode" required placeholder="e.g. DEP-SUP"></div>
+          <div class="form-group"><label>Department Name *</label><input type="text" id="deptName" required placeholder="e.g. Customer Support"></div>
+          <div class="form-group"><label>Status</label><select id="deptStatus"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+          <div class="form-group"><label>Description</label><textarea id="deptDescription" rows="3"></textarea></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('departmentModal')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btnDeptSubmit">Save Department</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="designationModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="desigModalTitle"><i data-lucide="award"></i> Add Designation</h3>
+        <button class="close-btn" onclick="closeModal('designationModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="designationForm" onsubmit="saveDesignation(event)">
+          <input type="hidden" id="desigId">
+          <div class="form-group"><label>Designation Code *</label><input type="text" id="desigCode" required placeholder="e.g. DES-AGT"></div>
+          <div class="form-group"><label>Designation Title *</label><input type="text" id="desigName" required placeholder="e.g. Senior Support Agent"></div>
+          <div class="form-group"><label>Department</label><select id="desigDeptSelect"><option value="">-- None / General --</option></select></div>
+          <div class="form-group"><label>Status</label><select id="desigStatus"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+          <div class="form-group"><label>Description</label><textarea id="desigDescription" rows="3"></textarea></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('designationModal')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btnDesigSubmit">Save Designation</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="shiftModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="shiftModalTitle"><i data-lucide="clock"></i> Add Work Shift</h3>
+        <button class="close-btn" onclick="closeModal('shiftModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="shiftForm" onsubmit="saveShift(event)">
+          <input type="hidden" id="shiftId">
+          <div class="form-group"><label>Shift Code *</label><input type="text" id="shiftCode" required placeholder="e.g. SHF-MOR"></div>
+          <div class="form-group"><label>Shift Name *</label><input type="text" id="shiftName" required placeholder="e.g. Morning Shift"></div>
+          <div style="display:flex; gap:12px;">
+            <div class="form-group" style="flex:1;"><label>Start Time *</label><input type="time" id="shiftStartTime" required value="09:00"></div>
+            <div class="form-group" style="flex:1;"><label>End Time *</label><input type="time" id="shiftEndTime" required value="17:00"></div>
+          </div>
+          <div class="form-group"><label>Timezone</label><input type="text" id="shiftTimezone" value="UTC"></div>
+          <div class="form-group"><label>Status</label><select id="shiftStatus"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('shiftModal')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btnShiftSubmit">Save Shift</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="auditModal">
     <div class="modal-box">
       <div class="modal-header">
@@ -568,42 +1006,61 @@
       <div class="modal-body">
         <form id="auditForm">
           <div class="form-group">
-            <label>Call Recording File (.mp3, .wav)</label>
-            <div class="file-dropzone" onclick="document.getElementById('auditFile').click()">
-              <i data-lucide="upload-cloud"></i>
-              <p>Choose call audio recording file or <strong>Browse File</strong></p>
-              <input type="file" id="auditFile" accept="audio/*" required style="display: none;" onchange="handleAuditFileSelect(this)">
-            </div>
-            <div id="auditFilePreview" class="file-preview-list"></div>
+            <label>Assigned / Expected Agent (Optional)</label>
+            <select id="auditEmployeeSelect"><option value="">-- Open Identification (Milvus Auto-Match) --</option></select>
           </div>
-
+          <div class="form-group">
+            <label>Call Recording File (.mp3, .wav)</label>
+            <input type="file" id="auditFile" accept="audio/*" required>
+          </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('auditModal')">Cancel</button>
-            <button type="submit" class="btn-primary" id="btnAuditSubmit">
-              <i data-lucide="cpu"></i> Process & Audit Call
-            </button>
+            <button type="submit" class="btn-primary" id="btnAuditSubmit"><i data-lucide="cpu"></i> Process & Audit Call</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: VOICE DATABASE SUMMARY EXPLORER -->
+  <div class="modal-overlay" id="enrollmentModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i data-lucide="mic"></i> Voice Sample Enrollment Studio</h3>
+        <button class="close-btn" onclick="closeModal('enrollmentModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="enrollmentForm">
+          <div class="form-group"><label>Select Employee *</label><select id="enrollEmployeeSelect" required></select></div>
+          <div class="form-group"><label>Voice Audio Files</label><input type="file" id="enrollFiles" multiple accept="audio/*" required></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('enrollmentModal')">Cancel</button>
+            <button type="submit" class="btn-primary" id="btnEnrollSubmit">Enroll Voice Samples</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="transcriptModal">
+    <div class="modal-box modal-wide">
+      <div class="modal-header">
+        <h3><i data-lucide="file-text"></i> Interactive Call Audit & Speaker Transcript</h3>
+        <button class="close-btn" onclick="closeModal('transcriptModal')">&times;</button>
+      </div>
+      <div class="modal-body"><div id="transcriptModalContent"><p>Loading call transcript...</p></div></div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="voiceSummaryModal">
     <div class="modal-box modal-wide">
       <div class="modal-header">
         <h3><i data-lucide="database"></i> Enrolled Voice Database & Vector Profiles</h3>
         <button class="close-btn" onclick="closeModal('voiceSummaryModal')">&times;</button>
       </div>
-      <div class="modal-body">
-        <div id="voiceSummaryContent">
-          <p>Loading voice database summary...</p>
-        </div>
-      </div>
+      <div class="modal-body"><div id="voiceSummaryContent"><p>Loading summary...</p></div></div>
     </div>
   </div>
 
-  <!-- Application Logic -->
   <script src="/static/app.js"></script>
 </body>
 </html>

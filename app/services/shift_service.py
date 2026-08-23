@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.shift import Shift
 from app.repositories.shift_repository import ShiftRepository
 from app.schemas.shift import ShiftCreate, ShiftUpdate
+from app.services.code_generator import CodeGenerator, CodePrefix
 
 
 DEFAULT_SHIFTS = [
@@ -14,25 +15,29 @@ DEFAULT_SHIFTS = [
         "code": "GEN",
         "name": "General",
         "start_time": time(9, 0),
-        "end_time": time(18, 0),
+        "end_time": time(17, 0),
+        "timezone": "UTC",
     },
     {
         "code": "MORNING",
         "name": "Morning",
         "start_time": time(6, 0),
-        "end_time": time(15, 0),
+        "end_time": time(14, 0),
+        "timezone": "UTC",
     },
     {
         "code": "EVENING",
         "name": "Evening",
         "start_time": time(14, 0),
-        "end_time": time(23, 0),
+        "end_time": time(22, 0),
+        "timezone": "UTC",
     },
     {
         "code": "NIGHT",
         "name": "Night",
         "start_time": time(22, 0),
-        "end_time": time(7, 0),
+        "end_time": time(6, 0),
+        "timezone": "UTC",
     },
 ]
 
@@ -48,12 +53,17 @@ class ShiftService:
         data: ShiftCreate,
     ) -> Shift:
 
-        existing = self.repository.get_by_code(data.code)
-        if existing:
-            raise ValueError(f"Shift code '{data.code}' already exists.")
+        # Generate unique sequential SHFT-XXXXXX code automatically if not specified
+        code = data.code
+        if not code:
+            code = CodeGenerator.generate_code(self.db, CodePrefix.SHIFT)
+        else:
+            existing = self.repository.get_by_code(code)
+            if existing:
+                raise ValueError(f"Shift code '{code}' already exists.")
 
         shift = Shift(
-            code=data.code,
+            code=code,
             name=data.name,
             start_time=data.start_time,
             end_time=data.end_time,

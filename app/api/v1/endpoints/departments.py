@@ -36,6 +36,18 @@ def create_department(
         )
 
 
+@router.post(
+    "/seed",
+    response_model=list[DepartmentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def seed_departments(
+    db: Session = Depends(get_db),
+):
+    service = DepartmentService(db)
+    return service.seed_default_departments()
+
+
 @router.get(
     "/",
     response_model=list[DepartmentResponse],
@@ -44,8 +56,10 @@ def get_departments(
     db: Session = Depends(get_db),
 ):
     service = DepartmentService(db)
-
-    return service.get_departments()
+    departments = service.get_departments()
+    if not departments:
+        return service.seed_default_departments()
+    return departments
 
 
 @router.get(

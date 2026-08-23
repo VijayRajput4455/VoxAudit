@@ -11,6 +11,13 @@ class VoiceSample(
 ):
     __tablename__ = "voice_samples"
 
+    code: Mapped[str | None] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
+
     employee_id: Mapped[str] = mapped_column(
         ForeignKey("employees.id", ondelete="CASCADE"),
         nullable=False,

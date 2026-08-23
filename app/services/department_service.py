@@ -6,6 +6,23 @@ from sqlalchemy.orm import Session
 from app.models.department import Department
 from app.repositories.department_repository import DepartmentRepository
 from app.schemas.department import DepartmentCreate, DepartmentUpdate
+from app.services.code_generator import CodeGenerator, CodePrefix
+
+
+DEFAULT_DEPARTMENTS = [
+    {
+        "name": "Customer Support",
+        "description": "Department responsible for customer support, call resolution, and QA scorecards.",
+    },
+    {
+        "name": "Sales",
+        "description": "Department handling outbound sales calls, lead qualification, and customer acquisition.",
+    },
+    {
+        "name": "Backend Operations",
+        "description": "Department managing back-office data processing, verification, and workflow management.",
+    },
+]
 
 
 class DepartmentService:
@@ -19,16 +36,21 @@ class DepartmentService:
         data: DepartmentCreate,
     ) -> Department:
 
-        existing_code = self.repository.get_by_code(data.code)
-        if existing_code:
-            raise ValueError(f"Department code '{data.code}' already exists.")
-
         existing_name = self.repository.get_by_name(data.name)
         if existing_name:
             raise ValueError(f"Department name '{data.name}' already exists.")
 
+        # Generate unique sequential DEPT-XXXXXX code automatically if not specified
+        code = data.code
+        if not code:
+            code = CodeGenerator.generate_code(self.db, CodePrefix.DEPARTMENT)
+        else:
+            existing_code = self.repository.get_by_code(code)
+            if existing_code:
+                raise ValueError(f"Department code '{code}' already exists.")
+
         department = Department(
-            code=data.code,
+            code=code,
             name=data.name,
             description=data.description,
             status=data.status,
@@ -131,3 +153,26 @@ class DepartmentService:
         except Exception:
             self.db.rollback()
             raise
+
+    def seed_default_departments(self) -> list[Department]:
+        created_departments = []
+        all_existing = self.repository.get_all()
+        existing_names = {d.name.lower() for d in all_existing}
+
+        for dept_data in DEFAULT_DEPARTMENTS:
+            if dept_data["name"].lower() not in existing_names:
+                code = CodeGenerator.generate_code(self.db, CodePrefix.DEPARTMENT)
+                dept = Department(
+                    code=code,
+                    name=dept_data["name"],
+                    description=dept_data.get("description"),
+                    status="ACTIVE",
+                )
+                dept = self.repository.create(dept)
+                created_departments.append(dept)
+                existing_names.add(dept_data["name"].lower())
+
+        if created_departments:
+            self.db.commit()
+
+        return self.repository.get_all()

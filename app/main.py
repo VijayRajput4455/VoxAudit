@@ -25,13 +25,16 @@ async def lifespan(app: FastAPI):
     from sqlalchemy import text
     Base.metadata.create_all(bind=engine)
 
-    # Ensure new QA Scorecard columns exist on pre-existing call_jobs PostgreSQL table
+    # Ensure new QA Scorecard and Code Generator columns exist on pre-existing database tables
     try:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE call_jobs ADD COLUMN IF NOT EXISTS qa_score FLOAT;"))
             conn.execute(text("ALTER TABLE call_jobs ADD COLUMN IF NOT EXISTS qa_scorecard_json JSON;"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_call_jobs_qa_score ON call_jobs (qa_score);"))
-        logger.info("Database schema auto-migration for QA Scorecard columns applied successfully.")
+            conn.execute(text("ALTER TABLE call_jobs ADD COLUMN IF NOT EXISTS code VARCHAR(50);"))
+            conn.execute(text("ALTER TABLE call_jobs ADD COLUMN IF NOT EXISTS audit_code VARCHAR(50);"))
+            conn.execute(text("ALTER TABLE voice_samples ADD COLUMN IF NOT EXISTS code VARCHAR(50);"))
+        logger.info("Database schema auto-migration applied successfully.")
     except Exception as exc:
         logger.warning(f"Database schema auto-migration warning: {str(exc)}")
 
