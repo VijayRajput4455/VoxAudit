@@ -655,24 +655,91 @@
               </div>
 
               <form id="voiceEnrollForm" onsubmit="submitVoiceEnrollment(event)">
+                <!-- TARGET EMPLOYEE SEARCHABLE DROPDOWN WIDGET -->
                 <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Target Employee *</label>
-                  <select id="veEmployeeSelect" class="custom-select-premium" required>
-                    <option value="">-- Loading Employees... --</option>
-                  </select>
-                </div>
+                  <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                    <i data-lucide="user-check" style="width: 15px; color: #1d4ed8;"></i>
+                    <span>Select Target Employee *</span>
+                  </label>
+                  <input type="hidden" id="veEmployeeSelect" required value="">
 
-                <!-- FILE UPLOAD FIELD -->
-                <div id="enrollUploadArea">
-                  <div class="form-group" style="margin-bottom: 18px;">
-                    <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Voice Files (.wav, .mp3, .flac) *</label>
-                    <input type="file" id="veAudioFiles" multiple required accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
+                  <div class="agent-dropdown-wrapper" id="veAgentDropdownWrapper">
+                    <div class="agent-select-trigger" id="veAgentTrigger" onclick="toggleVeAgentDropdown(event)">
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="agent-avatar-circle" id="veTriggerAvatar">
+                          <i data-lucide="user" style="width: 16px;"></i>
+                        </div>
+                        <div>
+                          <strong id="veTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Choose Employee to Enroll...</strong>
+                          <small id="veTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Select staff member from database</small>
+                        </div>
+                      </div>
+                      <i data-lucide="chevron-down" id="veTriggerChevron" style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
+                    </div>
+
+                    <div class="agent-dropdown-menu" id="veAgentMenu">
+                      <div class="agent-search-box">
+                        <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                        <input type="text" class="agent-search-input" id="veAgentSearchInput" placeholder="Search staff name, code, or department..." onclick="event.stopPropagation()" oninput="filterVeAgentDropdown(this.value)">
+                      </div>
+                      <div class="agent-options-list" id="veAgentOptionsList">
+                        <!-- Dynamic -->
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="shield"></i> SpeechBrain ECAPA 192d</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnSubmitEnrollment"><i data-lucide="cpu"></i> Enroll Voice Data</button>
+                <!-- FILE UPLOAD DROPZONE -->
+                <div id="enrollUploadArea" style="margin-bottom: 18px;">
+                  <input type="file" id="veAudioFiles" multiple required accept="audio/*" style="display: none;" onchange="handleVeFileSelect(event)">
+                  
+                  <div id="veDropzone" class="vox-upload-dropzone" style="padding: 24px 16px;" onclick="document.getElementById('veAudioFiles').click()">
+                    <div class="dropzone-icon-container" style="width: 52px; height: 52px; margin-bottom: 10px;">
+                      <i data-lucide="mic" style="width: 26px; height: 26px;"></i>
+                    </div>
+                    <h4 style="font-size: 14.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px;">
+                      Drag & Drop Voice Enrollment Audio
+                    </h4>
+                    <p style="font-size: 12.5px; color: #64748b; margin: 0 0 10px;">
+                      or <span style="color: #2563eb; font-weight: 600; text-decoration: underline;">Browse files</span> (Multiple files supported)
+                    </p>
+                    <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
+                      <span class="audio-format-pill">.WAV</span>
+                      <span class="audio-format-pill">.MP3</span>
+                      <span class="audio-format-pill">.FLAC</span>
+                    </div>
+                  </div>
+
+                  <!-- LIVE FILE PREVIEW CARD -->
+                  <div id="veFilePreviewCard" style="display: none; margin-top: 10px;">
+                    <div class="audio-file-preview" style="padding: 10px 14px;">
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; display: flex; align-items: center; justify-content: center;">
+                          <i data-lucide="music" style="width: 18px; height: 18px;"></i>
+                        </div>
+                        <div>
+                          <strong id="vePreviewFilename" style="font-size: 12.5px; color: #0f172a; display: block;">1 audio file selected</strong>
+                          <small id="vePreviewFilesize" style="font-size: 11px; color: #64748b;">Ready to enroll</small>
+                        </div>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="sound-bars">
+                          <div class="sound-bar"></div>
+                          <div class="sound-bar"></div>
+                          <div class="sound-bar"></div>
+                          <div class="sound-bar"></div>
+                        </div>
+                        <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #dc2626; border-color: #fca5a5;" onclick="clearVeSelectedFiles(event)">
+                          <i data-lucide="x" style="width: 11px;"></i> Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px;"><i data-lucide="shield" style="width: 14px; color: #1d61e7;"></i> ECAPA-TDNN 192D</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 22px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);" id="btnSubmitEnrollment"><i data-lucide="cpu"></i> Enroll Voice Data</button>
                 </div>
               </form>
             </div>
@@ -692,18 +759,85 @@
               </div>
 
               <form id="voiceVerifyForm" onsubmit="submitVoiceVerificationTest(event)">
+                <!-- TARGET VERIFICATION SEARCHABLE DROPDOWN -->
                 <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Target Employee (Optional - 1:1 Verification)</label>
-                  <select id="verifyTargetSelect" class="custom-select-premium">
-                    <option value="">-- Open Identification (1:N Search Across All) --</option>
-                  </select>
+                  <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                    <i data-lucide="target" style="width: 15px; color: #1d4ed8;"></i>
+                    <span>Target Employee (Optional - 1:1 Verification)</span>
+                  </label>
+                  <input type="hidden" id="verifyTargetSelect" value="">
+
+                  <div class="agent-dropdown-wrapper" id="verifyAgentDropdownWrapper">
+                    <div class="agent-select-trigger" id="verifyAgentTrigger" onclick="toggleVerifyAgentDropdown(event)">
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="agent-avatar-circle" id="verifyTriggerAvatar" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                          <i data-lucide="globe" style="width: 16px;"></i>
+                        </div>
+                        <div>
+                          <strong id="verifyTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Open Identification (1:N Search Across All)</strong>
+                          <small id="verifyTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Matches against all enrolled employee profiles</small>
+                        </div>
+                      </div>
+                      <i data-lucide="chevron-down" id="verifyTriggerChevron" style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
+                    </div>
+
+                    <div class="agent-dropdown-menu" id="verifyAgentMenu">
+                      <div class="agent-search-box">
+                        <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                        <input type="text" class="agent-search-input" id="verifyAgentSearchInput" placeholder="Search staff name, code, or department..." onclick="event.stopPropagation()" oninput="filterVerifyAgentDropdown(this.value)">
+                      </div>
+                      <div class="agent-options-list" id="verifyAgentOptionsList">
+                        <!-- Dynamic -->
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <!-- VERIFY FILE UPLOAD -->
-                <div id="verifyUploadArea">
-                  <div class="form-group" style="margin-bottom: 18px;">
-                    <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Query Voice File (.wav, .mp3, .flac) *</label>
-                    <input type="file" id="verifyAudioFile" required accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
+                <!-- VERIFY FILE UPLOAD DROPZONE -->
+                <div id="verifyUploadArea" style="margin-bottom: 18px;">
+                  <input type="file" id="verifyAudioFile" required accept="audio/*" style="display: none;" onchange="handleVerifyFileSelect(event)">
+                  
+                  <div id="verifyDropzone" class="vox-upload-dropzone" style="padding: 24px 16px;" onclick="document.getElementById('verifyAudioFile').click()">
+                    <div class="dropzone-icon-container" style="width: 52px; height: 52px; margin-bottom: 10px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.35);">
+                      <i data-lucide="audio-lines" style="width: 26px; height: 26px;"></i>
+                    </div>
+                    <h4 style="font-size: 14.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px;">
+                      Drag & Drop Query Voice Recording
+                    </h4>
+                    <p style="font-size: 12.5px; color: #64748b; margin: 0 0 10px;">
+                      or <span style="color: #10b981; font-weight: 600; text-decoration: underline;">Browse audio file</span>
+                    </p>
+                    <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
+                      <span class="audio-format-pill">.WAV</span>
+                      <span class="audio-format-pill">.MP3</span>
+                      <span class="audio-format-pill">.FLAC</span>
+                    </div>
+                  </div>
+
+                  <!-- LIVE FILE PREVIEW CARD -->
+                  <div id="verifyFilePreviewCard" style="display: none; margin-top: 10px;">
+                    <div class="audio-file-preview" style="padding: 10px 14px; border-color: #a7f3d0;">
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 36px; height: 36px; border-radius: 10px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center;">
+                          <i data-lucide="music" style="width: 18px; height: 18px;"></i>
+                        </div>
+                        <div>
+                          <strong id="verifyPreviewFilename" style="font-size: 12.5px; color: #0f172a; display: block;">test_query.wav</strong>
+                          <small id="verifyPreviewFilesize" style="font-size: 11px; color: #64748b;">Ready to verify</small>
+                        </div>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="sound-bars">
+                          <div class="sound-bar" style="background: #059669;"></div>
+                          <div class="sound-bar" style="background: #059669;"></div>
+                          <div class="sound-bar" style="background: #059669;"></div>
+                          <div class="sound-bar" style="background: #059669;"></div>
+                        </div>
+                        <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #dc2626; border-color: #fca5a5;" onclick="clearVerifySelectedFile(event)">
+                          <i data-lucide="x" style="width: 11px;"></i> Remove
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -719,9 +853,9 @@
                   <audio id="verifyMicAudioPreview" controls style="display:none; width: 100%; margin-top: 14px; border-radius: 8px;"></audio>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="cpu"></i> Milvus Cosine 1:N Search</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnVerifySubmit"><i data-lucide="shield-check"></i> Verify Speaker</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px;"><i data-lucide="cpu" style="width: 14px; color: #059669;"></i> Milvus Cosine 1:N Search</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 22px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #059669 0%, #10b981 100%);" id="btnVerifySubmit"><i data-lucide="shield-check"></i> Verify Speaker</button>
                 </div>
               </form>
             </div>

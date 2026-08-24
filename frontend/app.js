@@ -2207,23 +2207,372 @@ async function loadVoiceEnrollmentPage() {
 
     populateVoiceEnrollmentDropdowns();
     renderVoiceEnrollmentDirectory(summaryData);
+    initVeDropzones();
   } catch (err) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Error loading voice enrollment directory</td></tr>`;
   }
 }
 
 function populateVoiceEnrollmentDropdowns() {
-  const veEmpSel = document.getElementById("veEmployeeSelect");
-  if (veEmpSel) {
-    veEmpSel.innerHTML = `<option value="">-- Select Target Employee --</option>` +
-      employeesCache.map(e => `<option value="${e.id}">${e.first_name} ${e.last_name || ""} (${e.employee_code})</option>`).join("");
+  populateVeAgentDropdown();
+  populateVerifyAgentDropdown();
+}
+
+/* ==========================================================================
+   VOICE ENROLLMENT LUXURY DROPDOWN & DROPZONE
+   ========================================================================== */
+
+function populateVeAgentDropdown(filterText = "") {
+  const listEl = document.getElementById("veAgentOptionsList");
+  if (!listEl) return;
+
+  const currentVal = document.getElementById("veEmployeeSelect")?.value || "";
+  const query = filterText.toLowerCase().trim();
+
+  let filtered = employeesCache;
+  if (query) {
+    filtered = employeesCache.filter(e => {
+      const name = `${e.first_name} ${e.last_name || ""}`.toLowerCase();
+      const code = (e.employee_code || "").toLowerCase();
+      const dept = (departmentsCache.find(d => strId(d.id) === strId(e.department_id))?.name || "").toLowerCase();
+      return name.includes(query) || code.includes(query) || dept.includes(query);
+    });
   }
 
-  const verTargetSel = document.getElementById("verifyTargetSelect");
-  if (verTargetSel) {
-    verTargetSel.innerHTML = `<option value="">-- Open Identification (1:N Search Across All) --</option>` +
-      employeesCache.map(e => `<option value="${e.id}">${e.first_name} ${e.last_name || ""} (${e.employee_code})</option>`).join("");
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<div style="padding: 12px; text-align: center; color: #94a3b8; font-size: 12px;">No matching staff found</div>`;
+    return;
   }
+
+  listEl.innerHTML = filtered.map(emp => {
+    const isSel = strId(emp.id) === strId(currentVal);
+    const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "General";
+    const initials = `${emp.first_name.charAt(0)}${(emp.last_name || '').charAt(0)}`.toUpperCase();
+
+    return `
+      <div class="agent-option-row ${isSel ? 'selected' : ''}" onclick="selectVeAgentOption('${emp.id}')">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="agent-avatar-circle">
+            ${initials || 'AG'}
+          </div>
+          <div>
+            <strong style="font-size: 13px; color: #0f172a; display: block;">${emp.first_name} ${emp.last_name || ""}</strong>
+            <small style="font-size: 11px; color: #64748b;">${emp.employee_code} • ${dept}</small>
+          </div>
+        </div>
+        ${isSel ? '<i data-lucide="check" style="width: 14px; color: #2563eb;"></i>' : ''}
+      </div>
+    `;
+  }).join("");
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function toggleVeAgentDropdown(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById("veAgentMenu");
+  const trigger = document.getElementById("veAgentTrigger");
+  const chevron = document.getElementById("veTriggerChevron");
+  if (!menu) return;
+
+  const isOpen = menu.classList.contains("show");
+  if (isOpen) {
+    menu.classList.remove("show");
+    trigger?.classList.remove("active");
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+  } else {
+    menu.classList.add("show");
+    trigger?.classList.add("active");
+    if (chevron) chevron.style.transform = "rotate(180deg)";
+    populateVeAgentDropdown();
+    setTimeout(() => {
+      document.getElementById("veAgentSearchInput")?.focus();
+    }, 50);
+  }
+}
+
+function filterVeAgentDropdown(query) {
+  populateVeAgentDropdown(query);
+}
+
+function selectVeAgentOption(empId) {
+  const hiddenInput = document.getElementById("veEmployeeSelect");
+  if (hiddenInput) hiddenInput.value = empId || "";
+
+  const titleEl = document.getElementById("veTriggerTitle");
+  const subEl = document.getElementById("veTriggerSubtitle");
+  const avatarEl = document.getElementById("veTriggerAvatar");
+
+  if (!empId) {
+    if (titleEl) titleEl.textContent = "Choose Employee to Enroll...";
+    if (subEl) subEl.textContent = "Select staff member from database";
+    if (avatarEl) {
+      avatarEl.style.background = "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)";
+      avatarEl.innerHTML = '<i data-lucide="user" style="width: 16px;"></i>';
+    }
+  } else {
+    const emp = employeesCache.find(e => strId(e.id) === strId(empId));
+    if (emp) {
+      const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "General";
+      const initials = `${emp.first_name.charAt(0)}${(emp.last_name || '').charAt(0)}`.toUpperCase();
+
+      if (titleEl) titleEl.textContent = `${emp.first_name} ${emp.last_name || ""} (${emp.employee_code})`;
+      if (subEl) subEl.textContent = `Department: ${dept} • Voice Profile Ready`;
+      if (avatarEl) {
+        avatarEl.style.background = "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)";
+        avatarEl.textContent = initials || "AG";
+      }
+    }
+  }
+
+  // Close menu
+  const menu = document.getElementById("veAgentMenu");
+  const trigger = document.getElementById("veAgentTrigger");
+  const chevron = document.getElementById("veTriggerChevron");
+  menu?.classList.remove("show");
+  trigger?.classList.remove("active");
+  if (chevron) chevron.style.transform = "rotate(0deg)";
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+/* ==========================================================================
+   SPEAKER VERIFICATION LUXURY DROPDOWN & DROPZONE
+   ========================================================================== */
+
+function populateVerifyAgentDropdown(filterText = "") {
+  const listEl = document.getElementById("verifyAgentOptionsList");
+  if (!listEl) return;
+
+  const currentVal = document.getElementById("verifyTargetSelect")?.value || "";
+  const query = filterText.toLowerCase().trim();
+
+  let filtered = employeesCache;
+  if (query) {
+    filtered = employeesCache.filter(e => {
+      const name = `${e.first_name} ${e.last_name || ""}`.toLowerCase();
+      const code = (e.employee_code || "").toLowerCase();
+      const dept = (departmentsCache.find(d => strId(d.id) === strId(e.department_id))?.name || "").toLowerCase();
+      return name.includes(query) || code.includes(query) || dept.includes(query);
+    });
+  }
+
+  let html = `
+    <div class="agent-option-row ${!currentVal ? 'selected' : ''}" onclick="selectVerifyAgentOption('')">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="agent-avatar-circle" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+          <i data-lucide="globe" style="width: 14px;"></i>
+        </div>
+        <div>
+          <strong style="font-size: 13px; color: #0f172a; display: block;">Open Identification (1:N Search Across All)</strong>
+          <small style="font-size: 11px; color: #64748b;">Default • Matches against all enrolled profiles</small>
+        </div>
+      </div>
+      <span class="status-pill badge-completed" style="font-size: 10px; padding: 2px 7px;">Default</span>
+    </div>
+  `;
+
+  html += filtered.map(emp => {
+    const isSel = strId(emp.id) === strId(currentVal);
+    const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "General";
+    const initials = `${emp.first_name.charAt(0)}${(emp.last_name || '').charAt(0)}`.toUpperCase();
+
+    return `
+      <div class="agent-option-row ${isSel ? 'selected' : ''}" onclick="selectVerifyAgentOption('${emp.id}')">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="agent-avatar-circle" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+            ${initials || 'AG'}
+          </div>
+          <div>
+            <strong style="font-size: 13px; color: #0f172a; display: block;">${emp.first_name} ${emp.last_name || ""}</strong>
+            <small style="font-size: 11px; color: #64748b;">${emp.employee_code} • ${dept}</small>
+          </div>
+        </div>
+        ${isSel ? '<i data-lucide="check" style="width: 14px; color: #059669;"></i>' : ''}
+      </div>
+    `;
+  }).join("");
+
+  listEl.innerHTML = html;
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function toggleVerifyAgentDropdown(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById("verifyAgentMenu");
+  const trigger = document.getElementById("verifyAgentTrigger");
+  const chevron = document.getElementById("verifyTriggerChevron");
+  if (!menu) return;
+
+  const isOpen = menu.classList.contains("show");
+  if (isOpen) {
+    menu.classList.remove("show");
+    trigger?.classList.remove("active");
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+  } else {
+    menu.classList.add("show");
+    trigger?.classList.add("active");
+    if (chevron) chevron.style.transform = "rotate(180deg)";
+    populateVerifyAgentDropdown();
+    setTimeout(() => {
+      document.getElementById("verifyAgentSearchInput")?.focus();
+    }, 50);
+  }
+}
+
+function filterVerifyAgentDropdown(query) {
+  populateVerifyAgentDropdown(query);
+}
+
+function selectVerifyAgentOption(empId) {
+  const hiddenInput = document.getElementById("verifyTargetSelect");
+  if (hiddenInput) hiddenInput.value = empId || "";
+
+  const titleEl = document.getElementById("verifyTriggerTitle");
+  const subEl = document.getElementById("verifyTriggerSubtitle");
+  const avatarEl = document.getElementById("verifyTriggerAvatar");
+
+  if (!empId) {
+    if (titleEl) titleEl.textContent = "Open Identification (1:N Search Across All)";
+    if (subEl) subEl.textContent = "Matches against all enrolled employee profiles";
+    if (avatarEl) {
+      avatarEl.style.background = "linear-gradient(135deg, #059669 0%, #10b981 100%)";
+      avatarEl.innerHTML = '<i data-lucide="globe" style="width: 16px;"></i>';
+    }
+  } else {
+    const emp = employeesCache.find(e => strId(e.id) === strId(empId));
+    if (emp) {
+      const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "General";
+      const initials = `${emp.first_name.charAt(0)}${(emp.last_name || '').charAt(0)}`.toUpperCase();
+
+      if (titleEl) titleEl.textContent = `${emp.first_name} ${emp.last_name || ""} (${emp.employee_code})`;
+      if (subEl) subEl.textContent = `Department: ${dept} • Targeted 1:1 Verification`;
+      if (avatarEl) {
+        avatarEl.style.background = "linear-gradient(135deg, #059669 0%, #10b981 100%)";
+        avatarEl.textContent = initials || "AG";
+      }
+    }
+  }
+
+  // Close menu
+  const menu = document.getElementById("verifyAgentMenu");
+  const trigger = document.getElementById("verifyAgentTrigger");
+  const chevron = document.getElementById("verifyTriggerChevron");
+  menu?.classList.remove("show");
+  trigger?.classList.remove("active");
+  if (chevron) chevron.style.transform = "rotate(0deg)";
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function selectEmployeeForEnrollment(employeeId) {
+  selectVeAgentOption(employeeId);
+  const trigger = document.getElementById("veAgentTrigger");
+  if (trigger) {
+    trigger.scrollIntoView({ behavior: "smooth" });
+  }
+}
+
+/* ==========================================================================
+   DRAG AND DROP DROPZONES FOR ENROLLMENT & VERIFICATION
+   ========================================================================== */
+
+function initVeDropzones() {
+  // Voice Enrollment Dropzone
+  const veDropzone = document.getElementById("veDropzone");
+  const veFileInput = document.getElementById("veAudioFiles");
+  if (veDropzone && veFileInput) {
+    ["dragenter", "dragover"].forEach(evt => {
+      veDropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); veDropzone.classList.add("drag-over"); }, false);
+    });
+    ["dragleave", "drop"].forEach(evt => {
+      veDropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); veDropzone.classList.remove("drag-over"); }, false);
+    });
+    veDropzone.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        veFileInput.files = dt.files;
+        handleVeFileSelect();
+      }
+    }, false);
+  }
+
+  // Speaker Verification Dropzone
+  const verDropzone = document.getElementById("verifyDropzone");
+  const verFileInput = document.getElementById("verifyAudioFile");
+  if (verDropzone && verFileInput) {
+    ["dragenter", "dragover"].forEach(evt => {
+      verDropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); verDropzone.classList.add("drag-over"); }, false);
+    });
+    ["dragleave", "drop"].forEach(evt => {
+      verDropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); verDropzone.classList.remove("drag-over"); }, false);
+    });
+    verDropzone.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        verFileInput.files = dt.files;
+        handleVerifyFileSelect();
+      }
+    }, false);
+  }
+}
+
+function handleVeFileSelect(e) {
+  const fileInput = document.getElementById("veAudioFiles");
+  const previewCard = document.getElementById("veFilePreviewCard");
+  const nameEl = document.getElementById("vePreviewFilename");
+  const sizeEl = document.getElementById("vePreviewFilesize");
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    if (previewCard) previewCard.style.display = "none";
+    return;
+  }
+
+  const files = fileInput.files;
+  let totalBytes = 0;
+  for (let i = 0; i < files.length; i++) totalBytes += files[i].size;
+  const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+
+  if (nameEl) nameEl.textContent = files.length === 1 ? files[0].name : `${files.length} audio files selected`;
+  if (sizeEl) sizeEl.textContent = `${mb} MB total • Ready to enroll`;
+  if (previewCard) previewCard.style.display = "block";
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function clearVeSelectedFiles(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const fileInput = document.getElementById("veAudioFiles");
+  const previewCard = document.getElementById("veFilePreviewCard");
+  if (fileInput) fileInput.value = "";
+  if (previewCard) previewCard.style.display = "none";
+}
+
+function handleVerifyFileSelect(e) {
+  const fileInput = document.getElementById("verifyAudioFile");
+  const previewCard = document.getElementById("verifyFilePreviewCard");
+  const nameEl = document.getElementById("verifyPreviewFilename");
+  const sizeEl = document.getElementById("verifyPreviewFilesize");
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    if (previewCard) previewCard.style.display = "none";
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const mb = (file.size / (1024 * 1024)).toFixed(2);
+
+  if (nameEl) nameEl.textContent = file.name;
+  if (sizeEl) sizeEl.textContent = `${mb} MB • Ready to verify`;
+  if (previewCard) previewCard.style.display = "block";
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function clearVerifySelectedFile(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const fileInput = document.getElementById("verifyAudioFile");
+  const previewCard = document.getElementById("verifyFilePreviewCard");
+  if (fileInput) fileInput.value = "";
+  if (previewCard) previewCard.style.display = "none";
 }
 
 function renderVoiceEnrollmentDirectory(summaryData) {
@@ -2438,7 +2787,7 @@ async function submitVoiceEnrollment(e) {
     showToast(`Voice sample(s) successfully enrolled! ${data.message || ""}`, "success");
 
     clearMicRecording();
-    document.getElementById("veAudioFiles").value = "";
+    clearVeSelectedFiles();
     loadVoiceEnrollmentPage();
   } catch (err) {
     showToast("Voice Enrollment Error: " + err.message, "error");
@@ -3242,16 +3591,33 @@ function selectDiarAgentOption(empId) {
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
-// Global click to close agent dropdown when clicking outside
+// Global click to close agent dropdowns when clicking outside
 document.addEventListener("click", (e) => {
-  const wrapper = document.getElementById("diarAgentDropdownWrapper");
-  if (wrapper && !wrapper.contains(e.target)) {
-    const menu = document.getElementById("diarAgentMenu");
-    const trigger = document.getElementById("diarAgentTrigger");
-    const chevron = document.getElementById("diarTriggerChevron");
-    menu?.classList.remove("show");
-    trigger?.classList.remove("active");
-    if (chevron) chevron.style.transform = "rotate(0deg)";
+  // Diarization Dropdown
+  const diarWrapper = document.getElementById("diarAgentDropdownWrapper");
+  if (diarWrapper && !diarWrapper.contains(e.target)) {
+    document.getElementById("diarAgentMenu")?.classList.remove("show");
+    document.getElementById("diarAgentTrigger")?.classList.remove("active");
+    const chev = document.getElementById("diarTriggerChevron");
+    if (chev) chev.style.transform = "rotate(0deg)";
+  }
+
+  // Voice Enrollment Dropdown
+  const veWrapper = document.getElementById("veAgentDropdownWrapper");
+  if (veWrapper && !veWrapper.contains(e.target)) {
+    document.getElementById("veAgentMenu")?.classList.remove("show");
+    document.getElementById("veAgentTrigger")?.classList.remove("active");
+    const chev = document.getElementById("veTriggerChevron");
+    if (chev) chev.style.transform = "rotate(0deg)";
+  }
+
+  // Verification Target Dropdown
+  const verifyWrapper = document.getElementById("verifyAgentDropdownWrapper");
+  if (verifyWrapper && !verifyWrapper.contains(e.target)) {
+    document.getElementById("verifyAgentMenu")?.classList.remove("show");
+    document.getElementById("verifyAgentTrigger")?.classList.remove("active");
+    const chev = document.getElementById("verifyTriggerChevron");
+    if (chev) chev.style.transform = "rotate(0deg)";
   }
 });
 
