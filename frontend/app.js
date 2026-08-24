@@ -3491,18 +3491,14 @@ function setDiarInputMode(mode) {
 }
 
 async function loadDiarizationPage() {
-  if (auditsCache.length === 0) {
-    try {
-      const res = await fetch("/api/v1/calls/");
-      if (res.ok) auditsCache = await res.json();
-    } catch (e) { }
-  }
-  if (employeesCache.length === 0) {
-    try {
-      const res = await fetch("/api/v1/employees/");
-      if (res.ok) employeesCache = await res.json();
-    } catch (e) { }
-  }
+  try {
+    const [callsRes, empRes] = await Promise.all([
+      fetch("/api/v1/calls/"),
+      fetch("/api/v1/employees/")
+    ]);
+    if (callsRes.ok) auditsCache = await callsRes.json();
+    if (empRes.ok) employeesCache = await empRes.json();
+  } catch (e) { }
 
   const selDb = document.getElementById("diarCallSelect");
   if (selDb) {
@@ -3518,6 +3514,9 @@ async function loadDiarizationPage() {
   if (callsEl) callsEl.textContent = auditsCache.length;
   if (turnsEl) turnsEl.textContent = auditsCache.reduce((a, b) => a + (b.speakers_count || 2) * 4, 0);
   if (matchedEl) matchedEl.textContent = auditsCache.filter(c => c.identified_employee_id).length;
+
+  // Render Diarized Calls History Table
+  renderDiarHistoryTable();
 
   // Sync any active pending or processing jobs from backend
   const activeBackendJobs = auditsCache.filter(c => c.status === "PENDING" || c.status === "PROCESSING");
@@ -4045,6 +4044,7 @@ function startDiarQueuePolling() {
             currentViewedDiarJobId = job.id;
             renderRealDiarizationData(data);
             await loadCallAudits();
+            renderDiarHistoryTable();
           }
         } else if (job.status === "PROCESSING" && (!currentViewedDiarJobId || currentViewedDiarJobId === job.id)) {
           renderProcessingSplash(job);
@@ -4435,6 +4435,230 @@ function triggerQaAuditFromDiar() {
       loadSelectedQaDetails();
     }
   }, 100);
+}
+
+/* ==========================================================================
+   DIARIZED CALLS & TRANSCRIPTS HISTORY TABLE
+   ========================================================================== */
+
+function renderDiarHistoryTable(filterQuery = "") {
+  const tbody = document.getElementById("diarHistoryTableBody");
+  if (!tbody) return;
+
+  const query = (filterQuery || "").toLowerCase().trim();
+  let calls = [...auditsCache];
+
+  if (query) {
+    calls = calls.filter(c => {
+      const fn = (c.audio_filename || c.original_file_name || "").toLowerCase();
+      const ref = (c.call_reference || c.id || "").toLowerCase();
+      const emp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
+      const empName = emp ? `${emp.first_name} ${emp.last_name || ""}`.toLowerCase() : "";
+      const empCode = emp ? (emp.employee_code || "").toLowerCase() : "";
+      return fn.includes(query) || ref.includes(query) || empName.includes(query) || empCode.includes(query);
+    });
+  }
+
+  if (calls.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+          <i data-lucide="inbox" style="width: 38px; height: 38px; margin-bottom: 8px; color: #cbd5e1; display: block; margin: 0 auto 8px;"></i>
+          <p style="font-size: 13px; font-weight: 500; margin: 0;">${query ? 'No matching diarized calls found.' : 'No call transcripts available yet. Upload an audio recording above to generate diarized transcripts.'}</p>
+        </td>
+      </tr>
+    `;
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+    return;
+  }
+
+  const fmtTime = (sec) => {
+    if (sec === null || sec === undefined) return "00:00";
+    if (typeof sec === "string" && sec.includes(":")) return sec;
+    const s = Math.floor(Number(sec));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+  };
+
+  tbody.innerHTML = calls.map(c => {
+    const identEmp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
+    const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Unidentified Speaker";
+    const empCode = identEmp ? identEmp.employee_code : (c.identified_employee_id ? "AGNT-EMP" : "--");
+    const deptName = (identEmp ? departmentsCache.find(d => strId(d.id) === strId(identEmp.department_id))?.name : null) || "Customer Care";
+
+    const confPct = c.identification_confidence !== null && c.identification_confidence !== undefined
+      ? Math.round(c.identification_confidence * 100)
+      : 0;
+
+    const confBadge = c.identified_employee_id
+      ? `<span class="status-pill badge-completed" style="font-size: 11px; padding: 2px 8px;"><i data-lucide="shield-check" style="width: 12px; vertical-align: middle;"></i> ${confPct}% Match</span>`
+      : `<span class="status-pill badge-pending" style="font-size: 11px; padding: 2px 8px;"><i data-lucide="globe" style="width: 12px; vertical-align: middle;"></i> Open Speaker</span>`;
+
+    let turnsCount = 0;
+    if (c.transcript_json) {
+      const turns = c.transcript_json.turns || c.transcript_json.segments || [];
+      turnsCount = Array.isArray(turns) ? turns.length : 0;
+    }
+
+    const durStr = fmtTime(c.audio_duration_seconds);
+    const filename = c.audio_filename || c.original_file_name || "call_audio.wav";
+    const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent";
+
+    let statusClass = "badge-completed";
+    if (c.status === "PROCESSING") statusClass = "badge-processing";
+    else if (c.status === "FAILED") statusClass = "badge-failed";
+    else if (c.status === "PENDING") statusClass = "badge-pending";
+
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 34px; height: 34px; border-radius: 9px; background: rgba(29, 97, 231, 0.1); color: #1d61e7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i data-lucide="file-audio" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div>
+              <strong style="font-size: 13px; color: #0f172a; display: block;">${filename}</strong>
+              <small style="font-size: 11px; color: #64748b;">${c.call_reference || c.id.substring(0, 8)} • ${dateStr}</small>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: ${identEmp ? '#1d61e7' : '#94a3b8'}; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              ${agentName.charAt(0)}
+            </div>
+            <div>
+              <strong style="font-size: 12.5px; color: #1e293b; display: block;">${agentName}</strong>
+              <small style="font-size: 11px; color: #64748b;">${deptName} • ${empCode}</small>
+            </div>
+          </div>
+        </td>
+        <td>${confBadge}</td>
+        <td style="font-family: monospace; font-size: 12px; font-weight: 600; color: #475569;">${durStr}</td>
+        <td>
+          <span style="font-size: 11.5px; font-weight: 600; color: #1e293b; background: #f1f5f9; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            ${turnsCount} turns
+          </span>
+        </td>
+        <td>
+          <span class="status-pill ${statusClass}">${c.status}</span>
+        </td>
+        <td style="text-align: right;">
+          <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
+            <button class="btn-primary" style="font-size: 11.5px; padding: 4px 10px; height: auto;" onclick="inspectDiarHistoryCall('${c.id}')" title="Inspect full turn-by-turn transcript">
+              <i data-lucide="eye" style="width: 12px;"></i> View Transcript
+            </button>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 8px; height: auto;" onclick="copyDiarHistoryTranscript('${c.id}')" title="Copy transcript dialogue">
+              <i data-lucide="copy" style="width: 12px;"></i>
+            </button>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 8px; height: auto;" onclick="downloadDiarHistoryJson('${c.id}')" title="Download JSON">
+              <i data-lucide="download" style="width: 12px;"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function filterDiarHistoryTable(val) {
+  renderDiarHistoryTable(val);
+}
+
+async function inspectDiarHistoryCall(callId) {
+  let call = auditsCache.find(c => strId(c.id) === strId(callId));
+  if (!call || !call.transcript_json) {
+    try {
+      const res = await fetch(`/api/v1/calls/${callId}`);
+      if (res.ok) {
+        call = await res.json();
+        const idx = auditsCache.findIndex(c => strId(c.id) === strId(callId));
+        if (idx >= 0) auditsCache[idx] = call;
+        else auditsCache.unshift(call);
+      }
+    } catch (e) { }
+  }
+
+  if (!call) {
+    showToast("Unable to load call details", "error");
+    return;
+  }
+
+  currentViewedDiarJobId = call.id;
+  renderRealDiarizationData(call);
+
+  const detailsSec = document.getElementById("diarDetailsBottomSection");
+  if (detailsSec) {
+    detailsSec.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  showToast(`Loaded transcript for ${call.audio_filename || 'call'}`, "success");
+}
+
+async function copyDiarHistoryTranscript(callId) {
+  let call = auditsCache.find(c => strId(c.id) === strId(callId));
+  if (!call || !call.transcript_json) {
+    try {
+      const res = await fetch(`/api/v1/calls/${callId}`);
+      if (res.ok) call = await res.json();
+    } catch (e) { }
+  }
+
+  if (!call || !call.transcript_json) {
+    showToast("No transcript available for this call", "info");
+    return;
+  }
+
+  const turns = call.transcript_json.turns || call.transcript_json.segments || [];
+  if (turns.length === 0) {
+    showToast("Transcript is empty", "info");
+    return;
+  }
+
+  const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
+  const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Agent";
+
+  const lines = turns.map(t => {
+    const isAgent = (t.speaker === "SPEAKER_AGENT" || t.speaker === "SPEAKER_00" || t.speaker === "AGENT");
+    const speakerLabel = isAgent ? `Agent (${agentName})` : "Customer";
+    const start = typeof t.start === "number" ? `${Math.floor(t.start / 60).toString().padStart(2, '0')}:${Math.floor(t.start % 60).toString().padStart(2, '0')}` : "00:00";
+    return `[${start}] ${speakerLabel}: ${t.text || t.content || ""}`;
+  });
+
+  const fullText = `=== VOXAUDIT DIARIZED CALL TRANSCRIPT ===\nCall File: ${call.audio_filename || "recording.wav"}\nIdentified Agent: ${agentName}\n\n` + lines.join("\n\n");
+
+  navigator.clipboard.writeText(fullText).then(() => {
+    showToast("Transcript copied to clipboard!", "success");
+  }).catch(err => {
+    showToast("Failed to copy transcript: " + err.message, "error");
+  });
+}
+
+async function downloadDiarHistoryJson(callId) {
+  let call = auditsCache.find(c => strId(c.id) === strId(callId));
+  if (!call || !call.transcript_json) {
+    try {
+      const res = await fetch(`/api/v1/calls/${callId}`);
+      if (res.ok) call = await res.json();
+    } catch (e) { }
+  }
+
+  if (!call) {
+    showToast("No call data found", "error");
+    return;
+  }
+
+  const jsonStr = JSON.stringify(call.transcript_json || call, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `diarization_${call.audio_filename || 'call'}_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Diarization JSON downloaded!", "success");
 }
 
 /* ==========================================================================
