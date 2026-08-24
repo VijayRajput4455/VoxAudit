@@ -1266,6 +1266,8 @@ function populateAuditFilterDropdowns() {
   }
 }
 
+let auditsPollTimer = null;
+
 async function loadCallAudits() {
   const tbody = document.getElementById("auditsTableBody");
   if (!tbody) return;
@@ -1276,6 +1278,18 @@ async function loadCallAudits() {
     populateAuditFilterDropdowns();
     renderAuditsTable(auditsCache);
     renderDashboardAuditsTable(auditsCache);
+
+    // Auto-poll if any jobs are currently in PENDING or PROCESSING state
+    const hasPending = auditsCache.some(c => c.status === "PENDING" || c.status === "PROCESSING");
+    if (auditsPollTimer) clearTimeout(auditsPollTimer);
+    if (hasPending) {
+      auditsPollTimer = setTimeout(() => {
+        const activeTab = document.querySelector(".nav-item.active")?.getAttribute("data-tab");
+        if (!activeTab || activeTab === "audits" || activeTab === "dashboard") {
+          loadCallAudits();
+        }
+      }, 3000);
+    }
   } catch (err) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center;">Error loading call audits</td></tr>`;
   }
@@ -3216,7 +3230,7 @@ async function pollAndRenderDiarizationResult(callJobId, originalFilename) {
   if (!container) return;
 
   let attempts = 0;
-  const maxAttempts = 15;
+  const maxAttempts = 120; // 5 minutes max for heavy audio processing
 
   const checkStatus = async () => {
     try {
@@ -3225,7 +3239,7 @@ async function pollAndRenderDiarizationResult(callJobId, originalFilename) {
       
       const callData = await res.json();
       
-      if (callData.status === "COMPLETED") {
+      if (callData.status === "COMPLETED" && callData.transcript_json?.turns?.length > 0) {
         renderRealDiarizationData(callData);
         await loadCallAudits();
         showToast("Speaker Diarization completed & verified!", "success");
@@ -3243,18 +3257,22 @@ async function pollAndRenderDiarizationResult(callJobId, originalFilename) {
 
       attempts++;
       if (attempts < maxAttempts) {
+        const isProc = callData.status === "PROCESSING";
+        const statusTitle = isProc ? "Diarizing & Transcribing Audio" : "Queued in RabbitMQ";
+        const statusSub = isProc ? "Running Whisper STT + PyAnnote Diarization + ECAPA Matching" : "Waiting for available background worker in queue";
         container.innerHTML = `
           <div style="text-align: center; padding: 50px 20px;">
             <div style="width: 48px; height: 48px; border: 4px solid #1d61e7; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-            <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">Diarizing & Transcribing Audio (${attempts * 2}s)...</h4>
-            <p style="font-size: 12.5px; color: #64748b; margin: 0;">1. Whisper STT Speech-to-Text<br>2. PyAnnote 3.1 Multi-Speaker Separation<br>3. Milvus ECAPA 192d Biometric Matching</p>
+            <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">${statusTitle} (${Math.round(attempts * 2.5)}s)...</h4>
+            <p style="font-size: 12.5px; color: #64748b; margin: 0;">${statusSub}</p>
           </div>`;
-        setTimeout(checkStatus, 2000);
+        setTimeout(checkStatus, 2500);
       } else {
         renderRealDiarizationData(callData);
       }
     } catch (err) {
       console.error("Polling error:", err);
+      setTimeout(checkStatus, 3000);
     }
   };
 

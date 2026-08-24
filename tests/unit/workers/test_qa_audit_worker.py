@@ -11,6 +11,7 @@ def test_qa_audit_worker_process_job():
 
     mock_call_job = CallJob(
         id=call_id,
+        audit_code="AUDT-000001",
         original_file_name="test.wav",
         storage_key="calls/test.wav",
         status="COMPLETED",
@@ -38,7 +39,18 @@ def test_qa_audit_worker_process_job():
 
     mock_db.get.return_value = mock_call_job
 
-    worker = QAAuditWorker(db=mock_db)
+    mock_qa_service = MagicMock()
+    mock_qa_service.compute_scorecard.return_value = {
+        "schema_version": "1.0",
+        "overall_qa_score": 92.5,
+        "overall_evaluation": {"score": 92.5},
+        "customer_experience": {
+            "sentiment": {"final": "Positive"},
+            "satisfaction": {"level": "Satisfied"},
+        },
+    }
+
+    worker = QAAuditWorker(db=mock_db, qa_service=mock_qa_service)
     job_payload = {
         "event": "QA_AUDIT_PROCESSING",
         "job_id": "test-job-123",
@@ -48,8 +60,7 @@ def test_qa_audit_worker_process_job():
     success = worker.process_job(job_payload)
 
     assert success is True
-    assert mock_call_job.qa_score is not None
-    assert mock_call_job.qa_score > 0.0
+    assert mock_call_job.qa_score == 92.5
     assert mock_call_job.qa_scorecard_json is not None
     assert "customer_experience" in mock_call_job.qa_scorecard_json
     assert mock_db.commit.called

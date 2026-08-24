@@ -69,7 +69,7 @@ class CallProcessingWorker(BaseWorker):
                 return False
 
             # IDEMPOTENCY CHECK: If job already completed, acknowledge immediately
-            if call_job.status == "COMPLETED" and call_job.transcript_json:
+            if call_job.status == "COMPLETED" and call_job.transcript_json and call_job.transcript_json.get("turns"):
                 logger.info(f"Call '{call_id_str}' is already COMPLETED. Skipping.")
                 return True
 
@@ -88,15 +88,16 @@ class CallProcessingWorker(BaseWorker):
 
             # Extract optional expected_employee_id
             expected_emp_id = None
-            if payload.get("expected_employee_id"):
+            if job_payload.get("expected_employee_id"):
                 try:
-                    expected_emp_id = UUID(payload.get("expected_employee_id"))
+                    expected_emp_id = UUID(job_payload.get("expected_employee_id"))
                 except Exception:
                     pass
-            elif call_job.employee_id:
-                expected_emp_id = call_job.employee_id
+            elif call_job.identified_employee_id:
+                expected_emp_id = call_job.identified_employee_id
 
             # Run full Call Processing pipeline (Whisper + Pyannote + ECAPA + Milvus + Word Alignment)
+            call_processor = self.processor if self.processor is not None else CallProcessor(db_session=db_session)
             result = call_processor.process_call(temp_audio_path, expected_employee_id=expected_emp_id)
 
             # Update PostgreSQL CallJob record
