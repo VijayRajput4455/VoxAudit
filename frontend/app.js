@@ -3077,11 +3077,7 @@ async function loadDiarizationPage() {
       auditsCache.map(c => `<option value="${c.id}">${c.call_reference || c.id.substring(0,8)} - ${c.audio_filename || "Audio Clip"}</option>`).join("");
   }
 
-  const selEmp = document.getElementById("diarExpectedEmpSelect");
-  if (selEmp) {
-    selEmp.innerHTML = `<option value="">-- Open Biometric 1:N Identification Across All Staff --</option>` +
-      employeesCache.map(e => `<option value="${e.id}">${e.first_name} ${e.last_name || ""} (${e.employee_code})</option>`).join("");
-  }
+  populateDiarAgentDropdown();
 
   const callsEl = document.getElementById("diar-stat-calls");
   const turnsEl = document.getElementById("diar-stat-turns");
@@ -3089,6 +3085,236 @@ async function loadDiarizationPage() {
   if (callsEl) callsEl.textContent = auditsCache.length;
   if (turnsEl) turnsEl.textContent = auditsCache.reduce((a, b) => a + (b.speakers_count || 2) * 4, 0);
   if (matchedEl) matchedEl.textContent = auditsCache.filter(c => c.identified_employee_id).length;
+
+  // Sync any active pending or processing jobs from backend
+  const activeBackendJobs = auditsCache.filter(c => c.status === "PENDING" || c.status === "PROCESSING");
+  if (activeBackendJobs.length > 0) {
+    activeBackendJobs.forEach(bJob => {
+      if (!diarSessionQueue.some(q => q.id === bJob.id)) {
+        diarSessionQueue.push({
+          id: bJob.id,
+          filename: bJob.audio_filename || bJob.original_file_name || "call_audio.wav",
+          status: bJob.status,
+          submittedAt: Date.now(),
+          elapsed: 0,
+          data: bJob
+        });
+      }
+    });
+    renderDiarQueueUI();
+    startDiarQueuePolling();
+  }
+
+  initDiarDropzone();
+}
+
+function populateDiarAgentDropdown(filterText = "") {
+  const listEl = document.getElementById("diarAgentOptionsList");
+  if (!listEl) return;
+
+  const currentVal = document.getElementById("diarExpectedEmpSelect")?.value || "";
+  const query = filterText.toLowerCase().trim();
+
+  let filtered = employeesCache;
+  if (query) {
+    filtered = employeesCache.filter(e => {
+      const name = `${e.first_name} ${e.last_name || ""}`.toLowerCase();
+      const code = (e.employee_code || "").toLowerCase();
+      const dept = (departmentsCache.find(d => strId(d.id) === strId(e.department_id))?.name || "").toLowerCase();
+      return name.includes(query) || code.includes(query) || dept.includes(query);
+    });
+  }
+
+  let html = `
+    <div class="agent-option-row ${!currentVal ? 'selected' : ''}" onclick="selectDiarAgentOption('')">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="agent-avatar-circle" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+          <i data-lucide="globe" style="width: 14px;"></i>
+        </div>
+        <div>
+          <strong style="font-size: 13px; color: #0f172a; display: block;">Open Biometric 1:N Identification Across All Staff</strong>
+          <small style="font-size: 11px; color: #64748b;">Default • Searches all voice biometric embeddings</small>
+        </div>
+      </div>
+      <span class="status-pill badge-completed" style="font-size: 10px; padding: 2px 7px;">Default</span>
+    </div>
+  `;
+
+  html += filtered.map(emp => {
+    const isSel = strId(emp.id) === strId(currentVal);
+    const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "General";
+    const initials = `${emp.first_name.charAt(0)}${(emp.last_name || '').charAt(0)}`.toUpperCase();
+
+    return `
+      <div class="agent-option-row ${isSel ? 'selected' : ''}" onclick="selectDiarAgentOption('${emp.id}')">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="agent-avatar-circle">
+            ${initials || 'AG'}
+          </div>
+          <div>
+            <strong style="font-size: 13px; color: #0f172a; display: block;">${emp.first_name} ${emp.last_name || ""}</strong>
+            <small style="font-size: 11px; color: #64748b;">${emp.employee_code} • ${dept}</small>
+          </div>
+        </div>
+        ${isSel ? '<i data-lucide="check" style="width: 14px; color: #2563eb;"></i>' : ''}
+      </div>
+    `;
+  }).join("");
+
+  listEl.innerHTML = html;
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function toggleDiarAgentDropdown(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById("diarAgentMenu");
+  const trigger = document.getElementById("diarAgentTrigger");
+  const chevron = document.getElementById("diarTriggerChevron");
+  if (!menu) return;
+
+  const isOpen = menu.classList.contains("show");
+  if (isOpen) {
+    menu.classList.remove("show");
+    trigger?.classList.remove("active");
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+  } else {
+    menu.classList.add("show");
+    trigger?.classList.add("active");
+    if (chevron) chevron.style.transform = "rotate(180deg)";
+    populateDiarAgentDropdown();
+    setTimeout(() => {
+      document.getElementById("diarAgentSearchInput")?.focus();
+    }, 50);
+  }
+}
+
+function filterDiarAgentDropdown(query) {
+  populateDiarAgentDropdown(query);
+}
+
+function selectDiarAgentOption(empId) {
+  const hiddenInput = document.getElementById("diarExpectedEmpSelect");
+  if (hiddenInput) hiddenInput.value = empId || "";
+
+  const titleEl = document.getElementById("diarTriggerTitle");
+  const subEl = document.getElementById("diarTriggerSubtitle");
+  const avatarEl = document.getElementById("diarTriggerAvatar");
+  const badgeEl = document.getElementById("diarModeBadge");
+
+  if (!empId) {
+    if (titleEl) titleEl.textContent = "Open Biometric 1:N Identification Across All Staff";
+    if (subEl) subEl.textContent = "Matches any enrolled employee voice in database";
+    if (avatarEl) {
+      avatarEl.style.background = "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)";
+      avatarEl.innerHTML = '<i data-lucide="globe" style="width: 16px;"></i>';
+    }
+    if (badgeEl) {
+      badgeEl.className = "status-pill badge-completed";
+      badgeEl.textContent = "🌐 1:N Global Search (Default)";
+    }
+  } else {
+    const emp = employeesCache.find(e => strId(e.id) === strId(empId));
+    if (emp) {
+      const dept = departmentsCache.find(d => strId(d.id) === strId(emp.department_id))?.name || "General";
+      const initials = `${emp.first_name.charAt(0)}${(emp.last_name || '').charAt(0)}`.toUpperCase();
+
+      if (titleEl) titleEl.textContent = `${emp.first_name} ${emp.last_name || ""} (${emp.employee_code})`;
+      if (subEl) subEl.textContent = `Department: ${dept} • Targeted Biometric Verification`;
+      if (avatarEl) {
+        avatarEl.style.background = "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)";
+        avatarEl.textContent = initials || "AG";
+      }
+      if (badgeEl) {
+        badgeEl.className = "status-pill badge-processing";
+        badgeEl.textContent = "🎯 1:1 Targeted Verification";
+      }
+    }
+  }
+
+  // Close menu
+  const menu = document.getElementById("diarAgentMenu");
+  const trigger = document.getElementById("diarAgentTrigger");
+  const chevron = document.getElementById("diarTriggerChevron");
+  menu?.classList.remove("show");
+  trigger?.classList.remove("active");
+  if (chevron) chevron.style.transform = "rotate(0deg)";
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+// Global click to close agent dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  const wrapper = document.getElementById("diarAgentDropdownWrapper");
+  if (wrapper && !wrapper.contains(e.target)) {
+    const menu = document.getElementById("diarAgentMenu");
+    const trigger = document.getElementById("diarAgentTrigger");
+    const chevron = document.getElementById("diarTriggerChevron");
+    menu?.classList.remove("show");
+    trigger?.classList.remove("active");
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+  }
+});
+
+function initDiarDropzone() {
+  const dropzone = document.getElementById("diarDropzone");
+  const fileInput = document.getElementById("diarAudioFile");
+  if (!dropzone || !fileInput) return;
+
+  ["dragenter", "dragover"].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add("drag-over");
+    }, false);
+  });
+
+  ["dragleave", "drop"].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove("drag-over");
+    }, false);
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    const dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length > 0) {
+      fileInput.files = dt.files;
+      handleDiarFileSelect();
+    }
+  }, false);
+}
+
+function handleDiarFileSelect(e) {
+  const fileInput = document.getElementById("diarAudioFile");
+  const previewCard = document.getElementById("diarFilePreviewCard");
+  const nameEl = document.getElementById("diarPreviewFilename");
+  const sizeEl = document.getElementById("diarPreviewFilesize");
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    if (previewCard) previewCard.style.display = "none";
+    return;
+  }
+
+  const file = fileInput.files[0];
+  if (nameEl) nameEl.textContent = file.name;
+  if (sizeEl) {
+    const mb = (file.size / (1024 * 1024)).toFixed(2);
+    sizeEl.textContent = `${mb} MB • ${file.type || 'audio/wav'}`;
+  }
+  if (previewCard) previewCard.style.display = "block";
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function clearDiarSelectedFile(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  const fileInput = document.getElementById("diarAudioFile");
+  const previewCard = document.getElementById("diarFilePreviewCard");
+  if (fileInput) fileInput.value = "";
+  if (previewCard) previewCard.style.display = "none";
 }
 
 // Live Mic functions for Diarization Studio
@@ -3154,7 +3380,7 @@ function loadSelectedDiarizationDetails() {
     container.innerHTML = `
       <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
         <i data-lucide="audio-lines" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
-        <p style="font-size: 13.5px;">Select a call recording on the left to view diarized speaker turns and biometric matches.</p>
+        <p style="font-size: 13.5px;">Upload or select a call recording above to view diarized speaker turns and biometric matches.</p>
       </div>`;
     if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
     return;
@@ -3164,10 +3390,227 @@ function loadSelectedDiarizationDetails() {
   renderRealDiarizationData(call);
 }
 
+let diarSessionQueue = [];
+let diarQueuePollInterval = null;
+let currentViewedDiarJobId = null;
+
+function renderDiarQueueUI() {
+  const section = document.getElementById("diarQueueSection");
+  const list = document.getElementById("diarQueueList");
+  const countBadge = document.getElementById("diarQueueCountBadge");
+  if (!section || !list) return;
+
+  if (diarSessionQueue.length === 0) {
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "block";
+
+  const procJobs = diarSessionQueue.filter(j => j.status === "PROCESSING");
+  const pendJobs = diarSessionQueue.filter(j => j.status === "PENDING");
+  const compJobs = diarSessionQueue.filter(j => j.status === "COMPLETED");
+
+  if (countBadge) {
+    if (procJobs.length > 0 && pendJobs.length > 0) {
+      countBadge.className = "status-pill badge-processing";
+      countBadge.innerHTML = `<span class="pulse-dot-active" style="margin-right:4px;"></span> 1 Processing, ${pendJobs.length} Queued`;
+    } else if (procJobs.length > 0) {
+      countBadge.className = "status-pill badge-processing";
+      countBadge.innerHTML = `<span class="pulse-dot-active" style="margin-right:4px;"></span> 1 Processing`;
+    } else if (pendJobs.length > 0) {
+      countBadge.className = "status-pill badge-queued";
+      countBadge.innerHTML = `⏳ ${pendJobs.length} in Queue`;
+    } else {
+      countBadge.className = "status-pill badge-completed";
+      countBadge.innerHTML = `✓ ${compJobs.length} Completed`;
+    }
+  }
+
+  let queuePositionCounter = 1;
+
+  list.innerHTML = diarSessionQueue.map((job) => {
+    const isProc = job.status === "PROCESSING";
+    const isPend = job.status === "PENDING";
+    const isComp = job.status === "COMPLETED";
+    const isFail = job.status === "FAILED";
+
+    const elapsedText = `${Math.round(job.elapsed || 0)}s`;
+
+    if (isProc) {
+      const stepMsg = (job.elapsed || 0) < 15
+        ? "Stage 1/3: Whisper Speech-to-Text & Word Alignment"
+        : (job.elapsed || 0) < 35
+        ? "Stage 2/3: PyAnnote 3.1 Multi-Speaker Separation"
+        : "Stage 3/3: Milvus ECAPA Biometric Identification";
+
+      return `
+        <div class="queue-card-item processing" style="cursor: pointer;" onclick="viewCompletedDiarJob('${job.id}')">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <strong style="font-size: 13px; color: #1d4ed8; display: flex; align-items: center; gap: 6px;">
+              <span class="pulse-dot-active"></span>
+              ${job.filename}
+            </strong>
+            <span class="status-pill badge-processing" style="font-size: 11px;">
+              <i data-lucide="loader-2" style="width: 12px; vertical-align: middle; animation: spin 1s linear infinite;"></i>
+              Processing (${elapsedText})
+            </span>
+          </div>
+          <p style="font-size: 11.5px; color: #3b82f6; margin: 0; font-weight: 500;">${stepMsg}</p>
+        </div>
+      `;
+    }
+
+    if (isPend) {
+      const pos = queuePositionCounter++;
+      return `
+        <div class="queue-card-item queued">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <strong style="font-size: 13px; color: #92400e; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="clock" style="width: 13px;"></i>
+              ${job.filename}
+            </strong>
+            <span class="status-pill badge-queued" style="font-size: 11px;">Position #${pos} in Queue</span>
+          </div>
+          <p style="font-size: 11.5px; color: #b45309; margin: 0;">Waiting in RabbitMQ for background worker...</p>
+        </div>
+      `;
+    }
+
+    if (isComp) {
+      const turnsCount = job.data?.transcript_json?.turns?.length || 0;
+      const isSelected = currentViewedDiarJobId === job.id;
+      return `
+        <div class="queue-card-item completed" style="background: ${isSelected ? '#f0fdf4' : '#ffffff'}; border-color: ${isSelected ? '#86efac' : '#e2e8f0'};">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="font-size: 13px; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="check-circle-2" style="width: 13px; color: #16a34a;"></i>
+                ${job.filename}
+              </strong>
+              <small style="color: #64748b; font-size: 11.5px;">${turnsCount} Diarized Turns • Ready</small>
+            </div>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px; height: auto;" onclick="viewCompletedDiarJob('${job.id}')">
+              ${isSelected ? 'Viewing' : 'View Turns'}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="queue-card-item" style="border-color: #fecaca; background: #fef2f2;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <strong style="font-size: 13px; color: #991b1b;">${job.filename}</strong>
+          <span class="status-pill badge-failed" style="font-size: 11px;">Failed</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function viewCompletedDiarJob(jobId) {
+  currentViewedDiarJobId = jobId;
+  renderDiarQueueUI();
+  const job = diarSessionQueue.find(j => j.id === jobId);
+  if (job && job.data && job.data.status === "COMPLETED") {
+    renderRealDiarizationData(job.data);
+  } else if (job && job.status === "PROCESSING") {
+    renderProcessingSplash(job);
+  } else {
+    // Fetch directly from server
+    fetch(`/api/v1/calls/${jobId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (job) job.data = data;
+        renderRealDiarizationData(data);
+      })
+      .catch(err => console.error("Error viewing job:", err));
+  }
+}
+
+function renderProcessingSplash(job) {
+  const bottomSec = document.getElementById("diarDetailsBottomSection");
+  if (bottomSec) bottomSec.style.display = "block";
+
+  const container = document.getElementById("diarResultContainer");
+  if (!container) return;
+
+  const isProc = job.status === "PROCESSING";
+  const statusTitle = isProc ? "Diarizing & Transcribing Audio" : "Queued in RabbitMQ";
+  const statusSub = isProc
+    ? "Running Faster-Whisper STT + PyAnnote 3.1 Separation + Milvus ECAPA Biometric Identification"
+    : "Waiting for background worker in RabbitMQ queue...";
+
+  container.innerHTML = `
+    <div style="text-align: center; padding: 50px 20px;">
+      <div style="width: 48px; height: 48px; border: 4px solid #1d61e7; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+      <h4 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">${statusTitle} (${Math.round(job.elapsed || 0)}s)...</h4>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">File: <strong>${job.filename}</strong></p>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; max-width: 420px; margin: 0 auto; text-align: left; font-size: 12.5px; color: #475569; line-height: 1.6;">
+        <div style="color: #1d61e7; font-weight: 600; margin-bottom: 4px;">⚡ Pipeline Progress:</div>
+        <div>1. MinIO Audio Ingestion ✓</div>
+        <div>2. Whisper Word-level Transcription ${isProc && (job.elapsed || 0) < 15 ? '⚙️' : '✓'}</div>
+        <div>3. PyAnnote 3.1 Multi-Speaker Separation ${isProc && (job.elapsed || 0) >= 15 ? '⚙️' : '⏳'}</div>
+        <div>4. Milvus 192D ECAPA Biometric Matching ${isProc && (job.elapsed || 0) >= 35 ? '⚙️' : '⏳'}</div>
+      </div>
+    </div>`;
+}
+
+function startDiarQueuePolling() {
+  if (diarQueuePollInterval) return;
+
+  diarQueuePollInterval = setInterval(async () => {
+    const activeJobs = diarSessionQueue.filter(j => j.status === "PENDING" || j.status === "PROCESSING");
+
+    if (activeJobs.length === 0) {
+      clearInterval(diarQueuePollInterval);
+      diarQueuePollInterval = null;
+      return;
+    }
+
+    for (const job of activeJobs) {
+      job.elapsed = (job.elapsed || 0) + 2.5;
+
+      try {
+        const res = await fetch(`/api/v1/calls/${job.id}`);
+        if (!res.ok) continue;
+
+        const data = await res.json();
+        const prevStatus = job.status;
+        job.status = data.status;
+        job.data = data;
+
+        // If job just transitioned to PROCESSING or COMPLETED
+        if (prevStatus !== data.status) {
+          if (data.status === "PROCESSING") {
+            showToast(`Started processing ${job.filename}...`, "info");
+            if (!currentViewedDiarJobId || currentViewedDiarJobId === job.id) {
+              renderProcessingSplash(job);
+            }
+          } else if (data.status === "COMPLETED" && data.transcript_json?.turns?.length > 0) {
+            showToast(`Speaker Diarization complete for ${job.filename}!`, "success");
+            currentViewedDiarJobId = job.id;
+            renderRealDiarizationData(data);
+            await loadCallAudits();
+          }
+        } else if (job.status === "PROCESSING" && (!currentViewedDiarJobId || currentViewedDiarJobId === job.id)) {
+          renderProcessingSplash(job);
+        }
+      } catch (err) {
+        console.error("Queue poll error for job", job.id, err);
+      }
+    }
+
+    renderDiarQueueUI();
+  }, 2500);
+}
+
 async function runSpeakerDiarization(e) {
   if (e) e.preventDefault();
 
-  const container = document.getElementById("diarResultContainer");
   const expEmpId = document.getElementById("diarExpectedEmpSelect")?.value;
   const fileInput = document.getElementById("diarAudioFile");
 
@@ -3179,16 +3622,7 @@ async function runSpeakerDiarization(e) {
   const fileToSend = fileInput.files[0];
   const filename = fileToSend.name;
 
-  showToast(`Uploading ${filename} & processing audio diarization...`, "info");
-
-  if (container) {
-    container.innerHTML = `
-      <div style="text-align: center; padding: 50px 20px;">
-        <div style="width: 48px; height: 48px; border: 4px solid #1d61e7; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-        <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">Uploading & Processing Audio Diarization...</h4>
-        <p style="font-size: 12.5px; color: #64748b; margin: 0;">1. Storing Audio & Extracting Speech-to-Text<br>2. PyAnnote 3.1 Multi-Speaker Separation<br>3. Milvus 192d Biometric Identification</p>
-      </div>`;
-  }
+  showToast(`Uploading ${filename} to RabbitMQ queue...`, "info");
 
   try {
     const formData = new FormData();
@@ -3206,80 +3640,41 @@ async function runSpeakerDiarization(e) {
     }
 
     const result = await res.json();
-    showToast("Call recording uploaded & processing job created", "success");
+    showToast(`Job queued (${filename})! Processing asynchronously...`, "success");
 
-    // Poll status and render real database record
-    pollAndRenderDiarizationResult(result.id, filename);
+    // Add to session queue
+    const newJob = {
+      id: result.id,
+      filename: filename,
+      status: result.status || "PENDING",
+      submittedAt: Date.now(),
+      elapsed: 0,
+      data: null
+    };
+
+    diarSessionQueue.unshift(newJob);
+    currentViewedDiarJobId = result.id;
+
+    // Reset file input & preview card so user can upload more files immediately
+    clearDiarSelectedFile();
+
+    renderDiarQueueUI();
+    renderProcessingSplash(newJob);
+    startDiarQueuePolling();
 
   } catch (err) {
-    showToast("Error processing call audio: " + err.message, "error");
-    if (container) {
-      container.innerHTML = `
-        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 16px; padding: 24px; text-align: center;">
-          <i data-lucide="alert-circle" style="width: 36px; height: 36px; color: #ef4444; margin-bottom: 8px;"></i>
-          <h4 style="font-size: 15px; font-weight: 700; color: #991b1b; margin-bottom: 4px;">Upload & Processing Error</h4>
-          <p style="font-size: 13px; color: #7f1d1d; margin: 0;">${err.message}</p>
-        </div>`;
-      if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
-    }
+    showToast("Error uploading call audio: " + err.message, "error");
   }
 }
 
 async function pollAndRenderDiarizationResult(callJobId, originalFilename) {
-  const container = document.getElementById("diarResultContainer");
-  if (!container) return;
-
-  let attempts = 0;
-  const maxAttempts = 120; // 5 minutes max for heavy audio processing
-
-  const checkStatus = async () => {
-    try {
-      const res = await fetch(`/api/v1/calls/${callJobId}`);
-      if (!res.ok) throw new Error("Failed to fetch call status");
-      
-      const callData = await res.json();
-      
-      if (callData.status === "COMPLETED" && callData.transcript_json?.turns?.length > 0) {
-        renderRealDiarizationData(callData);
-        await loadCallAudits();
-        showToast("Speaker Diarization completed & verified!", "success");
-        return;
-      } else if (callData.status === "FAILED") {
-        container.innerHTML = `
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 16px; padding: 24px; text-align: center;">
-            <i data-lucide="alert-triangle" style="width: 40px; height: 40px; color: #ef4444; margin-bottom: 10px;"></i>
-            <h4 style="font-size: 16px; font-weight: 700; color: #991b1b; margin-bottom: 6px;">Diarization & STT Processing Failed</h4>
-            <p style="font-size: 13px; color: #7f1d1d; margin: 0;">${callData.error_message || "Error processing call audio file."}</p>
-          </div>`;
-        if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
-        return;
-      }
-
-      attempts++;
-      if (attempts < maxAttempts) {
-        const isProc = callData.status === "PROCESSING";
-        const statusTitle = isProc ? "Diarizing & Transcribing Audio" : "Queued in RabbitMQ";
-        const statusSub = isProc ? "Running Whisper STT + PyAnnote Diarization + ECAPA Matching" : "Waiting for available background worker in queue";
-        container.innerHTML = `
-          <div style="text-align: center; padding: 50px 20px;">
-            <div style="width: 48px; height: 48px; border: 4px solid #1d61e7; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-            <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">${statusTitle} (${Math.round(attempts * 2.5)}s)...</h4>
-            <p style="font-size: 12.5px; color: #64748b; margin: 0;">${statusSub}</p>
-          </div>`;
-        setTimeout(checkStatus, 2500);
-      } else {
-        renderRealDiarizationData(callData);
-      }
-    } catch (err) {
-      console.error("Polling error:", err);
-      setTimeout(checkStatus, 3000);
-    }
-  };
-
-  checkStatus();
+  viewCompletedDiarJob(callJobId);
 }
 
 function renderRealDiarizationData(call) {
+  const bottomSec = document.getElementById("diarDetailsBottomSection");
+  if (bottomSec) bottomSec.style.display = call ? "block" : "none";
+
   const container = document.getElementById("diarResultContainer");
   if (!container) return;
 
@@ -3350,7 +3745,21 @@ function renderRealDiarizationData(call) {
     return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
   };
 
+  // Completed jobs switcher tabs if there are multiple completed jobs in session
+  const completedSessionJobs = diarSessionQueue.filter(j => j.status === "COMPLETED");
+  const jobTabsHtml = completedSessionJobs.length > 1
+    ? `<div style="display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px;">
+        ${completedSessionJobs.map(j => `
+          <button class="time-range-btn ${currentViewedDiarJobId === j.id ? 'active' : ''}" style="font-size: 11.5px; padding: 5px 12px; border-radius: 8px;" onclick="viewCompletedDiarJob('${j.id}')">
+            <i data-lucide="file-audio" style="width: 12px;"></i> ${j.filename}
+          </button>
+        `).join("")}
+      </div>`
+    : "";
+
   container.innerHTML = `
+    ${jobTabsHtml}
+
     <!-- IDENTIFIED AGENT BANNER -->
     <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px; padding: 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(29, 97, 231, 0.08);">
       <div style="display: flex; align-items: center; gap: 14px;">

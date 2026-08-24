@@ -657,7 +657,7 @@
               <form id="voiceEnrollForm" onsubmit="submitVoiceEnrollment(event)">
                 <div class="form-group" style="margin-bottom: 18px;">
                   <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Target Employee *</label>
-                  <select id="veEmployeeSelect" required style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;">
+                  <select id="veEmployeeSelect" class="custom-select-premium" required>
                     <option value="">-- Loading Employees... --</option>
                   </select>
                 </div>
@@ -694,7 +694,7 @@
               <form id="voiceVerifyForm" onsubmit="submitVoiceVerificationTest(event)">
                 <div class="form-group" style="margin-bottom: 18px;">
                   <label style="font-weight: 600; font-size: 13px; color: #334155;">Target Employee (Optional - 1:1 Verification)</label>
-                  <select id="verifyTargetSelect" style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;">
+                  <select id="verifyTargetSelect" class="custom-select-premium">
                     <option value="">-- Open Identification (1:N Search Across All) --</option>
                   </select>
                 </div>
@@ -820,76 +820,167 @@
           </div>
         </section>
 
-        <!-- DUAL COLUMN LAYOUT: DIARIZATION CONTROLLER & SPEAKER FEED -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
-          
-          <!-- CARD 1: RUN DIARIZATION PROCESSOR -->
-          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
-            <div>
-              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
-                <div class="panel-title">
-                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="audio-lines"></i></span>
-                    Run Speaker Diarization & Separation
-                  </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Separate agent & customer speakers and extract ECAPA embeddings</p>
-                </div>
-              </div>
-
-              <form id="diarizationForm" onsubmit="runSpeakerDiarization(event)">
-                <!-- FILE UPLOAD FIELD -->
-                <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Upload Call Recording (.wav, .mp3, .flac, .m4a) *</label>
-                  <input type="file" id="diarAudioFile" required accept="audio/*" style="width:100%; padding: 14px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; font-size: 12.5px;">
-                </div>
-
-                <!-- EXPECTED AGENT MAPPING -->
-                <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Target Expected Agent (Optional Verification Mapping)</label>
-                  <select id="diarExpectedEmpSelect" style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;">
-                    <option value="">-- Open Biometric 1:N Identification Across All Staff --</option>
-                  </select>
-                </div>
-
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 18px;">
-                  <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px;"><i data-lucide="cpu" style="width: 15px; color: #1d61e7;"></i> Speech-to-Text & Diarization Engine</h4>
-                  <ul style="font-size: 12px; color: #475569; padding-left: 18px; line-height: 1.5; margin: 0;">
-                    <li>Separates Agent Speech vs Customer Speech</li>
-                    <li>Identifies agent identity via Milvus ECAPA 192d vectors</li>
-                    <li>Extracts exact text transcript turn-by-turn with timestamps</li>
-                  </ul>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="zap"></i> PyAnnote 3.1 & Whisper</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunDiarization"><i data-lucide="play-circle"></i> Run Diarization & Extract Text</button>
-                </div>
-              </form>
+        <!-- DIARIZATION STUDIO: TOP PANEL (UPLOAD & LIVE QUEUE TRACKER) -->
+        <div class="panel-card" style="margin-bottom: 24px; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+            <div class="panel-title">
+              <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="audio-lines"></i></span>
+                Run Speaker Diarization & Speech-to-Text Pipeline
+              </h3>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Upload calls to queue asynchronous Faster-Whisper STT, PyAnnote 3.1 separation, and Milvus biometric matching</p>
             </div>
           </div>
 
-          <!-- CARD 2: DIARIZED SPEAKER TIMELINE & BIOMETRIC MATCH -->
-          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
-            <div>
-              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
-                <div class="panel-title">
-                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="users"></i></span>
-                    Diarized Speaker Turns & Milvus Match
-                  </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Identified agent identity and turn-by-turn speaker segments</p>
+          <form id="diarizationForm" onsubmit="runSpeakerDiarization(event)">
+            <!-- MODERN INTERACTIVE DRAG & DROP UPLOAD ZONE -->
+            <div style="margin-bottom: 20px;">
+              <input type="file" id="diarAudioFile" required accept="audio/*" style="display: none;" onchange="handleDiarFileSelect(event)">
+              
+              <!-- DROPZONE CONTAINER -->
+              <div id="diarDropzone" class="vox-upload-dropzone" onclick="document.getElementById('diarAudioFile').click()">
+                <div class="dropzone-icon-container">
+                  <i data-lucide="cloud-upload" style="width: 32px; height: 32px;"></i>
+                </div>
+                <h4 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 6px;">
+                  Drag & Drop Call Audio Recording Here
+                </h4>
+                <p style="font-size: 13px; color: #64748b; margin: 0 0 14px;">
+                  or <span style="color: #2563eb; font-weight: 600; text-decoration: underline;">Browse from computer</span> to upload
+                </p>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <span class="audio-format-pill">.WAV</span>
+                  <span class="audio-format-pill">.MP3</span>
+                  <span class="audio-format-pill">.FLAC</span>
+                  <span class="audio-format-pill">.M4A</span>
+                  <span style="font-size: 11.5px; color: #94a3b8; margin-left: 6px;">(Up to 100MB per file)</span>
                 </div>
               </div>
 
-              <div id="diarResultContainer">
-                <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
-                  <i data-lucide="audio-lines" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
-                  <p style="font-size: 13.5px;">Select a call recording on the left to view diarized speaker turns and biometric matches.</p>
+              <!-- LIVE FILE PREVIEW CARD (Visible after selection) -->
+              <div id="diarFilePreviewCard" style="display: none; margin-top: 14px;">
+                <div class="audio-file-preview">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #eff6ff; color: #1d4ed8; display: flex; align-items: center; justify-content: center; border: 1px solid #bfdbfe;">
+                      <i data-lucide="music" style="width: 22px; height: 22px;"></i>
+                    </div>
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong id="diarPreviewFilename" style="font-size: 13.5px; color: #0f172a;">audio_sample.wav</strong>
+                        <span class="status-pill badge-completed" style="font-size: 10px; padding: 2px 7px;">Ready to Queue</span>
+                      </div>
+                      <small id="diarPreviewFilesize" style="font-size: 11.5px; color: #64748b; font-family: monospace;">1.84 MB</small>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; align-items: center; gap: 16px;">
+                    <!-- Soundwave Animation -->
+                    <div class="sound-bars" title="Audio Stream Ready">
+                      <div class="sound-bar"></div>
+                      <div class="sound-bar"></div>
+                      <div class="sound-bar"></div>
+                      <div class="sound-bar"></div>
+                      <div class="sound-bar"></div>
+                    </div>
+                    <button type="button" class="btn-secondary" style="font-size: 11.5px; padding: 5px 10px; height: auto; color: #dc2626; border-color: #fca5a5;" onclick="clearDiarSelectedFile(event)">
+                      <i data-lucide="x" style="width: 12px;"></i> Remove
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- EXPECTED AGENT MAPPING CARD -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <div>
+                  <label style="font-weight: 700; font-size: 13.5px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                    <i data-lucide="shield-check" style="width: 16px; color: #1d4ed8;"></i>
+                    <span>Target Expected Agent (Optional 1:1 Verification)</span>
+                  </label>
+                  <p style="font-size: 12px; color: #64748b; margin: 0;">Leave default for automatic 1:N biometric search across all staff database</p>
+                </div>
+                <span id="diarModeBadge" class="status-pill badge-completed" style="font-size: 11px; padding: 3px 10px;">
+                  🌐 1:N Global Search (Default)
+                </span>
+              </div>
+
+              <!-- Hidden input for form submission -->
+              <input type="hidden" id="diarExpectedEmpSelect" value="">
+
+              <!-- LUXURY CUSTOM AGENT DROPDOWN WIDGET -->
+              <div class="agent-dropdown-wrapper" id="diarAgentDropdownWrapper">
+                <!-- Trigger Button -->
+                <div class="agent-select-trigger" id="diarAgentTrigger" onclick="toggleDiarAgentDropdown(event)">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="agent-avatar-circle" id="diarTriggerAvatar">
+                      <i data-lucide="globe" style="width: 16px;"></i>
+                    </div>
+                    <div>
+                      <strong id="diarTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Open Biometric 1:N Identification Across All Staff</strong>
+                      <small id="diarTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Matches any enrolled employee voice</small>
+                    </div>
+                  </div>
+                  <i data-lucide="chevron-down" id="diarTriggerChevron" style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
+                </div>
+
+                <!-- Floating Dropdown Menu -->
+                <div class="agent-dropdown-menu" id="diarAgentMenu">
+                  <div class="agent-search-box">
+                    <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                    <input type="text" class="agent-search-input" id="diarAgentSearchInput" placeholder="Search staff name, employee code, or department..." onclick="event.stopPropagation()" oninput="filterDiarAgentDropdown(this.value)">
+                  </div>
+
+                  <div class="agent-options-list" id="diarAgentOptionsList">
+                    <!-- Populated dynamically via JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ACTION FOOTER -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+              <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: #64748b;">
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> Faster-Whisper</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> PyAnnote 3.1</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> Milvus 192D</span>
+              </div>
+              <button type="submit" class="btn-primary" style="padding: 12px 28px; font-size: 13.5px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);" id="btnRunDiarization">
+                <i data-lucide="play-circle"></i> Queue & Run Diarization Engine
+              </button>
+            </div>
+          </form>
+
+          <!-- ASYNCHRONOUS RABBITMQ PROCESSING & QUEUE STATUS TRACKER -->
+          <div id="diarQueueSection" style="display: none; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span class="pulse-dot-active"></span>
+                <span>Live Processing & Queue Tracker</span>
+              </h4>
+              <span id="diarQueueCountBadge" class="status-pill badge-processing" style="font-size: 11.5px; padding: 3px 10px;">0 Active</span>
+            </div>
+            <div id="diarQueueList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- DIARIZATION STUDIO: BOTTOM PANEL (DETAILS & EXTRACTED TURNS) -->
+        <div id="diarDetailsBottomSection" class="panel-card" style="display: none; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
+          <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+            <div class="panel-title">
+              <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="users"></i></span>
+                Processed Call Diarization & Speaker Turns
+              </h3>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Milvus biometric matched agent profile and exact time-stamped speaker turns</p>
+            </div>
           </div>
 
+          <div id="diarResultContainer">
+            <!-- Dynamically populated -->
+          </div>
         </div>
       </div>
 
@@ -960,7 +1051,7 @@
               <form id="qaForm" onsubmit="runQaEvaluation(event)">
                 <div class="form-group" style="margin-bottom: 18px;">
                   <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Call Audit Recording *</label>
-                  <select id="qaCallSelect" required style="width:100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13.5px; background: #ffffff;" onchange="loadSelectedQaDetails()">
+                  <select id="qaCallSelect" class="custom-select-premium" required onchange="loadSelectedQaDetails()">
                     <option value="">-- Loading Calls... --</option>
                   </select>
                 </div>
