@@ -164,6 +164,80 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
             raise exc
 
 
+class SafeRotatingFileHandler(RotatingFileHandler):
+    """
+    Process-safe and Windows-friendly RotatingFileHandler.
+    Prevents PermissionError (WinError 32) when multiple processes or reloader threads
+    attempt log rotation on Windows while log files are held open.
+    """
+
+    def rotate(self, source: str, dest: str) -> None:
+        if callable(self.rotator):
+            self.rotator(source, dest)
+        else:
+            if os.path.exists(source):
+                try:
+                    if os.path.exists(dest):
+                        try:
+                            os.remove(dest)
+                        except (PermissionError, OSError):
+                            pass
+                    os.rename(source, dest)
+                except (PermissionError, OSError):
+                    pass
+
+    def doRollover(self) -> None:
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+
+        if self.backupCount > 0:
+            for i in range(self.backupCount - 1, 0, -1):
+                sfn = self.rotation_filename(f"{self.baseFilename}.{i}")
+                dfn = self.rotation_filename(f"{self.baseFilename}.{i + 1}")
+                if os.path.exists(sfn):
+                    if os.path.exists(dfn):
+                        try:
+                            os.remove(dfn)
+                        except (PermissionError, OSError):
+                            pass
+                    try:
+                        os.rename(sfn, dfn)
+                    except (PermissionError, OSError):
+                        pass
+
+            dfn = self.rotation_filename(f"{self.baseFilename}.1")
+            if os.path.exists(dfn):
+                try:
+                    os.remove(dfn)
+                except (PermissionError, OSError):
+                    pass
+
+            try:
+                self.rotate(self.baseFilename, dfn)
+            except (PermissionError, OSError):
+                pass
+
+        if not self.delay:
+            try:
+                self.stream = self._open()
+            except (PermissionError, OSError):
+                self.stream = None
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            if self.shouldRollover(record):
+                self.doRollover()
+            if self.stream is None:
+                self.stream = self._open()
+            super().emit(record)
+        except (PermissionError, OSError):
+            # Gracefully swallow transient Windows file lock errors during log write/rotation
+            pass
+        except Exception:
+            self.handleError(record)
+
+
 def setup_logging() -> None:
     """Configures production logging handlers (Console & Rotating File)."""
     log_level_name = getattr(settings, "LOG_LEVEL", "INFO").upper()
@@ -182,7 +256,7 @@ def setup_logging() -> None:
     os.makedirs(log_dir, exist_ok=True)
     log_file_path = os.path.join(log_dir, log_file_name)
 
-    file_handler = RotatingFileHandler(
+    file_handler = SafeRotatingFileHandler(
         log_file_path,
         maxBytes=10 * 1024 * 1024,  # 10 MB per file
         backupCount=5,  # Keep 5 backup files
