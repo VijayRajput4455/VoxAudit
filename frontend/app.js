@@ -3745,10 +3745,27 @@ function renderRealDiarizationData(call) {
     return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
   };
 
+  const durationSec = call.audio_duration_seconds || (turns.length > 0 ? (turns[turns.length - 1].end || 0) : 0);
+  const totalWords = turns.reduce((acc, t) => acc + (t.text || "").trim().split(/\s+/).filter(Boolean).length, 0);
+
+  // Compute talk-time split
+  let agentDuration = 0;
+  let customerDuration = 0;
+  turns.forEach(t => {
+    const spk = t.speaker || t.speaker_label || "SPEAKER_00";
+    const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
+    const dur = Math.max(0, (t.end || 0) - (t.start || 0));
+    if (isAgent) agentDuration += dur;
+    else customerDuration += dur;
+  });
+  const totalActiveTalk = (agentDuration + customerDuration) || 1;
+  const agentPct = Math.round((agentDuration / totalActiveTalk) * 100);
+  const customerPct = 100 - agentPct;
+
   // Completed jobs switcher tabs if there are multiple completed jobs in session
   const completedSessionJobs = diarSessionQueue.filter(j => j.status === "COMPLETED");
   const jobTabsHtml = completedSessionJobs.length > 1
-    ? `<div style="display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px;">
+    ? `<div style="display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px;">
         ${completedSessionJobs.map(j => `
           <button class="time-range-btn ${currentViewedDiarJobId === j.id ? 'active' : ''}" style="font-size: 11.5px; padding: 5px 12px; border-radius: 8px;" onclick="viewCompletedDiarJob('${j.id}')">
             <i data-lucide="file-audio" style="width: 12px;"></i> ${j.filename}
@@ -3760,8 +3777,8 @@ function renderRealDiarizationData(call) {
   container.innerHTML = `
     ${jobTabsHtml}
 
-    <!-- IDENTIFIED AGENT BANNER -->
-    <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px; padding: 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(29, 97, 231, 0.08);">
+    <!-- 1. IDENTIFIED AGENT BANNER -->
+    <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px; padding: 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(29, 97, 231, 0.08); flex-wrap: wrap; gap: 14px;">
       <div style="display: flex; align-items: center; gap: 14px;">
         <div style="width: 48px; height: 48px; border-radius: 14px; background: #1d61e7; color: #fff; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(29, 97, 231, 0.25);">
           ${agentName.charAt(0)}
@@ -3774,18 +3791,61 @@ function renderRealDiarizationData(call) {
       </div>
       <div style="text-align: right;">
         ${confBadge}
-        <small style="display: block; font-size: 11px; color: #64748b; font-family: monospace; margin-top: 2px;">Status: ${call.status}</small>
+        <small style="display: block; font-size: 11px; color: #64748b; font-family: monospace; margin-top: 2px;">Audio: ${filename}</small>
       </div>
     </div>
 
-    <!-- DIARIZED TRANSCRIPT TURNS -->
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-      <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;"><i data-lucide="audio-lines" style="width: 15px; color: #1d61e7; vertical-align: middle;"></i> Extracted Speaker Segments (${turns.length} Turns)</h4>
-      <code style="font-size: 11px; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px;">${filename}</code>
+    <!-- 2. CALL METRICS & TALK-TIME RATIO STRIP -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+        <small style="color: #64748b; font-size: 11.5px; font-weight: 600; display: block; margin-bottom: 2px;">Call Duration</small>
+        <strong style="font-size: 15px; color: #0f172a;">${fmtTime(durationSec)}</strong>
+        <span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">(${turns.length} turns, ${totalWords} words)</span>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 600; margin-bottom: 6px;">
+          <span style="color: #1e40af;">Agent: ${agentPct}%</span>
+          <span style="color: #6b21a8;">Customer: ${customerPct}%</span>
+        </div>
+        <div style="height: 6px; border-radius: 3px; background: #e2e8f0; overflow: hidden; display: flex;">
+          <div style="width: ${agentPct}%; background: #2563eb;"></div>
+          <div style="width: ${customerPct}%; background: #9333ea;"></div>
+        </div>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <small style="color: #64748b; font-size: 11.5px; font-weight: 600; display: block;">Speech Engine</small>
+          <strong style="font-size: 12.5px; color: #0f172a;">Whisper + PyAnnote 3.1</strong>
+        </div>
+        <span class="status-pill badge-completed" style="font-size: 10.5px; padding: 3px 8px;">100% Processed</span>
+      </div>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 4px;">
-      ${turns.map((t) => {
+    <!-- 3. TRANSCRIPT CONTROLS (SEARCH & SPEAKER FILTER) -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; gap: 6px;">
+        <button class="time-range-btn active" id="btnFilterAllTurns" style="font-size: 11.5px; padding: 4px 10px; border-radius: 8px;" onclick="filterDiarTurns('ALL')">
+          All Turns (${turns.length})
+        </button>
+        <button class="time-range-btn" id="btnFilterAgentTurns" style="font-size: 11.5px; padding: 4px 10px; border-radius: 8px;" onclick="filterDiarTurns('AGENT')">
+          Agent Only
+        </button>
+        <button class="time-range-btn" id="btnFilterCustTurns" style="font-size: 11.5px; padding: 4px 10px; border-radius: 8px;" onclick="filterDiarTurns('CUSTOMER')">
+          Customer Only
+        </button>
+      </div>
+
+      <div style="position: relative; min-width: 240px; flex: 1; max-width: 320px;">
+        <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 13px; color: #94a3b8;"></i>
+        <input type="text" id="diarSearchTurnInput" placeholder="Search in transcript dialogue..." style="width: 100%; padding: 6px 10px 6px 30px; font-size: 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; background: #ffffff;" oninput="filterDiarTurns()">
+      </div>
+    </div>
+
+    <!-- 4. DIARIZED TRANSCRIPT TURNS LIST -->
+    <div id="diarTurnsListContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px;">
+      ${turns.map((t, idx) => {
         const spk = t.speaker || t.speaker_label || "SPEAKER_00";
         const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
         const label = isAgent ? `Agent (${agentName})` : "Customer / Speaker 2";
@@ -3794,14 +3854,19 @@ function renderRealDiarizationData(call) {
         const endTime = fmtTime(t.end);
 
         return `
-          <div style="background: ${isAgent ? '#f8fafc' : '#ffffff'}; border: 1px solid ${isAgent ? '#dbeafe' : '#e2e8f0'}; border-radius: 14px; padding: 14px; transition: all 0.2s ease;">
+          <div class="diar-turn-item ${isAgent ? 'turn-agent' : 'turn-customer'}" data-speaker="${isAgent ? 'AGENT' : 'CUSTOMER'}" data-text="${textContent.toLowerCase()}" style="background: ${isAgent ? '#f8fafc' : '#ffffff'}; border: 1px solid ${isAgent ? '#dbeafe' : '#e2e8f0'}; border-radius: 14px; padding: 14px; transition: all 0.2s ease;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="background: ${isAgent ? '#dbeafe' : '#f1f5f9'}; color: ${isAgent ? '#1e40af' : '#334155'}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
+              <span style="background: ${isAgent ? '#dbeafe' : '#f3e8ff'}; color: ${isAgent ? '#1e40af' : '#7e22ce'}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
                 <i data-lucide="${isAgent ? 'headphone-off' : 'user'}" style="width: 12px;"></i> ${label}
               </span>
-              <small style="font-family: monospace; color: #64748b; font-size: 11.5px; font-weight: 600;">${startTime} - ${endTime}</small>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <small style="font-family: monospace; color: #64748b; font-size: 11.5px; font-weight: 600;">${startTime} - ${endTime}</small>
+                <button type="button" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 2px;" title="Copy turn text" onclick="copyTurnText('${escape(textContent)}')">
+                  <i data-lucide="copy" style="width: 11px;"></i>
+                </button>
+              </div>
             </div>
-            <p style="font-size: 13.5px; color: #334155; margin: 0; line-height: 1.45; font-weight: 500;">${textContent}</p>
+            <p class="turn-text-body" style="font-size: 13.5px; color: #334155; margin: 0; line-height: 1.45; font-weight: 500;">${textContent}</p>
           </div>
         `;
       }).join("")}
@@ -3809,6 +3874,117 @@ function renderRealDiarizationData(call) {
   `;
 
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+let currentDiarSpeakerFilter = 'ALL';
+
+function filterDiarTurns(filterType) {
+  if (filterType) {
+    currentDiarSpeakerFilter = filterType;
+    document.getElementById("btnFilterAllTurns")?.classList.toggle("active", filterType === "ALL");
+    document.getElementById("btnFilterAgentTurns")?.classList.toggle("active", filterType === "AGENT");
+    document.getElementById("btnFilterCustTurns")?.classList.toggle("active", filterType === "CUSTOMER");
+  }
+
+  const query = (document.getElementById("diarSearchTurnInput")?.value || "").toLowerCase().trim();
+  const turnItems = document.querySelectorAll(".diar-turn-item");
+
+  turnItems.forEach(item => {
+    const spk = item.getAttribute("data-speaker");
+    const txt = item.getAttribute("data-text") || "";
+
+    const matchSpk = currentDiarSpeakerFilter === "ALL" || spk === currentDiarSpeakerFilter;
+    const matchQuery = !query || txt.includes(query);
+
+    item.style.display = (matchSpk && matchQuery) ? "block" : "none";
+  });
+}
+
+function copyTurnText(escapedTxt) {
+  const txt = unescape(escapedTxt);
+  navigator.clipboard.writeText(txt).then(() => {
+    showToast("Turn text copied to clipboard!", "success");
+  }).catch(() => {});
+}
+
+function closeDiarDetailsPanel() {
+  const bottomSec = document.getElementById("diarDetailsBottomSection");
+  if (bottomSec) bottomSec.style.display = "none";
+  currentViewedDiarJobId = null;
+  renderDiarQueueUI();
+  showToast("Processed Diarization panel closed", "info");
+}
+
+function copyCurrentDiarTranscript() {
+  const activeJob = diarSessionQueue.find(j => j.id === currentViewedDiarJobId) ||
+                    auditsCache.find(c => c.id === currentViewedDiarJobId);
+  const data = activeJob ? (activeJob.data || activeJob) : null;
+  if (!data || !data.transcript_json) {
+    showToast("No active transcript available to copy", "info");
+    return;
+  }
+
+  const turns = data.transcript_json.turns || data.transcript_json.segments || [];
+  if (turns.length === 0) {
+    showToast("Transcript is empty", "info");
+    return;
+  }
+
+  const identEmp = employeesCache.find(e => strId(e.id) === strId(data.identified_employee_id));
+  const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Agent";
+
+  const lines = turns.map(t => {
+    const isAgent = (t.speaker === "SPEAKER_AGENT" || t.speaker === "SPEAKER_00" || t.speaker === "AGENT");
+    const speakerLabel = isAgent ? `Agent (${agentName})` : "Customer";
+    const start = typeof t.start === "number" ? `${Math.floor(t.start/60).toString().padStart(2,'0')}:${Math.floor(t.start%60).toString().padStart(2,'0')}` : "00:00";
+    return `[${start}] ${speakerLabel}: ${t.text || t.content || ""}`;
+  });
+
+  const fullText = `=== VOXAUDIT DIARIZED CALL TRANSCRIPT ===\nCall File: ${data.audio_filename || "recording.wav"}\nIdentified Agent: ${agentName}\n\n` + lines.join("\n\n");
+
+  navigator.clipboard.writeText(fullText).then(() => {
+    showToast("Full transcript copied to clipboard!", "success");
+  }).catch(err => {
+    showToast("Failed to copy transcript: " + err.message, "error");
+  });
+}
+
+function downloadCurrentDiarJson() {
+  const activeJob = diarSessionQueue.find(j => j.id === currentViewedDiarJobId) ||
+                    auditsCache.find(c => c.id === currentViewedDiarJobId);
+  const data = activeJob ? (activeJob.data || activeJob) : null;
+  if (!data) {
+    showToast("No call data available for export", "info");
+    return;
+  }
+
+  const jsonStr = JSON.stringify(data.transcript_json || data, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `diarization_${data.audio_filename || 'call'}_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Diarization JSON downloaded!", "success");
+}
+
+function triggerQaAuditFromDiar() {
+  const callId = currentViewedDiarJobId;
+  if (!callId) {
+    showToast("No call selected for QA Audit", "info");
+    return;
+  }
+
+  // Switch to QA Analysis page and auto-select this call
+  switchPage("qa-analysis");
+  setTimeout(() => {
+    const qaSelect = document.getElementById("qaCallSelect");
+    if (qaSelect) {
+      qaSelect.value = callId;
+      loadSelectedQaDetails();
+    }
+  }, 100);
 }
 
 /* ==========================================================================

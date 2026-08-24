@@ -968,13 +968,29 @@
 
         <!-- DIARIZATION STUDIO: BOTTOM PANEL (DETAILS & EXTRACTED TURNS) -->
         <div id="diarDetailsBottomSection" class="panel-card" style="display: none; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
-          <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+          <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="panel-title">
               <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
                 <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="users"></i></span>
                 Processed Call Diarization & Speaker Turns
               </h3>
               <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Milvus biometric matched agent profile and exact time-stamped speaker turns</p>
+            </div>
+
+            <!-- ACTION CONTROLS & CLOSE BUTTON -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="diarHeaderActionBtns">
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;" onclick="copyCurrentDiarTranscript()" title="Copy entire dialogue transcript to clipboard">
+                <i data-lucide="copy" style="width: 13px;"></i> Copy Transcript
+              </button>
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;" onclick="downloadCurrentDiarJson()" title="Download raw transcript JSON">
+                <i data-lucide="download" style="width: 13px;"></i> Export JSON
+              </button>
+              <button class="btn-primary" style="font-size: 12px; padding: 7px 14px; height: auto; background: linear-gradient(135deg, #059669 0%, #10b981 100%);" onclick="triggerQaAuditFromDiar()" title="Run AI QA Evaluation on this call">
+                <i data-lucide="award" style="width: 13px;"></i> Run QA Audit
+              </button>
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 12px; height: auto; color: #64748b; border-color: #cbd5e1;" onclick="closeDiarDetailsPanel()" title="Close details panel">
+                <i data-lucide="x" style="width: 14px;"></i> Close Panel
+              </button>
             </div>
           </div>
 
