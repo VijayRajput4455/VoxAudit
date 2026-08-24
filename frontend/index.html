@@ -1,27 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VoxAudit - AI-Powered Call Analysis & Voice Audit</title>
-  
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  
+
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="/static/styles.css">
 </head>
+
 <body>
   <div class="app-container">
-    
+
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-brand">
@@ -61,15 +64,15 @@
         <div class="nav-section-title">AI VOICE & QA ENGINE</div>
         <a href="#" class="nav-item" id="nav-voice-enrollment" onclick="showView('voice-enrollment', event)">
           <i data-lucide="mic"></i>
-          <span>1. Voice Enrollment</span>
+          <span>Voice Enrollment</span>
         </a>
         <a href="#" class="nav-item" id="nav-diarization" onclick="showView('diarization', event)">
           <i data-lucide="audio-lines"></i>
-          <span>2. Speaker Diarization</span>
+          <span>Speaker Diarization</span>
         </a>
         <a href="#" class="nav-item" id="nav-qa-analysis" onclick="showView('qa-analysis', event)">
           <i data-lucide="award"></i>
-          <span>3. QA Quality Test</span>
+          <span>QA Quality Test</span>
         </a>
         <a href="#" class="nav-item" id="nav-audits" onclick="showView('audits', event)">
           <i data-lucide="file-audio"></i>
@@ -97,7 +100,7 @@
 
     <!-- MAIN CONTENT -->
     <main class="main-content">
-      
+
       <!-- TOP HEADER -->
       <header class="top-header">
         <div class="header-left">
@@ -137,10 +140,10 @@
       <!-- VIEW 1: DASHBOARD PAGE -->
       <!-- ==================================================================== -->
       <div id="view-dashboard" class="page-view active">
-        
+
         <!-- TOP 4 METRIC CARDS -->
         <section class="metrics-grid-4" style="margin-bottom: 20px;">
-          
+
           <!-- CARD 1: TOTAL AUDITS -->
           <div class="metric-card">
             <div class="metric-card-top">
@@ -213,7 +216,7 @@
 
         <!-- ROW 1: AUDITS OVER TIME & AUDITS BY STATUS -->
         <section class="grid-2-1" style="margin-bottom: 20px;">
-          
+
           <!-- AUDITS OVER TIME LINE CHART WITH TOGGLE -->
           <div class="panel-card">
             <div class="panel-header">
@@ -271,34 +274,44 @@
 
         <!-- ROW 2: TOP MODEL REQUESTS, CATEGORY SHARE, SYSTEM HEALTH -->
         <section class="grid-3-cols" style="margin-bottom: 20px;">
-          
+
           <!-- TOP MODEL REQUESTS -->
           <div class="panel-card">
             <div class="panel-header">
               <div class="panel-title">
                 <h3>Top Model Requests</h3>
               </div>
-              <select class="select-filter"><option>This Week</option></select>
+              <select class="select-filter">
+                <option>This Week</option>
+              </select>
             </div>
             <div class="progress-list">
               <div class="progress-item">
                 <div class="model-name"><i data-lucide="cpu" style="width:14px;"></i> Whisper Large V3</div>
-                <div class="progress-bar-container"><div class="progress-fill" style="width: 78%;"></div></div>
+                <div class="progress-bar-container">
+                  <div class="progress-fill" style="width: 78%;"></div>
+                </div>
                 <div class="model-count">48 (38%)</div>
               </div>
               <div class="progress-item">
                 <div class="model-name"><i data-lucide="zap" style="width:14px;"></i> GPT-4o Mini</div>
-                <div class="progress-bar-container"><div class="progress-fill" style="width: 55%;"></div></div>
+                <div class="progress-bar-container">
+                  <div class="progress-fill" style="width: 55%;"></div>
+                </div>
                 <div class="model-count">32 (25%)</div>
               </div>
               <div class="progress-item">
                 <div class="model-name"><i data-lucide="sparkles" style="width:14px;"></i> Gemini 1.5 Pro</div>
-                <div class="progress-bar-container"><div class="progress-fill" style="width: 40%;"></div></div>
+                <div class="progress-bar-container">
+                  <div class="progress-fill" style="width: 40%;"></div>
+                </div>
                 <div class="model-count">24 (19%)</div>
               </div>
               <div class="progress-item">
                 <div class="model-name"><i data-lucide="bot" style="width:14px;"></i> Claude 3.5 Sonnet</div>
-                <div class="progress-bar-container"><div class="progress-fill" style="width: 32%;"></div></div>
+                <div class="progress-bar-container">
+                  <div class="progress-fill" style="width: 32%;"></div>
+                </div>
                 <div class="model-count">20 (16%)</div>
               </div>
             </div>
@@ -321,10 +334,22 @@
                 </div>
               </div>
               <div class="chart-legend" style="font-size: 11.5px;">
-                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-blue"></span> Agent Comm.</div><span>32 (25.8%)</span></div>
-                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-purple"></span> Customer Exp.</div><span>28 (22.6%)</span></div>
-                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-green"></span> Compliance</div><span>24 (19.4%)</span></div>
-                <div class="legend-row"><div class="legend-left"><span class="legend-dot dot-yellow"></span> Product Knowl.</div><span>20 (16.1%)</span></div>
+                <div class="legend-row">
+                  <div class="legend-left"><span class="legend-dot dot-blue"></span> Agent Comm.</div><span>32
+                    (25.8%)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="legend-left"><span class="legend-dot dot-purple"></span> Customer Exp.</div><span>28
+                    (22.6%)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="legend-left"><span class="legend-dot dot-green"></span> Compliance</div><span>24
+                    (19.4%)</span>
+                </div>
+                <div class="legend-row">
+                  <div class="legend-left"><span class="legend-dot dot-yellow"></span> Product Knowl.</div><span>20
+                    (16.1%)</span>
+                </div>
               </div>
             </div>
           </div>
@@ -365,7 +390,7 @@
 
         <!-- ROW 3: RECENT AUDIT ACTIVITY TABLE WITH STATUS TOGGLE -->
         <section class="grid-2-1">
-          
+
           <div class="panel-card">
             <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
               <div class="panel-title">
@@ -379,7 +404,8 @@
                   <button class="time-range-btn" onclick="filterDashboardAudits('PENDING', this)">Pending</button>
                   <button class="time-range-btn" onclick="filterDashboardAudits('FAILED', this)">Issues</button>
                 </div>
-                <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="showView('audits')">View All</button>
+                <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;"
+                  onclick="showView('audits')">View All</button>
               </div>
             </div>
             <div class="table-responsive">
@@ -428,7 +454,9 @@
           <div style="display: flex; flex-direction: column; gap: 16px;">
             <div class="panel-card">
               <div class="panel-header" style="margin-bottom: 12px;">
-                <div class="panel-title"><h3>Quick Actions</h3></div>
+                <div class="panel-title">
+                  <h3>Quick Actions</h3>
+                </div>
               </div>
               <div class="quick-actions-grid">
                 <div class="action-tile" onclick="openAuditModal()">
@@ -462,7 +490,8 @@
                   <p>Get actionable insights and improve audit quality with AI.</p>
                 </div>
               </div>
-              <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="openVoiceSummaryModal()">Learn More</button>
+              <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;"
+                onclick="openVoiceSummaryModal()">Learn More</button>
             </div>
           </div>
 
@@ -520,35 +549,48 @@
 
         <div class="panel-card">
           <!-- AUDITS HEADER ROW 1: TITLE & ACTIONS -->
-          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
+          <div class="panel-header"
+            style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Customer Call Audits & Quality Directory</h3>
               <p>Real-time AI processing, Milvus speaker identification, QA score cards, and transcripts</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" id="btnAuditViewTable" onclick="switchAuditViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
-                <button class="time-range-btn" id="btnAuditViewGrid" onclick="switchAuditViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
+                <button class="time-range-btn active" id="btnAuditViewTable"
+                  onclick="switchAuditViewMode('table', this)" title="List Table View"><i data-lucide="list"></i>
+                  Table</button>
+                <button class="time-range-btn" id="btnAuditViewGrid" onclick="switchAuditViewMode('grid', this)"
+                  title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
 
               <button class="btn-secondary" onclick="loadCallAudits()"><i data-lucide="refresh-cw"></i> Refresh</button>
-              <button class="btn-primary" onclick="openAuditModal()"><i data-lucide="plus"></i> Submit Call Recording</button>
+              <button class="btn-primary" onclick="openAuditModal()"><i data-lucide="plus"></i> Submit Call
+                Recording</button>
             </div>
           </div>
 
           <!-- AUDITS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+          <div
+            style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
               <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
-                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                <input type="text" id="auditSearchInput" placeholder="Search call ID, agent name, QA score, status..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterAudits()">
+                <i data-lucide="search"
+                  style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="auditSearchInput" placeholder="Search call ID, agent name, QA score, status..."
+                  style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                  oninput="filterAudits()">
               </div>
 
-              <select id="auditDeptFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterAudits()">
+              <select id="auditDeptFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterAudits()">
                 <option value="">All Departments</option>
               </select>
 
-              <select id="auditAgentFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterAudits()">
+              <select id="auditAgentFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterAudits()">
                 <option value="">All Agents</option>
               </select>
             </div>
@@ -576,14 +618,17 @@
                 </tr>
               </thead>
               <tbody id="auditsTableBody">
-                <tr><td colspan="8" class="loading-cell">Loading call audits from database...</td></tr>
+                <tr>
+                  <td colspan="8" class="loading-cell">Loading call audits from database...</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <!-- AUDITS GRID VIEW CONTAINER -->
           <div id="auditsGridView" style="display: none; padding-top: 16px;">
-            <div id="auditsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+            <div id="auditsGridContainer"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
               <!-- DYNAMICALLY POPULATED VIA JS -->
             </div>
           </div>
@@ -639,25 +684,32 @@
         </section>
 
         <!-- DUAL COLUMN LAYOUT: ENROLLMENT STUDIO & VERIFICATION TEST -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
-          
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; align-items: stretch;">
+
           <!-- CARD 1: STAFF VOICE ENROLLMENT STUDIO -->
-          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-card"
+            style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
             <div>
-              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+              <div class="panel-header"
+                style="margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
                 <div class="panel-title">
-                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="mic"></i></span>
+                  <h3
+                    style="font-size: 16.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span
+                      style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                        data-lucide="mic"></i></span>
                     Staff Voice Enrollment Studio
                   </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Register employee voice samples via file upload or live recording</p>
+                  <p style="font-size: 12px; color: #64748b; margin-top: 2px;">Register employee voice samples via
+                    audio file upload</p>
                 </div>
               </div>
 
               <form id="voiceEnrollForm" onsubmit="submitVoiceEnrollment(event)">
                 <!-- TARGET EMPLOYEE SEARCHABLE DROPDOWN WIDGET -->
-                <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <div class="form-group" style="margin-bottom: 16px;">
+                  <label
+                    style="font-weight: 700; font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                     <i data-lucide="user-check" style="width: 15px; color: #1d4ed8;"></i>
                     <span>Select Target Employee *</span>
                   </label>
@@ -670,17 +722,23 @@
                           <i data-lucide="user" style="width: 16px;"></i>
                         </div>
                         <div>
-                          <strong id="veTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Choose Employee to Enroll...</strong>
-                          <small id="veTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Select staff member from database</small>
+                          <strong id="veTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Choose
+                            Employee to Enroll...</strong>
+                          <small id="veTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Select staff member
+                            from database</small>
                         </div>
                       </div>
-                      <i data-lucide="chevron-down" id="veTriggerChevron" style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
+                      <i data-lucide="chevron-down" id="veTriggerChevron"
+                        style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
                     </div>
 
                     <div class="agent-dropdown-menu" id="veAgentMenu">
                       <div class="agent-search-box">
-                        <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                        <input type="text" class="agent-search-input" id="veAgentSearchInput" placeholder="Search staff name, code, or department..." onclick="event.stopPropagation()" oninput="filterVeAgentDropdown(this.value)">
+                        <i data-lucide="search"
+                          style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                        <input type="text" class="agent-search-input" id="veAgentSearchInput"
+                          placeholder="Search staff name, code, or department..." onclick="event.stopPropagation()"
+                          oninput="filterVeAgentDropdown(this.value)">
                       </div>
                       <div class="agent-options-list" id="veAgentOptionsList">
                         <!-- Dynamic -->
@@ -690,18 +748,21 @@
                 </div>
 
                 <!-- FILE UPLOAD DROPZONE -->
-                <div id="enrollUploadArea" style="margin-bottom: 18px;">
-                  <input type="file" id="veAudioFiles" multiple required accept="audio/*" style="display: none;" onchange="handleVeFileSelect(event)">
-                  
-                  <div id="veDropzone" class="vox-upload-dropzone" style="padding: 24px 16px;" onclick="document.getElementById('veAudioFiles').click()">
-                    <div class="dropzone-icon-container" style="width: 52px; height: 52px; margin-bottom: 10px;">
-                      <i data-lucide="mic" style="width: 26px; height: 26px;"></i>
+                <div id="enrollUploadArea" style="margin-bottom: 16px;">
+                  <input type="file" id="veAudioFiles" multiple required accept="audio/*" style="display: none;"
+                    onchange="handleVeFileSelect(event)">
+
+                  <div id="veDropzone" class="vox-upload-dropzone"
+                    onclick="document.getElementById('veAudioFiles').click()">
+                    <div class="dropzone-icon-container">
+                      <i data-lucide="mic" style="width: 22px; height: 22px;"></i>
                     </div>
-                    <h4 style="font-size: 14.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px;">
+                    <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 2px;">
                       Drag & Drop Voice Enrollment Audio
                     </h4>
-                    <p style="font-size: 12.5px; color: #64748b; margin: 0 0 10px;">
-                      or <span style="color: #2563eb; font-weight: 600; text-decoration: underline;">Browse files</span> (Multiple files supported)
+                    <p style="font-size: 11.5px; color: #64748b; margin: 0 0 8px;">
+                      or <span style="color: #2563eb; font-weight: 600; text-decoration: underline;">Browse audio files</span>
+                      (Multiple files supported)
                     </p>
                     <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
                       <span class="audio-format-pill">.WAV</span>
@@ -710,81 +771,82 @@
                     </div>
                   </div>
 
-                  <!-- LIVE FILE PREVIEW CARD -->
-                  <div id="veFilePreviewCard" style="display: none; margin-top: 10px;">
-                    <div class="audio-file-preview" style="padding: 10px 14px;">
-                      <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; display: flex; align-items: center; justify-content: center;">
-                          <i data-lucide="music" style="width: 18px; height: 18px;"></i>
-                        </div>
-                        <div>
-                          <strong id="vePreviewFilename" style="font-size: 12.5px; color: #0f172a; display: block;">1 audio file selected</strong>
-                          <small id="vePreviewFilesize" style="font-size: 11px; color: #64748b;">Ready to enroll</small>
-                        </div>
-                      </div>
-                      <div style="display: flex; align-items: center; gap: 10px;">
-                        <div class="sound-bars">
-                          <div class="sound-bar"></div>
-                          <div class="sound-bar"></div>
-                          <div class="sound-bar"></div>
-                          <div class="sound-bar"></div>
-                        </div>
-                        <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #dc2626; border-color: #fca5a5;" onclick="clearVeSelectedFiles(event)">
-                          <i data-lucide="x" style="width: 11px;"></i> Remove
-                        </button>
-                      </div>
+                  <!-- LIVE FILE PREVIEW LIST -->
+                  <div id="veFilePreviewCard" style="display: none; margin-top: 8px;">
+                    <div id="veFileListContainer" style="display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto;">
+                      <!-- Populated via JS -->
                     </div>
                   </div>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px;"><i data-lucide="shield" style="width: 14px; color: #1d61e7;"></i> ECAPA-TDNN 192D</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 22px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);" id="btnSubmitEnrollment"><i data-lucide="cpu"></i> Enroll Voice Data</button>
+                <div
+                  style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px;"><i
+                      data-lucide="shield" style="width: 14px; color: #1d61e7;"></i> ECAPA-TDNN 192D</span>
+                  <button type="submit" class="btn-primary"
+                    style="padding: 10px 22px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);"
+                    id="btnSubmitEnrollment"><i data-lucide="cpu"></i> Enroll Voice Data</button>
                 </div>
               </form>
             </div>
           </div>
 
           <!-- CARD 2: SPEAKER VERIFICATION TEST -->
-          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-card"
+            style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
             <div>
-              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+              <div class="panel-header"
+                style="margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
                 <div class="panel-title">
-                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="shield-check"></i></span>
+                  <h3
+                    style="font-size: 16.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span
+                      style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                        data-lucide="shield-check"></i></span>
                     Speaker Verification Test
                   </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Test speaker identity & similarity score against enrolled database</p>
+                  <p style="font-size: 12px; color: #64748b; margin-top: 2px;">Test speaker identity & similarity
+                    score against enrolled database</p>
                 </div>
               </div>
 
               <form id="voiceVerifyForm" onsubmit="submitVoiceVerificationTest(event)">
                 <!-- TARGET VERIFICATION SEARCHABLE DROPDOWN -->
-                <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <div class="form-group" style="margin-bottom: 16px;">
+                  <label
+                    style="font-weight: 700; font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                     <i data-lucide="target" style="width: 15px; color: #1d4ed8;"></i>
                     <span>Target Employee (Optional - 1:1 Verification)</span>
                   </label>
                   <input type="hidden" id="verifyTargetSelect" value="">
 
                   <div class="agent-dropdown-wrapper" id="verifyAgentDropdownWrapper">
-                    <div class="agent-select-trigger" id="verifyAgentTrigger" onclick="toggleVerifyAgentDropdown(event)">
+                    <div class="agent-select-trigger" id="verifyAgentTrigger"
+                      onclick="toggleVerifyAgentDropdown(event)">
                       <div style="display: flex; align-items: center; gap: 12px;">
-                        <div class="agent-avatar-circle" id="verifyTriggerAvatar" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                        <div class="agent-avatar-circle" id="verifyTriggerAvatar"
+                          style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
                           <i data-lucide="globe" style="width: 16px;"></i>
                         </div>
                         <div>
-                          <strong id="verifyTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Open Identification (1:N Search Across All)</strong>
-                          <small id="verifyTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Matches against all enrolled employee profiles</small>
+                          <strong id="verifyTriggerTitle"
+                            style="font-size: 13.5px; color: #0f172a; display: block;">Open Identification (1:N Search
+                            Across All)</strong>
+                          <small id="verifyTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Matches against
+                            all enrolled employee profiles</small>
                         </div>
                       </div>
-                      <i data-lucide="chevron-down" id="verifyTriggerChevron" style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
+                      <i data-lucide="chevron-down" id="verifyTriggerChevron"
+                        style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
                     </div>
 
                     <div class="agent-dropdown-menu" id="verifyAgentMenu">
                       <div class="agent-search-box">
-                        <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                        <input type="text" class="agent-search-input" id="verifyAgentSearchInput" placeholder="Search staff name, code, or department..." onclick="event.stopPropagation()" oninput="filterVerifyAgentDropdown(this.value)">
+                        <i data-lucide="search"
+                          style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                        <input type="text" class="agent-search-input" id="verifyAgentSearchInput"
+                          placeholder="Search staff name, code, or department..." onclick="event.stopPropagation()"
+                          oninput="filterVerifyAgentDropdown(this.value)">
                       </div>
                       <div class="agent-options-list" id="verifyAgentOptionsList">
                         <!-- Dynamic -->
@@ -794,17 +856,20 @@
                 </div>
 
                 <!-- VERIFY FILE UPLOAD DROPZONE -->
-                <div id="verifyUploadArea" style="margin-bottom: 18px;">
-                  <input type="file" id="verifyAudioFile" required accept="audio/*" style="display: none;" onchange="handleVerifyFileSelect(event)">
-                  
-                  <div id="verifyDropzone" class="vox-upload-dropzone" style="padding: 24px 16px;" onclick="document.getElementById('verifyAudioFile').click()">
-                    <div class="dropzone-icon-container" style="width: 52px; height: 52px; margin-bottom: 10px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.35);">
-                      <i data-lucide="audio-lines" style="width: 26px; height: 26px;"></i>
+                <div id="verifyUploadArea" style="margin-bottom: 16px;">
+                  <input type="file" id="verifyAudioFile" required accept="audio/*" style="display: none;"
+                    onchange="handleVerifyFileSelect(event)">
+
+                  <div id="verifyDropzone" class="vox-upload-dropzone"
+                    onclick="document.getElementById('verifyAudioFile').click()">
+                    <div class="dropzone-icon-container"
+                      style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); box-shadow: 0 6px 16px -3px rgba(16, 185, 129, 0.3);">
+                      <i data-lucide="audio-lines" style="width: 22px; height: 22px;"></i>
                     </div>
-                    <h4 style="font-size: 14.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px;">
+                    <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0 0 2px;">
                       Drag & Drop Query Voice Recording
                     </h4>
-                    <p style="font-size: 12.5px; color: #64748b; margin: 0 0 10px;">
+                    <p style="font-size: 11.5px; color: #64748b; margin: 0 0 8px;">
                       or <span style="color: #10b981; font-weight: 600; text-decoration: underline;">Browse audio file</span>
                     </p>
                     <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
@@ -814,59 +879,23 @@
                     </div>
                   </div>
 
-                  <!-- LIVE FILE PREVIEW CARD -->
-                  <div id="verifyFilePreviewCard" style="display: none; margin-top: 10px;">
-                    <div class="audio-file-preview" style="padding: 10px 14px; border-color: #a7f3d0;">
-                      <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 36px; height: 36px; border-radius: 10px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center;">
-                          <i data-lucide="music" style="width: 18px; height: 18px;"></i>
-                        </div>
-                        <div>
-                          <strong id="verifyPreviewFilename" style="font-size: 12.5px; color: #0f172a; display: block;">test_query.wav</strong>
-                          <small id="verifyPreviewFilesize" style="font-size: 11px; color: #64748b;">Ready to verify</small>
-                        </div>
-                      </div>
-                      <div style="display: flex; align-items: center; gap: 10px;">
-                        <div class="sound-bars">
-                          <div class="sound-bar" style="background: #059669;"></div>
-                          <div class="sound-bar" style="background: #059669;"></div>
-                          <div class="sound-bar" style="background: #059669;"></div>
-                          <div class="sound-bar" style="background: #059669;"></div>
-                        </div>
-                        <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #dc2626; border-color: #fca5a5;" onclick="clearVerifySelectedFile(event)">
-                          <i data-lucide="x" style="width: 11px;"></i> Remove
-                        </button>
-                      </div>
+                  <!-- LIVE FILE PREVIEW LIST -->
+                  <div id="verifyFilePreviewCard" style="display: none; margin-top: 8px;">
+                    <div id="verifyFileListContainer" style="display: flex; flex-direction: column; gap: 6px;">
+                      <!-- Populated via JS -->
                     </div>
                   </div>
                 </div>
 
-                <!-- VERIFY MODE B: LIVE MIC RECORDING -->
-                <div id="verifyMicArea" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 18px;">
-                  <div id="verifyMicStatusText" style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 10px;">Ready to record test voice clip...</div>
-                  <div id="verifyMicTimer" style="font-size: 26px; font-weight: 700; font-family: monospace; color: #1d61e7; margin-bottom: 14px;">00:00</div>
-                  <div style="display: flex; justify-content: center; gap: 10px;">
-                    <button type="button" class="btn-primary" id="btnVerifyStartRecord" onclick="startVerifyMicRecording()"><i data-lucide="mic"></i> Start Recording</button>
-                    <button type="button" class="btn-secondary" id="btnVerifyStopRecord" onclick="stopVerifyMicRecording()" disabled style="color:#ef4444;"><i data-lucide="square"></i> Stop</button>
-                    <button type="button" class="btn-secondary" id="btnVerifyClearRecord" onclick="clearVerifyMicRecording()" style="display:none;">Clear</button>
-                  </div>
-                  <audio id="verifyMicAudioPreview" controls style="display:none; width: 100%; margin-top: 14px; border-radius: 8px;"></audio>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px;"><i data-lucide="cpu" style="width: 14px; color: #059669;"></i> Milvus Cosine 1:N Search</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 22px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #059669 0%, #10b981 100%);" id="btnVerifySubmit"><i data-lucide="shield-check"></i> Verify Speaker</button>
+                <div
+                  style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 4px;"><i
+                      data-lucide="cpu" style="width: 14px; color: #059669;"></i> Milvus Cosine 1:N Search</span>
+                  <button type="submit" class="btn-primary"
+                    style="padding: 10px 22px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #059669 0%, #10b981 100%);"
+                    id="btnVerifySubmit"><i data-lucide="shield-check"></i> Verify Speaker</button>
                 </div>
               </form>
-            </div>
-
-            <!-- TEST RESULT CONTAINER -->
-            <div id="verifyResultContainer" style="display:none; margin-top: 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <strong style="color:#166534; font-size:14px;" id="verifyResultTitle">Identification Match</strong>
-                <span class="status-pill badge-completed" id="verifyScoreBadge">95% Match</span>
-              </div>
-              <div style="font-size: 13px; color: #15803d; margin: 0;" id="verifyResultDetail">Matched Employee: Alice Smith (AGNT-000001)</div>
             </div>
           </div>
 
@@ -880,8 +909,10 @@
               <p>Registered audio samples, duration, and vector status per employee</p>
             </div>
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-              <button class="btn-secondary" onclick="loadVoiceEnrollmentPage()"><i data-lucide="refresh-cw"></i> Refresh</button>
-              <button class="btn-secondary" onclick="purgeAllVoiceData()" style="color:#ef4444;"><i data-lucide="trash-2"></i> Purge All Voice Data</button>
+              <button class="btn-secondary" onclick="loadVoiceEnrollmentPage()"><i data-lucide="refresh-cw"></i>
+                Refresh</button>
+              <button class="btn-secondary" onclick="purgeAllVoiceData()" style="color:#ef4444;"><i
+                  data-lucide="trash-2"></i> Purge All Voice Data</button>
             </div>
           </div>
           <div class="table-responsive">
@@ -898,7 +929,9 @@
                 </tr>
               </thead>
               <tbody id="veDirectoryTableBody">
-                <tr><td colspan="7" class="loading-cell">Loading enrolled voice directory...</td></tr>
+                <tr>
+                  <td colspan="7" class="loading-cell">Loading enrolled voice directory...</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -955,24 +988,32 @@
         </section>
 
         <!-- DIARIZATION STUDIO: TOP PANEL (UPLOAD & LIVE QUEUE TRACKER) -->
-        <div class="panel-card" style="margin-bottom: 24px; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
-          <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+        <div class="panel-card"
+          style="margin-bottom: 24px; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-header"
+            style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
             <div class="panel-title">
-              <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="audio-lines"></i></span>
+              <h3
+                style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span
+                  style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                    data-lucide="audio-lines"></i></span>
                 Run Speaker Diarization & Speech-to-Text Pipeline
               </h3>
-              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Upload calls to queue asynchronous Faster-Whisper STT, PyAnnote 3.1 separation, and Milvus biometric matching</p>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Upload calls to queue asynchronous
+                Faster-Whisper STT, PyAnnote 3.1 separation, and Milvus biometric matching</p>
             </div>
           </div>
 
           <form id="diarizationForm" onsubmit="runSpeakerDiarization(event)">
             <!-- MODERN INTERACTIVE DRAG & DROP UPLOAD ZONE -->
             <div style="margin-bottom: 20px;">
-              <input type="file" id="diarAudioFile" required accept="audio/*" style="display: none;" onchange="handleDiarFileSelect(event)">
-              
+              <input type="file" id="diarAudioFile" required accept="audio/*" style="display: none;"
+                onchange="handleDiarFileSelect(event)">
+
               <!-- DROPZONE CONTAINER -->
-              <div id="diarDropzone" class="vox-upload-dropzone" onclick="document.getElementById('diarAudioFile').click()">
+              <div id="diarDropzone" class="vox-upload-dropzone"
+                onclick="document.getElementById('diarAudioFile').click()">
                 <div class="dropzone-icon-container">
                   <i data-lucide="cloud-upload" style="width: 32px; height: 32px;"></i>
                 </div>
@@ -980,7 +1021,8 @@
                   Drag & Drop Call Audio Recording Here
                 </h4>
                 <p style="font-size: 13px; color: #64748b; margin: 0 0 14px;">
-                  or <span style="color: #2563eb; font-weight: 600; text-decoration: underline;">Browse from computer</span> to upload
+                  or <span style="color: #2563eb; font-weight: 600; text-decoration: underline;">Browse from
+                    computer</span> to upload
                 </p>
                 <div style="display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <span class="audio-format-pill">.WAV</span>
@@ -995,15 +1037,19 @@
               <div id="diarFilePreviewCard" style="display: none; margin-top: 14px;">
                 <div class="audio-file-preview">
                   <div style="display: flex; align-items: center; gap: 14px;">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #eff6ff; color: #1d4ed8; display: flex; align-items: center; justify-content: center; border: 1px solid #bfdbfe;">
+                    <div
+                      style="width: 44px; height: 44px; border-radius: 12px; background: #eff6ff; color: #1d4ed8; display: flex; align-items: center; justify-content: center; border: 1px solid #bfdbfe;">
                       <i data-lucide="music" style="width: 22px; height: 22px;"></i>
                     </div>
                     <div>
                       <div style="display: flex; align-items: center; gap: 8px;">
-                        <strong id="diarPreviewFilename" style="font-size: 13.5px; color: #0f172a;">audio_sample.wav</strong>
-                        <span class="status-pill badge-completed" style="font-size: 10px; padding: 2px 7px;">Ready to Queue</span>
+                        <strong id="diarPreviewFilename"
+                          style="font-size: 13.5px; color: #0f172a;">audio_sample.wav</strong>
+                        <span class="status-pill badge-completed" style="font-size: 10px; padding: 2px 7px;">Ready to
+                          Queue</span>
                       </div>
-                      <small id="diarPreviewFilesize" style="font-size: 11.5px; color: #64748b; font-family: monospace;">1.84 MB</small>
+                      <small id="diarPreviewFilesize"
+                        style="font-size: 11.5px; color: #64748b; font-family: monospace;">1.84 MB</small>
                     </div>
                   </div>
 
@@ -1016,7 +1062,9 @@
                       <div class="sound-bar"></div>
                       <div class="sound-bar"></div>
                     </div>
-                    <button type="button" class="btn-secondary" style="font-size: 11.5px; padding: 5px 10px; height: auto; color: #dc2626; border-color: #fca5a5;" onclick="clearDiarSelectedFile(event)">
+                    <button type="button" class="btn-secondary"
+                      style="font-size: 11.5px; padding: 5px 10px; height: auto; color: #dc2626; border-color: #fca5a5;"
+                      onclick="clearDiarSelectedFile(event)">
                       <i data-lucide="x" style="width: 12px;"></i> Remove
                     </button>
                   </div>
@@ -1025,16 +1073,21 @@
             </div>
 
             <!-- EXPECTED AGENT MAPPING CARD -->
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div
+              style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+              <div
+                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                 <div>
-                  <label style="font-weight: 700; font-size: 13.5px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                  <label
+                    style="font-weight: 700; font-size: 13.5px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
                     <i data-lucide="shield-check" style="width: 16px; color: #1d4ed8;"></i>
                     <span>Target Expected Agent (Optional 1:1 Verification)</span>
                   </label>
-                  <p style="font-size: 12px; color: #64748b; margin: 0;">Leave default for automatic 1:N biometric search across all staff database</p>
+                  <p style="font-size: 12px; color: #64748b; margin: 0;">Leave default for automatic 1:N biometric
+                    search across all staff database</p>
                 </div>
-                <span id="diarModeBadge" class="status-pill badge-completed" style="font-size: 11px; padding: 3px 10px;">
+                <span id="diarModeBadge" class="status-pill badge-completed"
+                  style="font-size: 11px; padding: 3px 10px;">
                   🌐 1:N Global Search (Default)
                 </span>
               </div>
@@ -1051,18 +1104,24 @@
                       <i data-lucide="globe" style="width: 16px;"></i>
                     </div>
                     <div>
-                      <strong id="diarTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Open Biometric 1:N Identification Across All Staff</strong>
-                      <small id="diarTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Matches any enrolled employee voice</small>
+                      <strong id="diarTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Open
+                        Biometric 1:N Identification Across All Staff</strong>
+                      <small id="diarTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Matches any enrolled
+                        employee voice</small>
                     </div>
                   </div>
-                  <i data-lucide="chevron-down" id="diarTriggerChevron" style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
+                  <i data-lucide="chevron-down" id="diarTriggerChevron"
+                    style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
                 </div>
 
                 <!-- Floating Dropdown Menu -->
                 <div class="agent-dropdown-menu" id="diarAgentMenu">
                   <div class="agent-search-box">
-                    <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                    <input type="text" class="agent-search-input" id="diarAgentSearchInput" placeholder="Search staff name, employee code, or department..." onclick="event.stopPropagation()" oninput="filterDiarAgentDropdown(this.value)">
+                    <i data-lucide="search"
+                      style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                    <input type="text" class="agent-search-input" id="diarAgentSearchInput"
+                      placeholder="Search staff name, employee code, or department..." onclick="event.stopPropagation()"
+                      oninput="filterDiarAgentDropdown(this.value)">
                   </div>
 
                   <div class="agent-options-list" id="diarAgentOptionsList">
@@ -1073,56 +1132,78 @@
             </div>
 
             <!-- ACTION FOOTER -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid #f1f5f9;">
               <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: #64748b;">
-                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> Faster-Whisper</span>
-                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> PyAnnote 3.1</span>
-                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> Milvus 192D</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check"
+                    style="width: 14px; color: #16a34a;"></i> Faster-Whisper</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check"
+                    style="width: 14px; color: #16a34a;"></i> PyAnnote 3.1</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check"
+                    style="width: 14px; color: #16a34a;"></i> Milvus 192D</span>
               </div>
-              <button type="submit" class="btn-primary" style="padding: 12px 28px; font-size: 13.5px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);" id="btnRunDiarization">
+              <button type="submit" class="btn-primary"
+                style="padding: 12px 28px; font-size: 13.5px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);"
+                id="btnRunDiarization">
                 <i data-lucide="play-circle"></i> Queue & Run Diarization Engine
               </button>
             </div>
           </form>
 
           <!-- ASYNCHRONOUS RABBITMQ PROCESSING & QUEUE STATUS TRACKER -->
-          <div id="diarQueueSection" style="display: none; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0;">
+          <div id="diarQueueSection"
+            style="display: none; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
-              <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <h4
+                style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
                 <span class="pulse-dot-active"></span>
                 <span>Live Processing & Queue Tracker</span>
               </h4>
-              <span id="diarQueueCountBadge" class="status-pill badge-processing" style="font-size: 11.5px; padding: 3px 10px;">0 Active</span>
+              <span id="diarQueueCountBadge" class="status-pill badge-processing"
+                style="font-size: 11.5px; padding: 3px 10px;">0 Active</span>
             </div>
-            <div id="diarQueueList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px;">
+            <div id="diarQueueList"
+              style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px;">
               <!-- Dynamically populated -->
             </div>
           </div>
         </div>
 
         <!-- DIARIZATION STUDIO: BOTTOM PANEL (DETAILS & EXTRACTED TURNS) -->
-        <div id="diarDetailsBottomSection" class="panel-card" style="display: none; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
-          <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div id="diarDetailsBottomSection" class="panel-card"
+          style="display: none; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
+          <div class="panel-header"
+            style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="panel-title">
-              <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="users"></i></span>
+              <h3
+                style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span
+                  style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                    data-lucide="users"></i></span>
                 Processed Call Diarization & Speaker Turns
               </h3>
-              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Milvus biometric matched agent profile and exact time-stamped speaker turns</p>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Milvus biometric matched agent profile and
+                exact time-stamped speaker turns</p>
             </div>
 
             <!-- ACTION CONTROLS & CLOSE BUTTON -->
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="diarHeaderActionBtns">
-              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;" onclick="copyCurrentDiarTranscript()" title="Copy entire dialogue transcript to clipboard">
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;"
+                onclick="copyCurrentDiarTranscript()" title="Copy entire dialogue transcript to clipboard">
                 <i data-lucide="copy" style="width: 13px;"></i> Copy Transcript
               </button>
-              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;" onclick="downloadCurrentDiarJson()" title="Download raw transcript JSON">
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;"
+                onclick="downloadCurrentDiarJson()" title="Download raw transcript JSON">
                 <i data-lucide="download" style="width: 13px;"></i> Export JSON
               </button>
-              <button class="btn-primary" style="font-size: 12px; padding: 7px 14px; height: auto; background: linear-gradient(135deg, #059669 0%, #10b981 100%);" onclick="triggerQaAuditFromDiar()" title="Run AI QA Evaluation on this call">
+              <button class="btn-primary"
+                style="font-size: 12px; padding: 7px 14px; height: auto; background: linear-gradient(135deg, #059669 0%, #10b981 100%);"
+                onclick="triggerQaAuditFromDiar()" title="Run AI QA Evaluation on this call">
                 <i data-lucide="award" style="width: 13px;"></i> Run QA Audit
               </button>
-              <button class="btn-secondary" style="font-size: 12px; padding: 7px 12px; height: auto; color: #64748b; border-color: #cbd5e1;" onclick="closeDiarDetailsPanel()" title="Close details panel">
+              <button class="btn-secondary"
+                style="font-size: 12px; padding: 7px 12px; height: auto; color: #64748b; border-color: #cbd5e1;"
+                onclick="closeDiarDetailsPanel()" title="Close details panel">
                 <i data-lucide="x" style="width: 14px;"></i> Close Panel
               </button>
             </div>
@@ -1184,31 +1265,42 @@
 
         <!-- DUAL COLUMN LAYOUT: QA EVALUATION RUNNER & SCORECARD REPORT -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
-          
+
           <!-- CARD 1: RUN AI QA EVALUATION -->
-          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-card"
+            style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
             <div>
-              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+              <div class="panel-header"
+                style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
                 <div class="panel-title">
-                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="sparkles"></i></span>
+                  <h3
+                    style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span
+                      style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                        data-lucide="sparkles"></i></span>
                     Run AI Quality Evaluation & Checklist Test
                   </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Evaluate call transcript against quality scorecard standards & compliance</p>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Evaluate call transcript against
+                    quality scorecard standards & compliance</p>
                 </div>
               </div>
 
               <form id="qaForm" onsubmit="runQaEvaluation(event)">
                 <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Call Audit Recording *</label>
+                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Call Audit Recording
+                    *</label>
                   <select id="qaCallSelect" class="custom-select-premium" required onchange="loadSelectedQaDetails()">
                     <option value="">-- Loading Calls... --</option>
                   </select>
                 </div>
 
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 18px;">
-                  <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 10px;"><i data-lucide="award" style="width: 15px; color: #1d61e7;"></i> 5-Category QA Scorecard Benchmark</h4>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #475569;">
+                <div
+                  style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 18px;">
+                  <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 10px;"><i
+                      data-lucide="award" style="width: 15px; color: #1d61e7;"></i> 5-Category QA Scorecard Benchmark
+                  </h4>
+                  <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #475569;">
                     <div>✓ Greeting & Identification (15%)</div>
                     <div>✓ Active Listening & Empathy (25%)</div>
                     <div>✓ Solution Accuracy (30%)</div>
@@ -1217,31 +1309,41 @@
                   </div>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="cpu"></i> OpenAI / Gemini QA Audit Engine</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunQa"><i data-lucide="award"></i> Run Quality Test</button>
+                <div
+                  style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="cpu"></i> OpenAI / Gemini QA Audit
+                    Engine</span>
+                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunQa"><i
+                      data-lucide="award"></i> Run Quality Test</button>
                 </div>
               </form>
             </div>
           </div>
 
           <!-- CARD 2: QA REPORT & SCORECARD BREAKDOWN -->
-          <div class="panel-card" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-card"
+            style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
             <div>
-              <div class="panel-header" style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+              <div class="panel-header"
+                style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
                 <div class="panel-title">
-                  <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i data-lucide="target"></i></span>
+                  <h3
+                    style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span
+                      style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                        data-lucide="target"></i></span>
                     QA Scorecard & Compliance Report
                   </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Detailed Category breakdown, checklist compliance, and coaching notes</p>
+                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Detailed Category breakdown, checklist
+                    compliance, and coaching notes</p>
                 </div>
               </div>
 
               <div id="qaReportContainer">
                 <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
                   <i data-lucide="award" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
-                  <p style="font-size: 13.5px;">Select a call recording on the left to view its QA scorecard & evaluation details.</p>
+                  <p style="font-size: 13.5px;">Select a call recording on the left to view its QA scorecard &
+                    evaluation details.</p>
                 </div>
               </div>
             </div>
@@ -1299,40 +1401,56 @@
 
         <div class="panel-card">
           <!-- PANEL HEADER ROW 1: TITLE & ACTION BUTTONS -->
-          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
+          <div class="panel-header"
+            style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Employees & Agents Directory</h3>
               <p>Manage staff profiles, department mappings, designations, shifts, and voice enrollment</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" id="btnEmpViewTable" onclick="switchEmpViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
-                <button class="time-range-btn" id="btnEmpViewGrid" onclick="switchEmpViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
+                <button class="time-range-btn active" id="btnEmpViewTable" onclick="switchEmpViewMode('table', this)"
+                  title="List Table View"><i data-lucide="list"></i> Table</button>
+                <button class="time-range-btn" id="btnEmpViewGrid" onclick="switchEmpViewMode('grid', this)"
+                  title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
 
-              <button class="btn-secondary" onclick="exportEmployeesCSV()"><i data-lucide="download"></i> Export CSV</button>
-              <button class="btn-secondary" onclick="openBulkImportModal()"><i data-lucide="upload-cloud"></i> Bulk Import</button>
-              <button class="btn-primary" onclick="openAddEmployeeModal()"><i data-lucide="plus"></i> Add Employee</button>
+              <button class="btn-secondary" onclick="exportEmployeesCSV()"><i data-lucide="download"></i> Export
+                CSV</button>
+              <button class="btn-secondary" onclick="openBulkImportModal()"><i data-lucide="upload-cloud"></i> Bulk
+                Import</button>
+              <button class="btn-primary" onclick="openAddEmployeeModal()"><i data-lucide="plus"></i> Add
+                Employee</button>
             </div>
           </div>
 
           <!-- PANEL HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+          <div
+            style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
               <div style="position: relative; flex: 1; min-width: 220px; max-width: 320px;">
-                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                <input type="text" id="empSearchInput" placeholder="Search name, code, father, email..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterEmployees()">
+                <i data-lucide="search"
+                  style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="empSearchInput" placeholder="Search name, code, father, email..."
+                  style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                  oninput="filterEmployees()">
               </div>
 
-              <select id="empDeptFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
+              <select id="empDeptFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterEmployees()">
                 <option value="">All Departments</option>
               </select>
 
-              <select id="empDesigFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
+              <select id="empDesigFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterEmployees()">
                 <option value="">All Roles</option>
               </select>
 
-              <select id="empShiftFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterEmployees()">
+              <select id="empShiftFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterEmployees()">
                 <option value="">All Shifts</option>
               </select>
             </div>
@@ -1360,14 +1478,17 @@
                 </tr>
               </thead>
               <tbody id="employeesTableBody">
-                <tr><td colspan="10" class="loading-cell">Loading employees...</td></tr>
+                <tr>
+                  <td colspan="10" class="loading-cell">Loading employees...</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <!-- EMPLOYEES GRID VIEW CONTAINER -->
           <div id="employeesGridView" style="display: none; padding-top: 16px;">
-            <div id="employeesGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+            <div id="employeesGridContainer"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
               <!-- DYNAMICALLY POPULATED VIA JS -->
             </div>
           </div>
@@ -1423,34 +1544,46 @@
 
         <div class="panel-card">
           <!-- DEPARTMENTS HEADER ROW 1: TITLE & ACTIONS -->
-          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
+          <div class="panel-header"
+            style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Departments Directory</h3>
               <p>Manage organizational departments, hierarchy, and department codes</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" id="btnDeptViewTable" onclick="switchDeptViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
-                <button class="time-range-btn" id="btnDeptViewGrid" onclick="switchDeptViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
+                <button class="time-range-btn active" id="btnDeptViewTable" onclick="switchDeptViewMode('table', this)"
+                  title="List Table View"><i data-lucide="list"></i> Table</button>
+                <button class="time-range-btn" id="btnDeptViewGrid" onclick="switchDeptViewMode('grid', this)"
+                  title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
 
-              <button class="btn-primary" onclick="openAddDepartmentModal()"><i data-lucide="plus"></i> Add Department</button>
+              <button class="btn-primary" onclick="openAddDepartmentModal()"><i data-lucide="plus"></i> Add
+                Department</button>
             </div>
           </div>
 
           <!-- DEPARTMENTS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+          <div
+            style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
               <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
-                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                <input type="text" id="deptSearchInput" placeholder="Search department name, code, description..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterDepartments()">
+                <i data-lucide="search"
+                  style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="deptSearchInput" placeholder="Search department name, code, description..."
+                  style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                  oninput="filterDepartments()">
               </div>
 
-              <select id="deptSelectFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDepartments()">
+              <select id="deptSelectFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterDepartments()">
                 <option value="">All Departments</option>
               </select>
 
-              <select id="deptCodeFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDepartments()">
+              <select id="deptCodeFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterDepartments()">
                 <option value="">All Department Codes</option>
               </select>
             </div>
@@ -1475,14 +1608,17 @@
                 </tr>
               </thead>
               <tbody id="departmentsTableBody">
-                <tr><td colspan="6" class="loading-cell">Loading departments...</td></tr>
+                <tr>
+                  <td colspan="6" class="loading-cell">Loading departments...</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <!-- DEPARTMENTS GRID VIEW CONTAINER -->
           <div id="departmentsGridView" style="display: none; padding-top: 16px;">
-            <div id="departmentsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+            <div id="departmentsGridContainer"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
               <!-- DYNAMICALLY POPULATED VIA JS -->
             </div>
           </div>
@@ -1538,34 +1674,47 @@
 
         <div class="panel-card">
           <!-- DESIGNATIONS HEADER ROW 1: TITLE & ACTIONS -->
-          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
+          <div class="panel-header"
+            style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Designations & Roles Directory</h3>
               <p>Manage job roles, codes, and department assignments</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" id="btnDesigViewTable" onclick="switchDesigViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
-                <button class="time-range-btn" id="btnDesigViewGrid" onclick="switchDesigViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
+                <button class="time-range-btn active" id="btnDesigViewTable"
+                  onclick="switchDesigViewMode('table', this)" title="List Table View"><i data-lucide="list"></i>
+                  Table</button>
+                <button class="time-range-btn" id="btnDesigViewGrid" onclick="switchDesigViewMode('grid', this)"
+                  title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
 
-              <button class="btn-primary" onclick="openAddDesignationModal()"><i data-lucide="plus"></i> Add Designation</button>
+              <button class="btn-primary" onclick="openAddDesignationModal()"><i data-lucide="plus"></i> Add
+                Designation</button>
             </div>
           </div>
 
           <!-- DESIGNATIONS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+          <div
+            style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
               <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
-                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                <input type="text" id="desigSearchInput" placeholder="Search designation title, code, description..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterDesignations()">
+                <i data-lucide="search"
+                  style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="desigSearchInput" placeholder="Search designation title, code, description..."
+                  style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                  oninput="filterDesignations()">
               </div>
 
-              <select id="desigDeptFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDesignations()">
+              <select id="desigDeptFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterDesignations()">
                 <option value="">All Departments</option>
               </select>
 
-              <select id="desigCodeFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterDesignations()">
+              <select id="desigCodeFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterDesignations()">
                 <option value="">All Role Codes</option>
               </select>
             </div>
@@ -1591,14 +1740,17 @@
                 </tr>
               </thead>
               <tbody id="designationsTableBody">
-                <tr><td colspan="7" class="loading-cell">Loading designations...</td></tr>
+                <tr>
+                  <td colspan="7" class="loading-cell">Loading designations...</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <!-- DESIGNATIONS GRID VIEW CONTAINER -->
           <div id="designationsGridView" style="display: none; padding-top: 16px;">
-            <div id="designationsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+            <div id="designationsGridContainer"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
               <!-- DYNAMICALLY POPULATED VIA JS -->
             </div>
           </div>
@@ -1654,31 +1806,42 @@
 
         <div class="panel-card">
           <!-- SHIFTS HEADER ROW 1: TITLE & ACTIONS -->
-          <div class="panel-header" style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
+          <div class="panel-header"
+            style="flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 14px;">
             <div class="panel-title">
               <h3>Work Shifts & Rosters</h3>
               <p>Manage work schedules, shift timings, and timezones</p>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <div class="time-range-group">
-                <button class="time-range-btn active" id="btnShiftViewTable" onclick="switchShiftViewMode('table', this)" title="List Table View"><i data-lucide="list"></i> Table</button>
-                <button class="time-range-btn" id="btnShiftViewGrid" onclick="switchShiftViewMode('grid', this)" title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
+                <button class="time-range-btn active" id="btnShiftViewTable"
+                  onclick="switchShiftViewMode('table', this)" title="List Table View"><i data-lucide="list"></i>
+                  Table</button>
+                <button class="time-range-btn" id="btnShiftViewGrid" onclick="switchShiftViewMode('grid', this)"
+                  title="Cards Grid View"><i data-lucide="layout-grid"></i> Grid</button>
               </div>
 
-              <button class="btn-secondary" onclick="seedDefaultShifts()"><i data-lucide="sparkles"></i> Seed Defaults</button>
+              <button class="btn-secondary" onclick="seedDefaultShifts()"><i data-lucide="sparkles"></i> Seed
+                Defaults</button>
               <button class="btn-primary" onclick="openAddShiftModal()"><i data-lucide="plus"></i> Add Shift</button>
             </div>
           </div>
 
           <!-- SHIFTS HEADER ROW 2: SEARCH & FILTER TOOLBAR -->
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+          <div
+            style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
               <div style="position: relative; flex: 1; min-width: 200px; max-width: 320px;">
-                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
-                <input type="text" id="shiftSearchInput" placeholder="Search shift name, code, timezone..." style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" oninput="filterShifts()">
+                <i data-lucide="search"
+                  style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="shiftSearchInput" placeholder="Search shift name, code, timezone..."
+                  style="width: 100%; padding: 8px 12px 8px 32px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                  oninput="filterShifts()">
               </div>
 
-              <select id="shiftCodeFilter" style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;" onchange="filterShifts()">
+              <select id="shiftCodeFilter"
+                style="padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 12.5px; background: #ffffff;"
+                onchange="filterShifts()">
                 <option value="">All Shift Codes</option>
               </select>
             </div>
@@ -1705,14 +1868,17 @@
                 </tr>
               </thead>
               <tbody id="shiftsTableBody">
-                <tr><td colspan="8" class="loading-cell">Loading shifts...</td></tr>
+                <tr>
+                  <td colspan="8" class="loading-cell">Loading shifts...</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
           <!-- SHIFTS GRID VIEW CONTAINER -->
           <div id="shiftsGridView" style="display: none; padding-top: 16px;">
-            <div id="shiftsGridContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
+            <div id="shiftsGridContainer"
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%;">
               <!-- DYNAMICALLY POPULATED VIA JS -->
             </div>
           </div>
@@ -1735,7 +1901,8 @@
 
           <!-- Section 1: Basic Profile -->
           <div style="margin-bottom: 20px;">
-            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <h4
+              style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i data-lucide="user" style="width: 16px; height: 16px;"></i> Personal & Profile Info
             </h4>
             <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom: 12px;">
@@ -1766,7 +1933,8 @@
 
           <!-- Section 2: Contact & Joining Details -->
           <div style="margin-bottom: 20px;">
-            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <h4
+              style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i data-lucide="mail" style="width: 16px; height: 16px;"></i> Contact & Employment Info
             </h4>
             <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -1787,28 +1955,36 @@
 
           <!-- Section 3: Organization & Role Assignment -->
           <div style="margin-bottom: 20px;">
-            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <h4
+              style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i data-lucide="building-2" style="width: 16px; height: 16px;"></i> Organization & Schedule Mapping
             </h4>
             <div style="display:flex; gap:16px; flex-wrap:wrap;">
               <div class="form-group" style="flex:1; min-width:220px;">
                 <label>Department</label>
-                <select id="empDeptSelect"><option value="">-- Select Department --</option></select>
+                <select id="empDeptSelect">
+                  <option value="">-- Select Department --</option>
+                </select>
               </div>
               <div class="form-group" style="flex:1; min-width:220px;">
                 <label>Designation</label>
-                <select id="empDesigSelect"><option value="">-- Select Designation --</option></select>
+                <select id="empDesigSelect">
+                  <option value="">-- Select Designation --</option>
+                </select>
               </div>
               <div class="form-group" style="flex:1; min-width:220px;">
                 <label>Work Shift</label>
-                <select id="empShiftSelect"><option value="">-- Select Shift --</option></select>
+                <select id="empShiftSelect">
+                  <option value="">-- Select Shift --</option>
+                </select>
               </div>
             </div>
           </div>
 
           <!-- Section 4: Location & Status -->
           <div>
-            <h4 style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <h4
+              style="font-size: 13px; font-weight: 700; color: #1d61e7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <i data-lucide="map-pin" style="width: 16px; height: 16px;"></i> Location & Operational Status
             </h4>
             <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -1827,8 +2003,10 @@
           </div>
 
           <div class="modal-actions" style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-            <button type="button" class="btn-secondary" style="padding: 10px 20px;" onclick="closeModal('employeeModal')">Cancel</button>
-            <button type="submit" class="btn-primary" style="padding: 10px 24px;" id="btnEmpSubmit"><i data-lucide="check"></i> Save Employee Profile</button>
+            <button type="button" class="btn-secondary" style="padding: 10px 20px;"
+              onclick="closeModal('employeeModal')">Cancel</button>
+            <button type="submit" class="btn-primary" style="padding: 10px 24px;" id="btnEmpSubmit"><i
+                data-lucide="check"></i> Save Employee Profile</button>
           </div>
         </form>
       </div>
@@ -1844,9 +2022,14 @@
       <div class="modal-body">
         <form id="departmentForm" onsubmit="saveDepartment(event)">
           <input type="hidden" id="deptId">
-          <div class="form-group"><label>Department Code *</label><input type="text" id="deptCode" required placeholder="e.g. DEP-SUP"></div>
-          <div class="form-group"><label>Department Name *</label><input type="text" id="deptName" required placeholder="e.g. Customer Support"></div>
-          <div class="form-group"><label>Status</label><select id="deptStatus"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+          <div class="form-group"><label>Department Code *</label><input type="text" id="deptCode" required
+              placeholder="e.g. DEP-SUP"></div>
+          <div class="form-group"><label>Department Name *</label><input type="text" id="deptName" required
+              placeholder="e.g. Customer Support"></div>
+          <div class="form-group"><label>Status</label><select id="deptStatus">
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select></div>
           <div class="form-group"><label>Description</label><textarea id="deptDescription" rows="3"></textarea></div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('departmentModal')">Cancel</button>
@@ -1866,10 +2049,17 @@
       <div class="modal-body">
         <form id="designationForm" onsubmit="saveDesignation(event)">
           <input type="hidden" id="desigId">
-          <div class="form-group"><label>Designation Code *</label><input type="text" id="desigCode" required placeholder="e.g. DES-AGT"></div>
-          <div class="form-group"><label>Designation Title *</label><input type="text" id="desigName" required placeholder="e.g. Senior Support Agent"></div>
-          <div class="form-group"><label>Department</label><select id="desigDeptSelect"><option value="">-- None / General --</option></select></div>
-          <div class="form-group"><label>Status</label><select id="desigStatus"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+          <div class="form-group"><label>Designation Code *</label><input type="text" id="desigCode" required
+              placeholder="e.g. DES-AGT"></div>
+          <div class="form-group"><label>Designation Title *</label><input type="text" id="desigName" required
+              placeholder="e.g. Senior Support Agent"></div>
+          <div class="form-group"><label>Department</label><select id="desigDeptSelect">
+              <option value="">-- None / General --</option>
+            </select></div>
+          <div class="form-group"><label>Status</label><select id="desigStatus">
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select></div>
           <div class="form-group"><label>Description</label><textarea id="desigDescription" rows="3"></textarea></div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('designationModal')">Cancel</button>
@@ -1889,14 +2079,21 @@
       <div class="modal-body">
         <form id="shiftForm" onsubmit="saveShift(event)">
           <input type="hidden" id="shiftId">
-          <div class="form-group"><label>Shift Code *</label><input type="text" id="shiftCode" required placeholder="e.g. SHF-MOR"></div>
-          <div class="form-group"><label>Shift Name *</label><input type="text" id="shiftName" required placeholder="e.g. Morning Shift"></div>
+          <div class="form-group"><label>Shift Code *</label><input type="text" id="shiftCode" required
+              placeholder="e.g. SHF-MOR"></div>
+          <div class="form-group"><label>Shift Name *</label><input type="text" id="shiftName" required
+              placeholder="e.g. Morning Shift"></div>
           <div style="display:flex; gap:12px;">
-            <div class="form-group" style="flex:1;"><label>Start Time *</label><input type="time" id="shiftStartTime" required value="09:00"></div>
-            <div class="form-group" style="flex:1;"><label>End Time *</label><input type="time" id="shiftEndTime" required value="17:00"></div>
+            <div class="form-group" style="flex:1;"><label>Start Time *</label><input type="time" id="shiftStartTime"
+                required value="09:00"></div>
+            <div class="form-group" style="flex:1;"><label>End Time *</label><input type="time" id="shiftEndTime"
+                required value="17:00"></div>
           </div>
           <div class="form-group"><label>Timezone</label><input type="text" id="shiftTimezone" value="UTC"></div>
-          <div class="form-group"><label>Status</label><select id="shiftStatus"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+          <div class="form-group"><label>Status</label><select id="shiftStatus">
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select></div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('shiftModal')">Cancel</button>
             <button type="submit" class="btn-primary" id="btnShiftSubmit">Save Shift</button>
@@ -1916,7 +2113,9 @@
         <form id="auditForm">
           <div class="form-group">
             <label>Assigned / Expected Agent (Optional)</label>
-            <select id="auditEmployeeSelect"><option value="">-- Open Identification (Milvus Auto-Match) --</option></select>
+            <select id="auditEmployeeSelect">
+              <option value="">-- Open Identification (Milvus Auto-Match) --</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Call Recording File (.mp3, .wav)</label>
@@ -1924,7 +2123,8 @@
           </div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('auditModal')">Cancel</button>
-            <button type="submit" class="btn-primary" id="btnAuditSubmit"><i data-lucide="cpu"></i> Process & Audit Call</button>
+            <button type="submit" class="btn-primary" id="btnAuditSubmit"><i data-lucide="cpu"></i> Process & Audit
+              Call</button>
           </div>
         </form>
       </div>
@@ -1939,8 +2139,10 @@
       </div>
       <div class="modal-body">
         <form id="enrollmentForm">
-          <div class="form-group"><label>Select Employee *</label><select id="enrollEmployeeSelect" required></select></div>
-          <div class="form-group"><label>Voice Audio Files</label><input type="file" id="enrollFiles" multiple accept="audio/*" required></div>
+          <div class="form-group"><label>Select Employee *</label><select id="enrollEmployeeSelect" required></select>
+          </div>
+          <div class="form-group"><label>Voice Audio Files</label><input type="file" id="enrollFiles" multiple
+              accept="audio/*" required></div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('enrollmentModal')">Cancel</button>
             <button type="submit" class="btn-primary" id="btnEnrollSubmit">Enroll Voice Samples</button>
@@ -1956,7 +2158,11 @@
         <h3><i data-lucide="file-text"></i> Interactive Call Audit & Speaker Transcript</h3>
         <button class="close-btn" onclick="closeModal('transcriptModal')">&times;</button>
       </div>
-      <div class="modal-body"><div id="transcriptModalContent"><p>Loading call transcript...</p></div></div>
+      <div class="modal-body">
+        <div id="transcriptModalContent">
+          <p>Loading call transcript...</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1966,7 +2172,11 @@
         <h3><i data-lucide="database"></i> Enrolled Voice Database & Vector Profiles</h3>
         <button class="close-btn" onclick="closeModal('voiceSummaryModal')">&times;</button>
       </div>
-      <div class="modal-body"><div id="voiceSummaryContent"><p>Loading summary...</p></div></div>
+      <div class="modal-body">
+        <div id="voiceSummaryContent">
+          <p>Loading summary...</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1977,12 +2187,15 @@
     <div class="modal-box modal-wide" style="max-width: 760px; padding: 24px;">
       <div class="modal-header" style="padding-bottom: 14px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0;">
         <div style="display: flex; align-items: center; gap: 14px;">
-          <div id="empProfileAvatar" style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #1d61e7, #3b82f6); color: #ffffff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center;">
+          <div id="empProfileAvatar"
+            style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #1d61e7, #3b82f6); color: #ffffff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center;">
             EP
           </div>
           <div>
-            <h3 id="empProfileTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0;">Employee Profile</h3>
-            <span id="empProfileCodeBadge" style="font-size: 12px; font-family: monospace; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px; font-weight: 600;">AGNT-000000</span>
+            <h3 id="empProfileTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0;">Employee
+              Profile</h3>
+            <span id="empProfileCodeBadge"
+              style="font-size: 12px; font-family: monospace; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px; font-weight: 600;">AGNT-000000</span>
           </div>
         </div>
         <button class="close-btn" onclick="closeModal('employeeProfileModal')">&times;</button>
@@ -2006,22 +2219,27 @@
 
       <div class="modal-body" style="padding: 0;">
         <p style="font-size: 13px; color: #475569; margin-bottom: 16px; line-height: 1.5;">
-          Upload a CSV file containing employee records. Employee codes (<code>AGNT-XXXXXX</code>) will be auto-generated by the backend generator.
+          Upload a CSV file containing employee records. Employee codes (<code>AGNT-XXXXXX</code>) will be
+          auto-generated by the backend generator.
         </p>
 
         <form id="bulkImportForm" onsubmit="submitBulkImportCSV(event)">
           <div class="form-group" style="margin-bottom: 16px;">
             <label style="font-weight: 600; font-size: 13px;">Select Employee CSV File *</label>
-            <input type="file" id="bulkCsvFileInput" accept=".csv" required style="width: 100%; padding: 12px; border: 2px dashed #cbd5e1; border-radius: 10px; background: #f8fafc;">
+            <input type="file" id="bulkCsvFileInput" accept=".csv" required
+              style="width: 100%; padding: 12px; border: 2px dashed #cbd5e1; border-radius: 10px; background: #f8fafc;">
           </div>
 
           <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-            <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="downloadSampleCSVTemplate()"><i data-lucide="file-text"></i> Download Sample CSV Template</button>
+            <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;"
+              onclick="downloadSampleCSVTemplate()"><i data-lucide="file-text"></i> Download Sample CSV
+              Template</button>
           </div>
 
           <div class="modal-actions">
             <button type="button" class="btn-secondary" onclick="closeModal('bulkImportModal')">Cancel</button>
-            <button type="submit" class="btn-primary" id="btnSubmitBulkImport"><i data-lucide="upload"></i> Upload & Create Staff</button>
+            <button type="submit" class="btn-primary" id="btnSubmitBulkImport"><i data-lucide="upload"></i> Upload &
+              Create Staff</button>
           </div>
         </form>
       </div>
@@ -2039,27 +2257,38 @@
       </div>
 
       <div class="modal-body" style="padding: 0;">
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 18px;">
+        <div
+          style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 18px;">
           <strong style="font-size: 15px; color: #0f172a;" id="quickRecordEmpName">Alice Smith</strong><br>
-          <span style="font-size: 12px; font-family: monospace; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px;" id="quickRecordEmpCode">AGNT-000001</span>
+          <span
+            style="font-size: 12px; font-family: monospace; color: #1d61e7; background: #eff6ff; padding: 2px 8px; border-radius: 6px;"
+            id="quickRecordEmpCode">AGNT-000001</span>
         </div>
 
         <input type="hidden" id="quickRecordEmpId">
 
-        <div id="quickRecordStatusText" style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 10px;">Ready to record...</div>
-        <div id="quickRecordTimer" style="font-size: 28px; font-weight: 700; font-family: monospace; color: #1d61e7; margin-bottom: 16px;">00:00</div>
-
-        <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 16px;">
-          <button type="button" class="btn-primary" id="btnQuickRecordStart" onclick="startQuickMicRecording()"><i data-lucide="mic"></i> Record</button>
-          <button type="button" class="btn-secondary" id="btnQuickRecordStop" onclick="stopQuickMicRecording()" disabled style="color:#ef4444;"><i data-lucide="square"></i> Stop</button>
-          <button type="button" class="btn-secondary" id="btnQuickRecordClear" onclick="clearQuickMicRecording()" style="display:none;">Clear</button>
+        <div id="quickRecordStatusText"
+          style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 10px;">Ready to record...</div>
+        <div id="quickRecordTimer"
+          style="font-size: 28px; font-weight: 700; font-family: monospace; color: #1d61e7; margin-bottom: 16px;">00:00
         </div>
 
-        <audio id="quickRecordAudioPreview" controls style="display:none; width: 100%; margin-bottom: 18px; border-radius: 8px;"></audio>
+        <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 16px;">
+          <button type="button" class="btn-primary" id="btnQuickRecordStart" onclick="startQuickMicRecording()"><i
+              data-lucide="mic"></i> Record</button>
+          <button type="button" class="btn-secondary" id="btnQuickRecordStop" onclick="stopQuickMicRecording()" disabled
+            style="color:#ef4444;"><i data-lucide="square"></i> Stop</button>
+          <button type="button" class="btn-secondary" id="btnQuickRecordClear" onclick="clearQuickMicRecording()"
+            style="display:none;">Clear</button>
+        </div>
+
+        <audio id="quickRecordAudioPreview" controls
+          style="display:none; width: 100%; margin-bottom: 18px; border-radius: 8px;"></audio>
 
         <div class="modal-actions">
           <button type="button" class="btn-secondary" onclick="closeModal('quickRecordModal')">Cancel</button>
-          <button type="button" class="btn-primary" id="btnQuickRecordSubmit" onclick="submitQuickVoiceRecord()" disabled><i data-lucide="cpu"></i> Save Voice Sample</button>
+          <button type="button" class="btn-primary" id="btnQuickRecordSubmit" onclick="submitQuickVoiceRecord()"
+            disabled><i data-lucide="cpu"></i> Save Voice Sample</button>
         </div>
       </div>
     </div>
@@ -2070,12 +2299,14 @@
     <div class="modal-box modal-wide" style="max-width: 720px; padding: 24px;">
       <div class="modal-header" style="padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 40px; height: 40px; border-radius: 10px; background: #eff6ff; color: #1d61e7; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+          <div
+            style="width: 40px; height: 40px; border-radius: 10px; background: #eff6ff; color: #1d61e7; display: flex; align-items: center; justify-content: center; font-size: 18px;">
             <i data-lucide="mic"></i>
           </div>
           <div>
             <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0;">Manage Enrolled Voice Clips</h3>
-            <span id="manageVoiceClipsEmpSubtitle" style="font-size: 12.5px; color: #64748b;">Delete individual voice audio files and Milvus vector embeddings</span>
+            <span id="manageVoiceClipsEmpSubtitle" style="font-size: 12.5px; color: #64748b;">Delete individual voice
+              audio files and Milvus vector embeddings</span>
           </div>
         </div>
         <button class="close-btn" onclick="closeModal('manageVoiceClipsModal')">&times;</button>
@@ -2086,9 +2317,50 @@
           <!-- DYNAMICALLY POPULATED -->
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
-          <small style="color: #64748b;">* Deleting a clip removes its storage file from MinIO and deletes its vector embedding from Milvus.</small>
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+          <small style="color: #64748b;">* Deleting a clip removes its storage file from MinIO and deletes its vector
+            embedding from Milvus.</small>
           <button class="btn-secondary" onclick="closeModal('manageVoiceClipsModal')">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPEAKER VERIFICATION RESULT POPUP MODAL -->
+  <div class="modal-overlay" id="speakerVerifyResultModal">
+    <div class="modal-box"
+      style="max-width: 520px; padding: 28px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.18);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div id="modalVerifyIconBox"
+            style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.4);">
+            <i data-lucide="shield-check" style="width: 26px; height: 26px;"></i>
+          </div>
+          <div>
+            <h3 id="modalVerifyTitle" style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0;">VERIFIED
+              MATCH CONFIRMED</h3>
+            <span id="modalVerifySubtitle" style="font-size: 12.5px; color: #64748b;">Milvus Vector Biometric
+              Verification</span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeModal('speakerVerifyResultModal')">&times;</button>
+      </div>
+
+      <div class="modal-body" id="modalVerifyBody" style="padding: 0;">
+        <!-- DYNAMICALLY POPULATED VIA JS -->
+      </div>
+
+      <div class="modal-actions"
+        style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        <small style="color: #64748b; font-size: 11.5px;"><i data-lucide="cpu"
+            style="width: 12px; vertical-align: middle;"></i> ECAPA-TDNN 192D</small>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="btn-secondary"
+            onclick="closeModal('speakerVerifyResultModal'); clearVerifySelectedFile();" style="font-weight: 600;">Test
+            Another Audio</button>
+          <button type="button" class="btn-primary" onclick="closeModal('speakerVerifyResultModal')"
+            style="padding: 9px 22px; font-weight: 700; background: linear-gradient(135deg, #059669 0%, #10b981 100%);">Done</button>
         </div>
       </div>
     </div>
@@ -2100,11 +2372,15 @@
       <div id="confirmModalIcon" style="font-size: 36px; margin-bottom: 12px; display: flex; justify-content: center;">
         <i data-lucide="alert-triangle" style="color: #ef4444; width: 44px; height: 44px;"></i>
       </div>
-      <h3 id="confirmModalTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Confirm Action</h3>
-      <p id="confirmModalMessage" style="font-size: 13.5px; color: #475569; margin-bottom: 24px; line-height: 1.5;">Are you sure you want to proceed?</p>
+      <h3 id="confirmModalTitle" style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Confirm
+        Action</h3>
+      <p id="confirmModalMessage" style="font-size: 13.5px; color: #475569; margin-bottom: 24px; line-height: 1.5;">Are
+        you sure you want to proceed?</p>
       <div style="display: flex; gap: 12px; justify-content: center;">
-        <button type="button" class="btn-secondary" id="confirmModalCancelBtn" style="padding: 10px 24px; font-weight: 600;">Cancel</button>
-        <button type="button" class="btn-primary" id="confirmModalSubmitBtn" style="padding: 10px 24px; font-weight: 600; background: #ef4444; border-color: #ef4444;">Confirm</button>
+        <button type="button" class="btn-secondary" id="confirmModalCancelBtn"
+          style="padding: 10px 24px; font-weight: 600;">Cancel</button>
+        <button type="button" class="btn-primary" id="confirmModalSubmitBtn"
+          style="padding: 10px 24px; font-weight: 600; background: #ef4444; border-color: #ef4444;">Confirm</button>
       </div>
     </div>
   </div>
@@ -2114,4 +2390,5 @@
 
   <script src="/static/app.js"></script>
 </body>
+
 </html>

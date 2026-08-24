@@ -212,17 +212,17 @@ function showView(viewName, e) {
       loadShifts();
       break;
     case "voice-enrollment":
-      titleEl.textContent = "1. Voice Enrollment Studio";
+      titleEl.textContent = "Voice Enrollment Studio";
       subEl.textContent = "Register employee voice data, extract ECAPA 192d vectors, and run speaker verification tests.";
       loadVoiceEnrollmentPage();
       break;
     case "diarization":
-      titleEl.textContent = "2. Speaker Diarization Studio";
+      titleEl.textContent = "Speaker Diarization Studio";
       subEl.textContent = "Multi-speaker voice separation, turn-by-turn timeline analysis, and Milvus identification.";
       loadDiarizationPage();
       break;
     case "qa-analysis":
-      titleEl.textContent = "3. QA Quality Test & Scorecards";
+      titleEl.textContent = "QA Quality Test & Scorecards";
       subEl.textContent = "Automated AI quality evaluation, compliance checklist scoring, and agent performance insights.";
       loadQaAnalysisPage();
       break;
@@ -345,7 +345,7 @@ async function loadDatabaseStats() {
       const el = document.getElementById("stat-total-audits");
       if (el) el.textContent = data.total_voice_samples > 0 ? data.total_voice_samples : "124";
     }
-  } catch (err) {}
+  } catch (err) { }
 }
 
 async function loadEmployees() {
@@ -360,7 +360,7 @@ async function loadEmployees() {
 
     if (enrollSelect) enrollSelect.innerHTML = options || `<option value="">No employees found</option>`;
     if (auditSelect) auditSelect.innerHTML = `<option value="">-- Open Identification (Milvus Auto-Match) --</option>` + options;
-  } catch (err) {}
+  } catch (err) { }
 }
 
 /* DEPARTMENTS */
@@ -504,7 +504,7 @@ function renderDepartmentsTable(list) {
   populateDeptFilterDropdowns();
   const tbody = document.getElementById("departmentsTableBody");
   const gridContainer = document.getElementById("departmentsGridContainer");
-  
+
   const totalEl = document.getElementById("dept-stat-total");
   const activeEl = document.getElementById("dept-stat-active");
   const rolesEl = document.getElementById("dept-stat-roles");
@@ -867,7 +867,7 @@ async function openAddDesignationModal() {
     try {
       const res = await fetch("/api/v1/departments/");
       if (res.ok) departmentsCache = await res.json();
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const deptSel = document.getElementById("desigDeptSelect");
@@ -891,7 +891,7 @@ async function openEditDesignationModal(id) {
     try {
       const res = await fetch("/api/v1/departments/");
       if (res.ok) departmentsCache = await res.json();
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const desig = designationsCache.find((d) => strId(d.id) === strId(id));
@@ -1220,7 +1220,7 @@ async function seedDefaultShifts() {
   try {
     await fetch("/api/v1/shifts/seed", { method: "POST" });
     loadShifts();
-  } catch (err) {}
+  } catch (err) { }
 }
 
 /* CALL AUDITS */
@@ -1312,10 +1312,10 @@ function filterAudits() {
   const filtered = auditsCache.filter(c => {
     const ref = (c.call_reference || c.id || "").toLowerCase();
     const filename = (c.audio_filename || "").toLowerCase();
-    
+
     const identEmp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
     const identName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}`.toLowerCase() : "";
-    
+
     const expEmp = employeesCache.find(e => strId(e.id) === strId(c.expected_employee_id));
     const expName = expEmp ? `${expEmp.first_name} ${expEmp.last_name || ""}`.toLowerCase() : "";
 
@@ -1323,7 +1323,7 @@ function filterAudits() {
     const qaScore = c.qa_score !== null && c.qa_score !== undefined ? `${c.qa_score}%` : "";
 
     const matchQuery = !query || ref.includes(query) || filename.includes(query) || identName.includes(query) || expName.includes(query) || status.includes(query) || qaScore.includes(query);
-    
+
     const matchDept = !deptVal || (identEmp && strId(identEmp.department_id) === strId(deptVal)) || (expEmp && strId(expEmp.department_id) === strId(deptVal));
     const matchAgent = !agentVal || strId(c.identified_employee_id) === strId(agentVal) || strId(c.expected_employee_id) === strId(agentVal);
 
@@ -1377,7 +1377,7 @@ function renderAuditsTable(list) {
 
   if (totalEl) totalEl.textContent = auditsCache.length;
   if (completedEl) completedEl.textContent = auditsCache.filter(c => c.status === "COMPLETED").length;
-  
+
   const validScores = auditsCache.map(c => c.qa_score).filter(s => s !== null && s !== undefined);
   const avgScore = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
   if (avgQaEl) avgQaEl.textContent = `${avgScore}%`;
@@ -1401,7 +1401,7 @@ function renderAuditsTable(list) {
   if (tbody) {
     tbody.innerHTML = list.map((c) => {
       const statusClass = c.status === "COMPLETED" ? "badge-completed" : c.status === "PROCESSING" ? "badge-pending" : "badge-inactive";
-      
+
       const identEmp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
       const identName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Unidentified";
 
@@ -1555,9 +1555,9 @@ async function openTranscriptModal(callId) {
 
 function openModal(id) { document.getElementById(id)?.classList.add("active"); }
 function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }
-function openEnrollmentModal(e) { if(e) e.preventDefault(); loadEmployees(); openModal("enrollmentModal"); }
+function openEnrollmentModal(e) { if (e) e.preventDefault(); loadEmployees(); openModal("enrollmentModal"); }
 function openAuditModal() { loadEmployees(); openModal("auditModal"); }
-async function openVoiceSummaryModal(e) { if(e) e.preventDefault(); openModal("voiceSummaryModal"); }
+async function openVoiceSummaryModal(e) { if (e) e.preventDefault(); openModal("voiceSummaryModal"); }
 
 function setupFormHandlers() {
   document.getElementById("auditForm")?.addEventListener("submit", async (e) => {
@@ -1725,7 +1725,7 @@ function renderEmployeesTable(list) {
 
     const vProf = voiceProfilesCache.find(v => strId(v.employee_id) === strId(emp.id));
     const sampleCount = vProf ? vProf.total_samples : 0;
-    const voiceBadge = sampleCount > 0 
+    const voiceBadge = sampleCount > 0
       ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="mic" style="width:11px;"></i> ${sampleCount} Clip(s)</span>`
       : `<span class="status-pill badge-inactive" style="font-size:11px;">No Voice</span>`;
 
@@ -1781,7 +1781,7 @@ function renderEmployeesTable(list) {
 
       const vProf = voiceProfilesCache.find(v => strId(v.employee_id) === strId(emp.id));
       const sampleCount = vProf ? vProf.total_samples : 0;
-      const voiceBadge = sampleCount > 0 
+      const voiceBadge = sampleCount > 0
         ? `<span class="status-pill badge-completed" style="font-size:11px;"><i data-lucide="mic" style="width:11px;"></i> ${sampleCount} Clip(s)</span>`
         : `<span class="status-pill badge-inactive" style="font-size:11px;">No Voice</span>`;
 
@@ -1982,7 +1982,7 @@ async function openEmployeeProfileModal(id) {
   try {
     const res = await fetch(`/api/v1/voice-samples/employee/${emp.id}`);
     if (res.ok) voiceSamples = await res.json();
-  } catch (err) {}
+  } catch (err) { }
 
   const voiceCount = voiceSamples.length;
   const isEnrolled = voiceCount > 0;
@@ -2016,7 +2016,7 @@ async function openEmployeeProfileModal(id) {
           <div><span style="color:#64748b;">Email:</span><br><strong>${emp.email || "--"}</strong></div>
           <div><span style="color:#64748b;">Phone:</span><br><strong>${emp.phone || "--"}</strong></div>
           <div><span style="color:#64748b;">Location:</span><br><strong>${emp.location || "--"}</strong></div>
-          <div><span style="color:#64748b;">Status:</span><br><strong style="color:${emp.status === 'ACTIVE' ? '#059669':'#ef4444'};">${emp.status}</strong></div>
+          <div><span style="color:#64748b;">Status:</span><br><strong style="color:${emp.status === 'ACTIVE' ? '#059669' : '#ef4444'};">${emp.status}</strong></div>
         </div>
       </div>
 
@@ -2520,21 +2520,45 @@ function initVeDropzones() {
 function handleVeFileSelect(e) {
   const fileInput = document.getElementById("veAudioFiles");
   const previewCard = document.getElementById("veFilePreviewCard");
-  const nameEl = document.getElementById("vePreviewFilename");
-  const sizeEl = document.getElementById("vePreviewFilesize");
+  const listContainer = document.getElementById("veFileListContainer");
 
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
     if (previewCard) previewCard.style.display = "none";
+    if (listContainer) listContainer.innerHTML = "";
     return;
   }
 
-  const files = fileInput.files;
-  let totalBytes = 0;
-  for (let i = 0; i < files.length; i++) totalBytes += files[i].size;
-  const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+  const files = Array.from(fileInput.files);
+  if (listContainer) {
+    listContainer.innerHTML = files.map((f) => {
+      const mb = (f.size / (1024 * 1024)).toFixed(2);
+      return `
+        <div class="audio-file-row-item" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #ffffff; border: 1px solid #bfdbfe; border-radius: 10px; box-shadow: 0 2px 6px rgba(37,99,235,0.06);">
+          <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i data-lucide="music" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div style="min-width: 0;">
+              <strong style="font-size: 12.5px; color: #0f172a; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;" title="${f.name}">${f.name}</strong>
+              <small style="font-size: 11px; color: #64748b; font-family: monospace;">${mb} MB • Ready to enroll</small>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+            <div class="sound-bars">
+              <div class="sound-bar"></div>
+              <div class="sound-bar"></div>
+              <div class="sound-bar"></div>
+              <div class="sound-bar"></div>
+            </div>
+            <button type="button" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; height: auto; color: #dc2626; border-color: #fca5a5; background: #ffffff;" onclick="clearVeSelectedFiles(event)">
+              <i data-lucide="x" style="width: 11px;"></i> Remove
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
 
-  if (nameEl) nameEl.textContent = files.length === 1 ? files[0].name : `${files.length} audio files selected`;
-  if (sizeEl) sizeEl.textContent = `${mb} MB total • Ready to enroll`;
   if (previewCard) previewCard.style.display = "block";
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
@@ -2543,26 +2567,53 @@ function clearVeSelectedFiles(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   const fileInput = document.getElementById("veAudioFiles");
   const previewCard = document.getElementById("veFilePreviewCard");
+  const listContainer = document.getElementById("veFileListContainer");
   if (fileInput) fileInput.value = "";
+  if (listContainer) listContainer.innerHTML = "";
   if (previewCard) previewCard.style.display = "none";
 }
 
 function handleVerifyFileSelect(e) {
   const fileInput = document.getElementById("verifyAudioFile");
   const previewCard = document.getElementById("verifyFilePreviewCard");
-  const nameEl = document.getElementById("verifyPreviewFilename");
-  const sizeEl = document.getElementById("verifyPreviewFilesize");
+  const listContainer = document.getElementById("verifyFileListContainer");
 
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
     if (previewCard) previewCard.style.display = "none";
+    if (listContainer) listContainer.innerHTML = "";
     return;
   }
 
   const file = fileInput.files[0];
   const mb = (file.size / (1024 * 1024)).toFixed(2);
 
-  if (nameEl) nameEl.textContent = file.name;
-  if (sizeEl) sizeEl.textContent = `${mb} MB • Ready to verify`;
+  if (listContainer) {
+    listContainer.innerHTML = `
+      <div class="audio-file-row-item" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #ffffff; border: 1px solid #a7f3d0; border-radius: 10px; box-shadow: 0 2px 6px rgba(16,185,129,0.06);">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <i data-lucide="music" style="width: 16px; height: 16px;"></i>
+          </div>
+          <div style="min-width: 0;">
+            <strong style="font-size: 12.5px; color: #0f172a; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;" title="${file.name}">${file.name}</strong>
+            <small style="font-size: 11px; color: #64748b; font-family: monospace;">${mb} MB • Ready to verify</small>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+          <div class="sound-bars">
+            <div class="sound-bar" style="background: #059669;"></div>
+            <div class="sound-bar" style="background: #059669;"></div>
+            <div class="sound-bar" style="background: #059669;"></div>
+            <div class="sound-bar" style="background: #059669;"></div>
+          </div>
+          <button type="button" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; height: auto; color: #dc2626; border-color: #fca5a5; background: #ffffff;" onclick="clearVerifySelectedFile(event)">
+            <i data-lucide="x" style="width: 11px;"></i> Remove
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   if (previewCard) previewCard.style.display = "block";
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
@@ -2571,7 +2622,9 @@ function clearVerifySelectedFile(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   const fileInput = document.getElementById("verifyAudioFile");
   const previewCard = document.getElementById("verifyFilePreviewCard");
+  const listContainer = document.getElementById("verifyFileListContainer");
   if (fileInput) fileInput.value = "";
+  if (listContainer) listContainer.innerHTML = "";
   if (previewCard) previewCard.style.display = "none";
 }
 
@@ -2755,21 +2808,13 @@ async function submitVoiceEnrollment(e) {
   formData.append("employee_id", empId);
   formData.append("sample_type", "ENROLLMENT");
 
-  if (enrollMode === "upload") {
-    const fileInput = document.getElementById("veAudioFiles");
-    if (!fileInput.files || fileInput.files.length === 0) {
-      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
-      return showToast("Please select at least one audio file to upload", "error");
-    }
-    for (let i = 0; i < fileInput.files.length; i++) {
-      formData.append("files", fileInput.files[i]);
-    }
-  } else {
-    if (!recordedAudioBlob) {
-      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
-      return showToast("Please record an audio sample first using the microphone", "error");
-    }
-    formData.append("files", recordedAudioBlob, `mic_enrollment_${Date.now()}.wav`);
+  const fileInput = document.getElementById("veAudioFiles");
+  if (!fileInput.files || fileInput.files.length === 0) {
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
+    return showToast("Please select at least one audio file to upload", "error");
+  }
+  for (let i = 0; i < fileInput.files.length; i++) {
+    formData.append("files", fileInput.files[i]);
   }
 
   try {
@@ -2919,20 +2964,12 @@ async function submitVoiceVerificationTest(e) {
   const formData = new FormData();
   if (targetId) formData.append("target_employee_id", targetId);
 
-  if (verifyMode === "upload") {
-    const fileInput = document.getElementById("verifyAudioFile");
-    if (!fileInput.files || fileInput.files.length === 0) {
-      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="shield-check"></i> Verify Speaker`; }
-      return showToast("Please select a query audio file to upload", "error");
-    }
-    formData.append("file", fileInput.files[0]);
-  } else {
-    if (!verifyRecordedAudioBlob) {
-      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="shield-check"></i> Verify Speaker`; }
-      return showToast("Please record a test voice sample first using the microphone", "error");
-    }
-    formData.append("file", verifyRecordedAudioBlob, `verify_query_${Date.now()}.wav`);
+  const fileInput = document.getElementById("verifyAudioFile");
+  if (!fileInput.files || fileInput.files.length === 0) {
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="shield-check"></i> Verify Speaker`; }
+    return showToast("Please select a query audio file to upload", "error");
   }
+  formData.append("file", fileInput.files[0]);
 
   if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader"></i> Verification in progress...`; }
 
@@ -2950,9 +2987,6 @@ async function submitVoiceVerificationTest(e) {
     const result = await res.json();
     const scorePct = Math.round((result.similarity_score || 0) * 100);
 
-    if (resultContainer) resultContainer.style.display = "block";
-    if (scoreBadge) scoreBadge.textContent = `${scorePct}% Similarity`;
-
     const matchedEmp = result.matched_employee || {};
     const topMatch = (result.top_matches && result.top_matches[0]) ? result.top_matches[0] : {};
     const empId = matchedEmp.id || topMatch.employee_id;
@@ -2963,30 +2997,80 @@ async function submitVoiceVerificationTest(e) {
     const deptName = matchedEmp.department_name || (cachedEmp && cachedEmp.department_id ? departmentsCache.find(d => strId(d.id) === strId(cachedEmp.department_id))?.name : null);
     const desigName = matchedEmp.designation_name || (cachedEmp && cachedEmp.designation_id ? designationsCache.find(d => strId(d.id) === strId(cachedEmp.designation_id))?.name : null);
 
-    if (result.is_match) {
-      if (resultContainer) { resultContainer.style.background = "#f0fdf4"; resultContainer.style.borderColor = "#bbf7d0"; }
-      if (resultTitle) { resultTitle.textContent = "VERIFIED MATCH CONFIRMED"; resultTitle.style.color = "#166534"; }
-      
-      let html = `<div style="margin-top: 6px;">
-        <div style="font-size: 15px; font-weight: 700; color: #14532d; margin-bottom: 4px;">
-          ${fullName} <code style="font-size: 13px; color: #166534; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">${empCode}</code>
-        </div>
-        <div style="font-size: 12.5px; color: #15803d;">
-          ${deptName ? `<strong>Department:</strong> ${deptName} &nbsp;|&nbsp; ` : ""}
-          ${desigName ? `<strong>Role:</strong> ${desigName} &nbsp;|&nbsp; ` : ""}
-          <strong>ECAPA Vector Match:</strong> ${scorePct}%
-        </div>
-      </div>`;
-      if (resultDetail) resultDetail.innerHTML = html;
+    const isMatch = result.is_match;
+    const titleEl = document.getElementById("modalVerifyTitle");
+    const subEl = document.getElementById("modalVerifySubtitle");
+    const iconBox = document.getElementById("modalVerifyIconBox");
+    const bodyEl = document.getElementById("modalVerifyBody");
+
+    if (isMatch) {
+      if (titleEl) { titleEl.textContent = "VERIFIED MATCH CONFIRMED"; titleEl.style.color = "#0f172a"; }
+      if (subEl) subEl.textContent = "Milvus Vector Biometric Verification Successful";
+      if (iconBox) {
+        iconBox.style.background = "linear-gradient(135deg, #059669 0%, #10b981 100%)";
+        iconBox.style.boxShadow = "0 8px 20px -4px rgba(16, 185, 129, 0.4)";
+        iconBox.innerHTML = '<i data-lucide="shield-check" style="width: 26px; height: 26px;"></i>';
+      }
+
+      const initials = `${(matchedEmp.first_name || cachedEmp?.first_name || 'A').charAt(0)}${(matchedEmp.last_name || cachedEmp?.last_name || '').charAt(0)}`.toUpperCase();
+
+      if (bodyEl) {
+        bodyEl.innerHTML = `
+          <!-- MATCH HIGHLIGHT BANNER -->
+          <div style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; border-radius: 16px; padding: 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.08); flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 48px; height: 48px; border-radius: 14px; background: #059669; color: #fff; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);">
+                ${initials || 'EM'}
+              </div>
+              <div>
+                <span style="font-size: 10.5px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">AUTHENTICATED EMPLOYEE</span>
+                <h3 style="font-size: 17px; font-weight: 800; color: #0f172a; margin: 0;">${fullName} <small style="font-size: 12px; color: #64748b;">(${empCode})</small></h3>
+                <span style="font-size: 12px; color: #475569; font-weight: 600;">Department: ${deptName || 'General'}</span>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span class="status-pill badge-completed" style="font-size: 13px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                <i data-lucide="check" style="width: 14px;"></i> ${scorePct}% Match
+              </span>
+            </div>
+          </div>
+
+          <!-- VERIFICATION METRICS GRID -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+              <small style="color: #64748b; font-size: 11.5px; font-weight: 600; display: block; margin-bottom: 2px;">Assigned Role</small>
+              <strong style="font-size: 13.5px; color: #0f172a;">${desigName || 'Staff Specialist'}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+              <small style="color: #64748b; font-size: 11.5px; font-weight: 600; display: block; margin-bottom: 2px;">Cosine Similarity Score</small>
+              <strong style="font-size: 13.5px; color: #059669;">${scorePct}% (Passed Threshold)</strong>
+            </div>
+          </div>
+        `;
+      }
     } else {
-      if (resultContainer) { resultContainer.style.background = "#fef2f2"; resultContainer.style.borderColor = "#fecaca"; }
-      if (resultTitle) { resultTitle.textContent = "NO MATCH DETECTED"; resultTitle.style.color = "#991b1b"; }
-      let html = `<div style="font-size: 13px; color: #991b1b; margin-top: 4px;">
-        No enrolled employee voice profile matched above threshold (${Math.round((result.threshold_applied || 0.7) * 100)}%).
-        ${topMatch.employee_id ? `<br><small style="color: #b91c1c;">Closest Candidate: ${fullName} (<code>${empCode}</code>) with ${scorePct}% similarity.</small>` : ""}
-      </div>`;
-      if (resultDetail) resultDetail.innerHTML = html;
+      if (titleEl) { titleEl.textContent = "NO MATCH DETECTED"; titleEl.style.color = "#991b1b"; }
+      if (subEl) subEl.textContent = "Audio sample did not meet minimum similarity threshold";
+      if (iconBox) {
+        iconBox.style.background = "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)";
+        iconBox.style.boxShadow = "0 8px 20px -4px rgba(239, 68, 68, 0.4)";
+        iconBox.innerHTML = '<i data-lucide="alert-triangle" style="width: 26px; height: 26px;"></i>';
+      }
+
+      if (bodyEl) {
+        bodyEl.innerHTML = `
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 14px; padding: 18px; margin-bottom: 14px; text-align: center;">
+            <strong style="color: #991b1b; font-size: 14.5px; display: block; margin-bottom: 4px;">Speaker Identity Unknown</strong>
+            <p style="color: #7f1d1d; font-size: 13px; margin: 0; line-height: 1.5;">
+              The provided query voice audio does not match any registered employee embedding above the required threshold (${Math.round((result.threshold_applied || 0.7) * 100)}%).
+            </p>
+            ${topMatch.employee_id ? `<div style="margin-top: 10px; font-size: 12px; color: #991b1b; background: #fee2e2; padding: 8px; border-radius: 8px;">Closest Candidate: <strong>${fullName}</strong> (${empCode}) with ${scorePct}% similarity.</div>` : ''}
+          </div>
+        `;
+      }
     }
+
+    openModal("speakerVerifyResultModal");
 
   } catch (err) {
     showToast("Verification Test Error: " + err.message, "error");
@@ -3411,19 +3495,19 @@ async function loadDiarizationPage() {
     try {
       const res = await fetch("/api/v1/calls/");
       if (res.ok) auditsCache = await res.json();
-    } catch (e) {}
+    } catch (e) { }
   }
   if (employeesCache.length === 0) {
     try {
       const res = await fetch("/api/v1/employees/");
       if (res.ok) employeesCache = await res.json();
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const selDb = document.getElementById("diarCallSelect");
   if (selDb) {
     selDb.innerHTML = `<option value="">-- Select Call Audit Recording --</option>` +
-      auditsCache.map(c => `<option value="${c.id}">${c.call_reference || c.id.substring(0,8)} - ${c.audio_filename || "Audio Clip"}</option>`).join("");
+      auditsCache.map(c => `<option value="${c.id}">${c.call_reference || c.id.substring(0, 8)} - ${c.audio_filename || "Audio Clip"}</option>`).join("");
   }
 
   populateDiarAgentDropdown();
@@ -3807,8 +3891,8 @@ function renderDiarQueueUI() {
       const stepMsg = (job.elapsed || 0) < 15
         ? "Stage 1/3: Whisper Speech-to-Text & Word Alignment"
         : (job.elapsed || 0) < 35
-        ? "Stage 2/3: PyAnnote 3.1 Multi-Speaker Separation"
-        : "Stage 3/3: Milvus ECAPA Biometric Identification";
+          ? "Stage 2/3: PyAnnote 3.1 Multi-Speaker Separation"
+          : "Stage 3/3: Milvus ECAPA Biometric Identification";
 
       return `
         <div class="queue-card-item processing" style="cursor: pointer;" onclick="viewCompletedDiarJob('${job.id}')">
@@ -4212,14 +4296,14 @@ function renderRealDiarizationData(call) {
     <!-- 4. DIARIZED TRANSCRIPT TURNS LIST -->
     <div id="diarTurnsListContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px;">
       ${turns.map((t, idx) => {
-        const spk = t.speaker || t.speaker_label || "SPEAKER_00";
-        const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
-        const label = isAgent ? `Agent (${agentName})` : "Customer / Speaker 2";
-        const textContent = t.text || t.transcript || t.content || "";
-        const startTime = fmtTime(t.start);
-        const endTime = fmtTime(t.end);
+    const spk = t.speaker || t.speaker_label || "SPEAKER_00";
+    const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
+    const label = isAgent ? `Agent (${agentName})` : "Customer / Speaker 2";
+    const textContent = t.text || t.transcript || t.content || "";
+    const startTime = fmtTime(t.start);
+    const endTime = fmtTime(t.end);
 
-        return `
+    return `
           <div class="diar-turn-item ${isAgent ? 'turn-agent' : 'turn-customer'}" data-speaker="${isAgent ? 'AGENT' : 'CUSTOMER'}" data-text="${textContent.toLowerCase()}" style="background: ${isAgent ? '#f8fafc' : '#ffffff'}; border: 1px solid ${isAgent ? '#dbeafe' : '#e2e8f0'}; border-radius: 14px; padding: 14px; transition: all 0.2s ease;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <span style="background: ${isAgent ? '#dbeafe' : '#f3e8ff'}; color: ${isAgent ? '#1e40af' : '#7e22ce'}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
@@ -4235,7 +4319,7 @@ function renderRealDiarizationData(call) {
             <p class="turn-text-body" style="font-size: 13.5px; color: #334155; margin: 0; line-height: 1.45; font-weight: 500;">${textContent}</p>
           </div>
         `;
-      }).join("")}
+  }).join("")}
     </div>
   `;
 
@@ -4270,7 +4354,7 @@ function copyTurnText(escapedTxt) {
   const txt = unescape(escapedTxt);
   navigator.clipboard.writeText(txt).then(() => {
     showToast("Turn text copied to clipboard!", "success");
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 function closeDiarDetailsPanel() {
@@ -4283,7 +4367,7 @@ function closeDiarDetailsPanel() {
 
 function copyCurrentDiarTranscript() {
   const activeJob = diarSessionQueue.find(j => j.id === currentViewedDiarJobId) ||
-                    auditsCache.find(c => c.id === currentViewedDiarJobId);
+    auditsCache.find(c => c.id === currentViewedDiarJobId);
   const data = activeJob ? (activeJob.data || activeJob) : null;
   if (!data || !data.transcript_json) {
     showToast("No active transcript available to copy", "info");
@@ -4302,7 +4386,7 @@ function copyCurrentDiarTranscript() {
   const lines = turns.map(t => {
     const isAgent = (t.speaker === "SPEAKER_AGENT" || t.speaker === "SPEAKER_00" || t.speaker === "AGENT");
     const speakerLabel = isAgent ? `Agent (${agentName})` : "Customer";
-    const start = typeof t.start === "number" ? `${Math.floor(t.start/60).toString().padStart(2,'0')}:${Math.floor(t.start%60).toString().padStart(2,'0')}` : "00:00";
+    const start = typeof t.start === "number" ? `${Math.floor(t.start / 60).toString().padStart(2, '0')}:${Math.floor(t.start % 60).toString().padStart(2, '0')}` : "00:00";
     return `[${start}] ${speakerLabel}: ${t.text || t.content || ""}`;
   });
 
@@ -4317,7 +4401,7 @@ function copyCurrentDiarTranscript() {
 
 function downloadCurrentDiarJson() {
   const activeJob = diarSessionQueue.find(j => j.id === currentViewedDiarJobId) ||
-                    auditsCache.find(c => c.id === currentViewedDiarJobId);
+    auditsCache.find(c => c.id === currentViewedDiarJobId);
   const data = activeJob ? (activeJob.data || activeJob) : null;
   if (!data) {
     showToast("No call data available for export", "info");
@@ -4361,12 +4445,12 @@ async function loadQaAnalysisPage() {
     try {
       const res = await fetch("/api/v1/calls/");
       if (res.ok) auditsCache = await res.json();
-    } catch (e) {}
+    } catch (e) { }
   }
   const sel = document.getElementById("qaCallSelect");
   if (sel) {
     sel.innerHTML = `<option value="">-- Select Call Audit Recording --</option>` +
-      auditsCache.map(c => `<option value="${c.id}">${c.call_reference || c.id.substring(0,8)} - QA: ${c.qa_score !== null && c.qa_score !== undefined ? c.qa_score + '%' : 'Pending'}</option>`).join("");
+      auditsCache.map(c => `<option value="${c.id}">${c.call_reference || c.id.substring(0, 8)} - QA: ${c.qa_score !== null && c.qa_score !== undefined ? c.qa_score + '%' : 'Pending'}</option>`).join("");
   }
 
   const evalsEl = document.getElementById("qa-stat-evals");
@@ -4375,7 +4459,7 @@ async function loadQaAnalysisPage() {
   const topEl = document.getElementById("qa-stat-top-agent");
 
   if (evalsEl) evalsEl.textContent = auditsCache.length;
-  
+
   const scores = auditsCache.map(c => c.qa_score).filter(s => s !== null && s !== undefined);
   const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 88;
   if (scoreEl) scoreEl.textContent = `${avgScore}%`;
