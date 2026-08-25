@@ -513,9 +513,12 @@ function renderDepartmentsTable(list) {
   const totalEl = document.getElementById("dept-stat-total");
   const activeEl = document.getElementById("dept-stat-active");
   const rolesEl = document.getElementById("dept-stat-roles");
+  const staffEl = document.getElementById("dept-stat-staff");
+
   if (totalEl) totalEl.textContent = departmentsCache.length;
   if (activeEl) activeEl.textContent = departmentsCache.filter((d) => d.status === "ACTIVE").length;
   if (rolesEl) rolesEl.textContent = designationsCache.length || 0;
+  if (staffEl) staffEl.textContent = employeesCache.length || 0;
 
   if (!list || list.length === 0) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">No departments found. Click "+ Add Department" to create one.</td></tr>`;
