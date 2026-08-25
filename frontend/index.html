@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/styles.css?v=9">
+  <link rel="stylesheet" href="/static/styles.css?v=20">
 </head>
 
 <body>
@@ -1504,6 +1504,11 @@
 
             <!-- ACTION CONTROLS & CLOSE BUTTON -->
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="qaHeaderActionBtns">
+              <button class="btn-primary" id="btnSaveQaCalibration"
+                style="display: none; font-size: 12px; padding: 7px 16px; height: auto; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-color: #16a34a; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);"
+                onclick="saveCalibratedQaScorecard()" title="Save auditor calibrated scores to database">
+                <i data-lucide="save" style="width: 13px;"></i> Save Calibrated Scorecard
+              </button>
               <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;"
                 onclick="copyCurrentQaScorecard()" title="Copy QA scorecard summary to clipboard">
                 <i data-lucide="copy" style="width: 13px;"></i> Copy Scorecard
@@ -2633,7 +2638,7 @@
   <!-- BOTTOM-CENTER FLOATING TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="/static/app.js?v=9"></script>
+  <script src="/static/app.js?v=20"></script>
 </body>
 
 </html>
