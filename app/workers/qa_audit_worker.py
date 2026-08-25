@@ -75,7 +75,7 @@ class QAAuditWorker(BaseWorker):
             if call_job.identified_employee_id:
                 employee = db_session.get(Employee, call_job.identified_employee_id)
                 if employee:
-                    employee_name = employee.name
+                    employee_name = f"{employee.first_name} {employee.last_name or ''}".strip()
 
             # Run QA Scorecard & CX Engine
             scorecard = self.qa_service.compute_scorecard(

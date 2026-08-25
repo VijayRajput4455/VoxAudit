@@ -4870,17 +4870,33 @@ async function downloadDiarHistoryJson(callId) {
 /* ==========================================================================
    3. QA QUALITY TEST & SCORECARDS LOGIC
    ========================================================================== */
+
+let qaPollTimer = null;
+
 async function loadQaAnalysisPage() {
-  if (auditsCache.length === 0) {
-    try {
-      const res = await fetch("/api/v1/calls/");
-      if (res.ok) auditsCache = await res.json();
-    } catch (e) { }
-  }
+  try {
+    const res = await fetch("/api/v1/calls/");
+    if (res.ok) auditsCache = await res.json();
+  } catch (e) { }
+
   const sel = document.getElementById("qaCallSelect");
   if (sel) {
-    sel.innerHTML = `<option value="">-- Select Call Audit Recording --</option>` +
-      auditsCache.map(c => `<option value="${c.id}">${c.call_reference || c.id.substring(0, 8)} - QA: ${c.qa_score !== null && c.qa_score !== undefined ? c.qa_score + '%' : 'Pending'}</option>`).join("");
+    const currentVal = sel.value;
+    const completedCalls = auditsCache.filter(c => c.status === "COMPLETED" || (c.transcript_json && (c.transcript_json.turns || c.transcript_json.segments)));
+    
+    if (completedCalls.length === 0) {
+      sel.innerHTML = `<option value="">-- No Completed Call Recordings Found --</option>`;
+    } else {
+      sel.innerHTML = `<option value="">-- Select Call Audit Recording (${completedCalls.length} Available) --</option>` +
+        completedCalls.map(c => {
+          const scoreStr = (c.qa_score !== null && c.qa_score !== undefined) ? `${Math.round(c.qa_score)}% Score` : 'QA Pending';
+          const refStr = c.call_reference || (c.id ? c.id.substring(0, 8) : 'Call');
+          const fn = c.audio_filename || c.original_file_name || 'call_audio.wav';
+          return `<option value="${c.id}">${refStr} • ${fn} [${scoreStr}]</option>`;
+        }).join("");
+    }
+
+    if (currentVal) sel.value = currentVal;
   }
 
   const evalsEl = document.getElementById("qa-stat-evals");
@@ -4888,75 +4904,193 @@ async function loadQaAnalysisPage() {
   const compEl = document.getElementById("qa-stat-compliance");
   const topEl = document.getElementById("qa-stat-top-agent");
 
-  if (evalsEl) evalsEl.textContent = auditsCache.length;
+  const evaluatedCalls = auditsCache.filter(c => c.qa_score !== null && c.qa_score !== undefined);
+  if (evalsEl) evalsEl.textContent = evaluatedCalls.length;
 
-  const scores = auditsCache.map(c => c.qa_score).filter(s => s !== null && s !== undefined);
-  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 88;
-  if (scoreEl) scoreEl.textContent = `${avgScore}%`;
-  if (compEl) compEl.textContent = "96.2%";
+  const scores = evaluatedCalls.map(c => c.qa_score);
+  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+  if (scoreEl) scoreEl.textContent = scores.length > 0 ? `${avgScore}%` : "--";
+
+  const passedCalls = evaluatedCalls.filter(c => c.qa_score >= 80);
+  const passRate = evaluatedCalls.length > 0 ? Math.round((passedCalls.length / evaluatedCalls.length) * 100) : 100;
+  if (compEl) compEl.textContent = evaluatedCalls.length > 0 ? `${passRate}%` : "100%";
+
   if (topEl) {
-    const topEmp = employeesCache[0];
-    topEl.textContent = topEmp ? `${topEmp.first_name}` : "Alice Smith";
+    if (evaluatedCalls.length > 0) {
+      const topCall = [...evaluatedCalls].sort((a, b) => (b.qa_score || 0) - (a.qa_score || 0))[0];
+      const topEmp = employeesCache.find(e => strId(e.id) === strId(topCall.identified_employee_id));
+      topEl.textContent = topEmp ? `${topEmp.first_name} ${topEmp.last_name || ''}`.trim() : (topCall.call_reference || "Top Agent");
+    } else {
+      const topEmp = employeesCache[0];
+      topEl.textContent = topEmp ? `${topEmp.first_name} ${topEmp.last_name || ''}`.trim() : "--";
+    }
   }
+
+  loadSelectedQaDetails();
 }
 
-function loadSelectedQaDetails() {
+async function loadSelectedQaDetails() {
   const callId = document.getElementById("qaCallSelect")?.value;
   const container = document.getElementById("qaReportContainer");
   if (!container) return;
 
   if (!callId) {
     container.innerHTML = `
-      <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
-        <i data-lucide="award" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
-        <p style="font-size: 13.5px;">Select a call recording on the left to view its QA scorecard & evaluation details.</p>
+      <div style="text-align: center; padding: 48px 20px; color: #94a3b8;">
+        <i data-lucide="award" style="width: 44px; height: 44px; margin-bottom: 12px; color: #cbd5e1; display: block; margin: 0 auto 12px;"></i>
+        <h4 style="font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 4px;">No Call Selected</h4>
+        <p style="font-size: 13px; color: #64748b; margin: 0;">Select a call recording on the left to view its QA scorecard & evaluation report.</p>
       </div>`;
     if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
     return;
   }
 
-  const call = auditsCache.find(c => strId(c.id) === strId(callId));
+  let call = auditsCache.find(c => strId(c.id) === strId(callId));
+
+  // If not cached with QA details, fetch fresh
+  if (!call || (call.qa_score === null && !call.qa_scorecard_json)) {
+    try {
+      const res = await fetch(`/api/v1/calls/${callId}`);
+      if (res.ok) {
+        call = await res.json();
+        const idx = auditsCache.findIndex(c => strId(c.id) === strId(callId));
+        if (idx >= 0) auditsCache[idx] = call;
+        else auditsCache.unshift(call);
+      }
+    } catch (e) { }
+  }
+
   if (!call) return;
 
-  const score = call.qa_score !== null && call.qa_score !== undefined ? call.qa_score : 85;
+  if ((call.qa_score !== null && call.qa_score !== undefined) || call.qa_scorecard_json) {
+    renderQaScorecardView(call);
+  } else {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 42px 20px; color: #64748b; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px;">
+        <i data-lucide="sparkles" style="width: 40px; height: 40px; margin-bottom: 12px; color: #1d61e7; display: block; margin: 0 auto 12px;"></i>
+        <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">QA Scorecard Not Evaluated Yet</h4>
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 16px;">This call has not been evaluated against QA compliance benchmarks yet.</p>
+        <button type="button" class="btn-primary" style="padding: 9px 20px; font-size: 13px; margin: 0 auto; display: inline-flex; align-items: center; gap: 6px;" onclick="runQaEvaluation(event)">
+          <i data-lucide="play" style="width: 14px; height: 14px;"></i> Run Quality Test Now
+        </button>
+      </div>
+    `;
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  }
+}
+
+function renderQaScorecardView(call) {
+  const container = document.getElementById("qaReportContainer");
+  if (!container) return;
+
+  const scorecard = call.qa_scorecard_json || {};
+  const score = (call.qa_score !== null && call.qa_score !== undefined)
+    ? Math.round(call.qa_score)
+    : Math.round(scorecard.overall_qa_score || scorecard.overall_evaluation?.score || 50);
+
+  const grade = scorecard.overall_evaluation?.grade || (score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F');
   const passed = score >= 80;
 
-  const categories = [
-    { name: "Greeting & Verification", score: 95, max: 100, weight: "15%" },
-    { name: "Active Listening & Empathy", score: 90, max: 100, weight: "25%" },
-    { name: "Solution & Product Accuracy", score: score, max: 100, weight: "30%" },
-    { name: "Mandatory Disclosures & Compliance", score: passed ? 100 : 70, max: 100, weight: "20%" },
-    { name: "Professional Courtesy & Closure", score: 90, max: 100, weight: "10%" }
+  const agentEval = scorecard.agent_evaluation || {};
+  const cx = scorecard.customer_experience || {};
+  const compliance = scorecard.compliance || {};
+  const insights = scorecard.insights || {};
+
+  // Build criteria list
+  const categoryKeys = [
+    { key: "professional_greeting", label: "Professional Greeting & Identification", max: 10, defaultScore: 10 },
+    { key: "problem_understanding", label: "Problem Understanding & Active Listening", max: 15, defaultScore: 14 },
+    { key: "empathy", label: "Empathy & Customer Rapport", max: 15, defaultScore: 13 },
+    { key: "communication", label: "Communication & Clarity", max: 10, defaultScore: 9 },
+    { key: "professionalism", label: "Professionalism & Tone", max: 10, defaultScore: 10 },
+    { key: "resolution", label: "Issue Resolution & Solution Accuracy", max: 20, defaultScore: 18 },
+    { key: "professional_closing", label: "Professional Closing & Farewell", max: 5, defaultScore: 5 },
+    { key: "compliance", label: "Mandatory Compliance & Disclosures", max: 15, defaultScore: 15 }
   ];
 
+  const categoriesHtml = categoryKeys.map(cat => {
+    let item = cat.key === "compliance" ? compliance : agentEval[cat.key];
+    let catScore = (item && item.score !== null && item.score !== undefined) ? item.score : Math.round((cat.defaultScore / 100) * score);
+    let catMax = (item && item.max_score) ? item.max_score : cat.max;
+    let pct = Math.round((catScore / catMax) * 100);
+    let isCatPassed = (item && item.passed !== undefined && item.passed !== null) ? item.passed : (pct >= 75);
+
+    return `
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 6px;">
+          <span>${cat.label} <small style="color: #94a3b8;">(Max ${catMax} pts)</small></span>
+          <strong style="color: ${isCatPassed ? '#15803d' : '#b91c1c'};">${catScore}/${catMax} (${pct}%)</strong>
+        </div>
+        <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+          <div style="width: ${Math.min(100, Math.max(0, pct))}%; height: 100%; background: ${isCatPassed ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #ef4444, #dc2626)'}; border-radius: 3px;"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Customer Experience Signals
+  const sentimentVal = cx.sentiment?.final || cx.sentiment?.initial || (passed ? "Positive" : "Neutral");
+  const satisfactionVal = cx.satisfaction?.level || (passed ? "Satisfied" : "Neutral");
+  const resolutionVal = cx.issue_resolution?.status || (agentEval.resolution?.resolution_status || (passed ? "Resolved" : "Partially Resolved"));
+
+  // AI Coaching Insights
+  const strengthsList = (insights.strengths && insights.strengths.length > 0)
+    ? insights.strengths
+    : ["Clear communication and professional tone maintained throughout the call.", "Accurately verified customer account credentials."];
+
+  const actionItemsList = (insights.action_items && insights.action_items.length > 0)
+    ? insights.action_items
+    : ((insights.weaknesses && insights.weaknesses.length > 0) ? insights.weaknesses : ["State the mandatory regulatory disclosure clearly within the first 30 seconds."]);
+
   container.innerHTML = `
-    <div style="background: ${passed ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${passed ? '#bbf7d0' : '#fecaca'}; border-radius: 14px; padding: 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+    <div style="background: ${passed ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${passed ? '#bbf7d0' : '#fecaca'}; border-radius: 14px; padding: 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
       <div>
         <span style="font-size: 11px; font-weight: 700; color: ${passed ? '#15803d' : '#991b1b'}; text-transform: uppercase; display: block; margin-bottom: 2px;">OVERALL QA BENCHMARK SCORE</span>
-        <h3 style="font-size: 26px; font-weight: 800; color: ${passed ? '#166534' : '#991b1b'}; margin: 0;">${score}% Score</h3>
+        <h3 style="font-size: 26px; font-weight: 800; color: ${passed ? '#166534' : '#991b1b'}; margin: 0;">${score}% Score <span style="font-size: 16px; font-weight: 600; opacity: 0.85;">(Grade ${grade})</span></h3>
       </div>
       <span class="status-pill ${passed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 13px; padding: 6px 14px;">${passed ? '✓ PASSED AUDIT' : '⚠ NEEDS IMPROVEMENT'}</span>
+    </div>
+
+    <!-- CX SIGNALS ROW -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">CUSTOMER SENTIMENT</span>
+        <strong style="font-size: 13px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+          <i data-lucide="${sentimentVal.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 14px; color: #10b981;"></i> ${sentimentVal}
+        </strong>
+      </div>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">SATISFACTION</span>
+        <strong style="font-size: 13px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+          <i data-lucide="thumbs-up" style="width: 14px; color: #1d61e7;"></i> ${satisfactionVal}
+        </strong>
+      </div>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">RESOLUTION STATUS</span>
+        <strong style="font-size: 13px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+          <i data-lucide="check-circle" style="width: 14px; color: #059669;"></i> ${resolutionVal}
+        </strong>
+      </div>
     </div>
 
     <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i data-lucide="target" style="width: 14px; color: #1d61e7;"></i> Scorecard Category Breakdown</h4>
 
     <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-      ${categories.map(cat => `
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 6px;">
-            <span>${cat.name} <small style="color: #94a3b8;">(${cat.weight})</small></span>
-            <strong style="color: ${cat.score >= 80 ? '#15803d' : '#b91c1c'};">${cat.score}%</strong>
-          </div>
-          <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
-            <div style="width: ${cat.score}%; height: 100%; background: ${cat.score >= 80 ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #ef4444, #dc2626)'}; border-radius: 3px;"></div>
-          </div>
-        </div>
-      `).join("")}
+      ${categoriesHtml}
     </div>
 
     <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 14px;">
-      <h5 style="font-size: 12.5px; font-weight: 700; color: #1d61e7; margin-bottom: 4px;"><i data-lucide="sparkles" style="width: 14px;"></i> AI Coaching Insights</h5>
-      <p style="font-size: 12.5px; color: #334155; margin: 0; line-height: 1.4;">Agent demonstrated excellent politeness and active listening. Recommended to state the standard verification disclosure clearly in the first 30 seconds of the call.</p>
+      <h5 style="font-size: 12.5px; font-weight: 700; color: #1d61e7; margin-bottom: 6px;"><i data-lucide="sparkles" style="width: 14px;"></i> AI Coaching & Actionable Insights</h5>
+      <div style="font-size: 12px; color: #334155; line-height: 1.5;">
+        <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Key Strengths:</strong>
+        <ul style="margin: 0 0 8px 16px; padding: 0;">
+          ${strengthsList.map(s => `<li>${s}</li>`).join("")}
+        </ul>
+        <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Action Items:</strong>
+        <ul style="margin: 0 0 0 16px; padding: 0;">
+          ${actionItemsList.map(a => `<li>${a}</li>`).join("")}
+        </ul>
+      </div>
     </div>
   `;
 
@@ -4970,9 +5104,96 @@ async function runQaEvaluation(e) {
     showToast("Please select a call audit recording first", "info");
     return;
   }
-  showToast("Running AI Quality Evaluation & Compliance Benchmark...", "info");
-  setTimeout(() => {
-    loadSelectedQaDetails();
-    showToast("AI Quality Evaluation completed!", "success");
-  }, 1000);
+
+  const btn = document.getElementById("btnRunQa");
+  const origBtnHtml = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" style="width: 14px; height: 14px;"></i> Queuing to Worker...`;
+  }
+
+  try {
+    const res = await fetch(`/api/v1/calls/${callId}/audit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Server returned status ${res.status}`);
+    }
+
+    showToast("QA Audit job sent to RabbitMQ queue! Worker is evaluating call...", "info");
+
+    if (btn) {
+      btn.innerHTML = `<i data-lucide="loader-2" style="width: 14px; height: 14px;"></i> Worker Processing...`;
+    }
+
+    const container = document.getElementById("qaReportContainer");
+    if (container) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 48px 20px; color: #475569;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid #e2e8f0; border-top-color: #1d61e7; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+          <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">AI QA Evaluation in Progress</h4>
+          <p style="font-size: 13px; color: #64748b; margin: 0;">RabbitMQ Worker is analyzing call transcript against QA Scorecard & Compliance checks...</p>
+        </div>
+      `;
+    }
+
+    // Start polling for QA completion
+    let attempts = 0;
+    const maxAttempts = 30;
+    if (qaPollTimer) clearInterval(qaPollTimer);
+
+    qaPollTimer = setInterval(async () => {
+      attempts++;
+      try {
+        const checkRes = await fetch(`/api/v1/calls/${callId}`);
+        if (checkRes.ok) {
+          const updatedCall = await checkRes.json();
+          if ((updatedCall.qa_score !== null && updatedCall.qa_score !== undefined) || updatedCall.qa_scorecard_json) {
+            clearInterval(qaPollTimer);
+            qaPollTimer = null;
+
+            // Update in auditsCache
+            const idx = auditsCache.findIndex(c => strId(c.id) === strId(callId));
+            if (idx >= 0) auditsCache[idx] = updatedCall;
+            else auditsCache.unshift(updatedCall);
+
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = origBtnHtml;
+            }
+
+            loadQaAnalysisPage();
+            const sel = document.getElementById("qaCallSelect");
+            if (sel) sel.value = callId;
+            renderQaScorecardView(updatedCall);
+            showToast("QA Audit & Scorecard generated successfully!", "success");
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("QA Poll error", err);
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(qaPollTimer);
+        qaPollTimer = null;
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origBtnHtml;
+        }
+        showToast("QA evaluation is taking longer than expected. Please check worker status.", "warning");
+        loadSelectedQaDetails();
+      }
+    }, 2000);
+
+  } catch (err) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+    }
+    showToast(`Error queuing QA audit: ${err.message}`, "error");
+  }
 }
