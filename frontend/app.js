@@ -6090,18 +6090,81 @@ function handleChatQaFileSelected(input) {
   const file = input.files[0];
   chatQaSelectedFile = file;
 
-  const titleEl = document.getElementById("chatQaDropzoneTitle");
-  const subEl = document.getElementById("chatQaDropzoneSubtitle");
+  const dropzone = document.getElementById("chatQaDropzone");
+  const card = document.getElementById("chatQaFileSelectedCard");
+  const nameEl = document.getElementById("chatQaSelectedFileName");
+  const metaEl = document.getElementById("chatQaSelectedFileMeta");
   const titleInput = document.getElementById("chatQaTitle");
 
-  if (titleEl) {
-    titleEl.textContent = `✓ Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-  }
-  if (subEl) {
-    subEl.textContent = "Ready to evaluate. Click 'Run AI Chat QA Evaluation' below.";
-  }
+  if (nameEl) nameEl.textContent = file.name;
+
+  // Read file to parse turn count preview
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      let turnsCount = 0;
+      if (Array.isArray(parsed)) turnsCount = parsed.length;
+      else if (parsed.turns && Array.isArray(parsed.turns)) turnsCount = parsed.turns.length;
+      else if (parsed.messages && Array.isArray(parsed.messages)) turnsCount = parsed.messages.length;
+      else if (parsed.conversation && Array.isArray(parsed.conversation)) turnsCount = parsed.conversation.length;
+
+      if (metaEl) {
+        metaEl.textContent = `${(file.size / 1024).toFixed(1)} KB • ${turnsCount} message turns detected • Ready for AI QA`;
+      }
+    } catch (err) {
+      if (metaEl) {
+        metaEl.textContent = `${(file.size / 1024).toFixed(1)} KB • JSON file loaded`;
+      }
+    }
+  };
+  reader.readAsText(file);
+
+  if (dropzone) dropzone.style.display = "none";
+  if (card) card.style.display = "flex";
+
   if (titleInput && !titleInput.value.trim()) {
     titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+  }
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function clearChatQaSelectedFile() {
+  chatQaSelectedFile = null;
+  const fileInput = document.getElementById("chatQaFileInput");
+  if (fileInput) fileInput.value = "";
+
+  const dropzone = document.getElementById("chatQaDropzone");
+  const card = document.getElementById("chatQaFileSelectedCard");
+
+  if (dropzone) dropzone.style.display = "block";
+  if (card) card.style.display = "none";
+
+  showToast("Selected JSON file removed.", "info");
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function formatChatQaPastedJson() {
+  const pasteArea = document.getElementById("chatQaJsonPaste");
+  if (!pasteArea || !pasteArea.value.trim()) {
+    showToast("No JSON text to format.", "warning");
+    return;
+  }
+  try {
+    const parsed = JSON.parse(pasteArea.value.trim());
+    pasteArea.value = JSON.stringify(parsed, null, 2);
+    showToast("✓ JSON formatted cleanly!", "success");
+  } catch (err) {
+    showToast(`Invalid JSON: ${err.message}`, "error");
+  }
+}
+
+function clearChatQaPastedJson() {
+  const pasteArea = document.getElementById("chatQaJsonPaste");
+  if (pasteArea) {
+    pasteArea.value = "";
+    showToast("Pasted JSON text cleared.", "info");
   }
 }
 

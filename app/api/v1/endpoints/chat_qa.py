@@ -268,17 +268,23 @@ def get_chat_qa_history(
     offset: int = 0,
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """Retrieves all chat QA evaluation records ordered by creation date."""
+    chat_filter = (
+        (CallJob.audio_format == "json_chat")
+        | (CallJob.audio_format == "chat_qa")
+        | (CallJob.audio_format == "json")
+        | (CallJob.original_file_name.ilike("%.json"))
+        | (CallJob.storage_key.ilike("chat_qa/%"))
+    )
     stmt = (
         select(CallJob)
-        .where(CallJob.audio_format == "json_chat")
+        .where(chat_filter)
         .order_by(desc(CallJob.created_at))
         .offset(offset)
         .limit(limit)
     )
     records = db.scalars(stmt).all()
 
-    total_count = db.query(CallJob).filter(CallJob.audio_format == "json_chat").count()
+    total_count = db.query(CallJob).filter(chat_filter).count()
 
     results = []
     for c in records:

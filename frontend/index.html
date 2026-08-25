@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/styles.css?v=23">
+  <link rel="stylesheet" href="/static/styles.css?v=24">
 </head>
 
 <body>
@@ -1707,8 +1707,9 @@
               </button>
             </div>
 
-            <!-- MODE 1: FILE DROPZONE -->
+            <!-- MODE 1: FILE DROPZONE & SELECTED FILE CARD -->
             <div id="chatQaDropzoneContainer" style="display: block; margin-bottom: 18px;">
+              <!-- Initial Empty Dropzone -->
               <div id="chatQaDropzone"
                 style="border: 2px dashed #93c5fd; background: #f0f7ff; border-radius: 14px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.2s ease;"
                 onclick="document.getElementById('chatQaFileInput').click()">
@@ -1721,10 +1722,50 @@
                 </p>
                 <input type="file" id="chatQaFileInput" accept=".json,application/json" style="display: none;" onchange="handleChatQaFileSelected(this)">
               </div>
+
+              <!-- Selected File Card (With Remove / Cancel Option) -->
+              <div id="chatQaFileSelectedCard"
+                style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                  <div style="width: 44px; height: 44px; background: #dcfce7; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #15803d; flex-shrink: 0;">
+                    <i data-lucide="file-check" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <div>
+                    <h4 id="chatQaSelectedFileName" style="font-size: 14px; font-weight: 700; color: #166534; margin: 0 0 2px 0;">
+                      filename.json
+                    </h4>
+                    <p id="chatQaSelectedFileMeta" style="font-size: 12px; color: #64748b; margin: 0;">
+                      12.4 KB • Ready for AI Evaluation
+                    </p>
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px; color: #dc2626; border-color: #fca5a5; background: #ffffff;"
+                    onclick="clearChatQaSelectedFile()" title="Cancel & remove this JSON file">
+                    <i data-lucide="trash-2" style="width: 13px;"></i> Remove / Cancel File
+                  </button>
+                  <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;"
+                    onclick="document.getElementById('chatQaFileInput').click()" title="Choose a different JSON file">
+                    <i data-lucide="folder-open" style="width: 13px;"></i> Change File
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <!-- MODE 2: DIRECT PASTE TEXTAREA -->
+            <!-- MODE 2: DIRECT PASTE TEXTAREA WITH ACTIONS -->
             <div id="chatQaPasteContainer" style="display: none; margin-bottom: 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 600; color: #64748b;">Paste JSON message array or conversation turns below:</label>
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="formatChatQaPastedJson()">
+                    <i data-lucide="wand-2" style="width: 12px;"></i> Format JSON
+                  </button>
+                  <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 10px; color: #ef4444; border-color: #fca5a5;" onclick="clearChatQaPastedJson()">
+                    <i data-lucide="trash-2" style="width: 12px;"></i> Clear Text
+                  </button>
+                </div>
+              </div>
               <div style="position: relative;">
                 <textarea id="chatQaJsonPaste" rows="8" placeholder='[&#10;  { "speaker": "agent", "text": "Thank you for calling support. How can I help you today?" },&#10;  { "speaker": "customer", "text": "Hello, I need help with my account." }&#10;]'
                   style="width: 100%; padding: 12px 14px; font-family: monospace; font-size: 12.5px; border-radius: 12px; border: 1.5px solid #cbd5e1; outline: none; background: #ffffff; resize: vertical; line-height: 1.5;"></textarea>
@@ -2899,7 +2940,7 @@
   <!-- BOTTOM-CENTER FLOATING TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="/static/app.js?v=23"></script>
+  <script src="/static/app.js?v=24"></script>
 </body>
 
 </html>
