@@ -2628,21 +2628,60 @@ function clearVerifySelectedFile(e) {
   if (previewCard) previewCard.style.display = "none";
 }
 
-function renderVoiceEnrollmentDirectory(summaryData) {
+/* ==========================================================================
+   VOICE ENROLLMENT DIRECTORY PAGINATION (5 PER PAGE)
+   ========================================================================== */
+
+let veDirectoryCurrentPage = 1;
+const VE_DIRECTORY_PAGE_SIZE = 5;
+let veSummaryCache = null;
+
+function setVeDirectoryPage(pageNum) {
+  veDirectoryCurrentPage = pageNum;
+  renderVoiceEnrollmentDirectory();
+}
+
+function changeVeDirectoryPage(direction) {
+  if (direction === "prev") {
+    if (veDirectoryCurrentPage > 1) {
+      veDirectoryCurrentPage--;
+      renderVoiceEnrollmentDirectory();
+    }
+  } else if (direction === "next") {
+    veDirectoryCurrentPage++;
+    renderVoiceEnrollmentDirectory();
+  }
+}
+
+function renderVoiceEnrollmentDirectory(summaryData = null) {
   const tbody = document.getElementById("veDirectoryTableBody");
   if (!tbody) return;
+
+  if (summaryData) {
+    veSummaryCache = summaryData;
+  }
+
+  const data = veSummaryCache;
+  const paginationInfo = document.getElementById("veDirectoryPaginationInfo");
+  const prevBtn = document.getElementById("veDirPrevBtn");
+  const nextBtn = document.getElementById("veDirNextBtn");
+  const pageNumbersContainer = document.getElementById("veDirectoryPageNumbers");
+
+  if (!data) {
+    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">No voice enrollment summary data available.</td></tr>`;
+    if (paginationInfo) paginationInfo.innerHTML = "Showing <strong>0</strong> staff profiles";
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (pageNumbersContainer) pageNumbersContainer.innerHTML = "";
+    return;
+  }
+
+  const profiles = data.profiles || [];
 
   const agentsMetric = document.getElementById("veMetricAgents");
   const samplesMetric = document.getElementById("veMetricSamples");
   const vectorsMetric = document.getElementById("veMetricVectors");
   const durationMetric = document.getElementById("veMetricDuration");
-
-  if (!summaryData) {
-    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">No voice enrollment summary data available.</td></tr>`;
-    return;
-  }
-
-  const profiles = summaryData.profiles || [];
 
   let cumulativeDurationSec = 0;
   profiles.forEach(p => {
@@ -2651,20 +2690,84 @@ function renderVoiceEnrollmentDirectory(summaryData) {
     });
   });
 
-  if (agentsMetric) agentsMetric.textContent = summaryData.total_employees_enrolled || 0;
-  if (samplesMetric) samplesMetric.textContent = summaryData.total_voice_samples || 0;
-  if (vectorsMetric) vectorsMetric.textContent = summaryData.total_vectors || 0;
+  if (agentsMetric) agentsMetric.textContent = data.total_employees_enrolled || 0;
+  if (samplesMetric) samplesMetric.textContent = data.total_voice_samples || 0;
+  if (vectorsMetric) vectorsMetric.textContent = data.total_vectors || 0;
   if (durationMetric) {
     const totalSec = Math.round(cumulativeDurationSec);
     durationMetric.textContent = totalSec > 60 ? `${Math.floor(totalSec / 60)}m ${totalSec % 60}s` : `${totalSec}s`;
   }
 
-  if (profiles.length === 0) {
+  const totalRecords = profiles.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / VE_DIRECTORY_PAGE_SIZE));
+
+  if (veDirectoryCurrentPage > totalPages) {
+    veDirectoryCurrentPage = totalPages;
+  }
+  if (veDirectoryCurrentPage < 1) {
+    veDirectoryCurrentPage = 1;
+  }
+
+  if (totalRecords === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">No employees registered. Go to Employees tab to create employees first.</td></tr>`;
+    if (paginationInfo) paginationInfo.innerHTML = "Showing <strong>0</strong> staff profiles";
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (pageNumbersContainer) pageNumbersContainer.innerHTML = "";
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
     return;
   }
 
-  tbody.innerHTML = profiles.map(prof => {
+  const startIndex = (veDirectoryCurrentPage - 1) * VE_DIRECTORY_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + VE_DIRECTORY_PAGE_SIZE, totalRecords);
+  const pagedProfiles = profiles.slice(startIndex, endIndex);
+
+  // Update Pagination Info
+  if (paginationInfo) {
+    paginationInfo.innerHTML = `Showing <strong>${startIndex + 1}</strong> - <strong>${endIndex}</strong> of <strong>${totalRecords}</strong> staff profiles`;
+  }
+
+  // Update Previous / Next Button States
+  if (prevBtn) {
+    const isPrevDisabled = veDirectoryCurrentPage <= 1;
+    prevBtn.disabled = isPrevDisabled;
+    prevBtn.style.opacity = isPrevDisabled ? "0.45" : "1";
+    prevBtn.style.cursor = isPrevDisabled ? "not-allowed" : "pointer";
+    prevBtn.style.background = isPrevDisabled ? "#f1f5f9" : "#ffffff";
+    prevBtn.style.borderColor = isPrevDisabled ? "#e2e8f0" : "#cbd5e1";
+    prevBtn.style.color = isPrevDisabled ? "#94a3b8" : "#1e293b";
+  }
+
+  if (nextBtn) {
+    const isNextDisabled = veDirectoryCurrentPage >= totalPages;
+    nextBtn.disabled = isNextDisabled;
+    nextBtn.style.opacity = isNextDisabled ? "0.45" : "1";
+    nextBtn.style.cursor = isNextDisabled ? "not-allowed" : "pointer";
+    nextBtn.style.background = isNextDisabled ? "#f1f5f9" : "#ffffff";
+    nextBtn.style.borderColor = isNextDisabled ? "#e2e8f0" : "#cbd5e1";
+    nextBtn.style.color = isNextDisabled ? "#94a3b8" : "#1e293b";
+  }
+
+  // Update Page Number Buttons (1, 2, 3, 4...)
+  if (pageNumbersContainer) {
+    let pagesHtml = "";
+    for (let p = 1; p <= totalPages; p++) {
+      const isActive = p === veDirectoryCurrentPage;
+      const baseStyle = "width: 40px; height: 40px; min-width: 40px; padding: 0; border-radius: 11px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);";
+      const btnStyle = isActive
+        ? `${baseStyle} border: 1px solid #1d61e7; background: linear-gradient(135deg, #1d61e7 0%, #174ebc 100%); color: #ffffff; font-weight: 700; box-shadow: 0 4px 14px rgba(29, 97, 231, 0.4); cursor: default; transform: scale(1.05);`
+        : `${baseStyle} border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer;`;
+
+      pagesHtml += `
+        <button type="button" class="diar-page-btn ${isActive ? 'active' : ''}" style="${btnStyle}" onclick="setVeDirectoryPage(${p})" title="Page ${p}">
+          ${p}
+        </button>
+      `;
+    }
+    pageNumbersContainer.innerHTML = pagesHtml;
+  }
+
+  tbody.innerHTML = pagedProfiles.map(prof => {
     const fullName = `${prof.first_name} ${prof.last_name || ""}`.trim();
     const matchedDept = prof.department_name || (prof.department_id ? departmentsCache.find(d => strId(d.id) === strId(prof.department_id))?.name : "--") || "--";
     const samplesList = prof.samples || [];
@@ -2699,6 +2802,8 @@ function renderVoiceEnrollmentDirectory(summaryData) {
       </tr>
     `;
   }).join("");
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
 function selectEmployeeForEnrollment(employeeId) {
