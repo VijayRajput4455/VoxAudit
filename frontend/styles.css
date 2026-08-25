@@ -48,7 +48,10 @@
 
 html, body {
   width: 100%;
+  height: 100vh;
   min-height: 100vh;
+  margin: 0;
+  padding: 0;
   font-family: var(--font-family);
   background-color: #0b1329;
   background-image: linear-gradient(135deg, rgba(11, 19, 41, 0.75), rgba(15, 23, 42, 0.65)), url('background.png');
@@ -58,23 +61,42 @@ html, body {
   background-attachment: fixed;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
 }
 
 /* Fluid Layout */
 .app-container {
   display: flex;
-  width: 100%;
-  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
   max-width: 100vw;
-  overflow-x: hidden;
+  max-height: 100vh;
+  overflow: hidden;
 }
 
 /* ==========================================================================
-   SIDEBAR
+   SIDEBAR (FIXED NON-SCROLLING CONTAINER)
    ========================================================================== */
 .sidebar {
   width: 250px;
+  height: 100vh;
+  max-height: 100vh;
   background-color: var(--sidebar-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -84,6 +106,8 @@ html, body {
   flex-shrink: 0;
   padding: 24px 16px;
   transition: width 0.2s ease;
+  overflow: hidden;
+  z-index: 100;
 }
 
 .sidebar-brand {
@@ -251,12 +275,15 @@ html, body {
    ========================================================================== */
 .main-content {
   flex: 1;
+  height: 100vh;
+  max-height: 100vh;
   min-width: 0; /* CRITICAL: Allows grid & table flex children to shrink properly */
   padding: 24px 32px;
   display: flex;
   flex-direction: column;
   gap: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .top-header {
