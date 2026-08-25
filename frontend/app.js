@@ -6171,7 +6171,7 @@ async function runChatQaEvaluation(e) {
   const origBtnHtml = btn ? btn.innerHTML : "";
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<i data-lucide="loader-2" style="width: 16px; animation: spin 1s linear infinite;"></i> Running AI Quality Evaluation...`;
+    btn.innerHTML = `<i data-lucide="loader-2" style="width: 16px; animation: spin 1s linear infinite;"></i> Queuing to Worker...`;
   }
 
   try {
@@ -6186,29 +6186,91 @@ async function runChatQaEvaluation(e) {
     }
 
     const job = await res.json();
-    showToast("✓ Chat QA Evaluation complete! Scorecard generated.", "success");
 
-    // Add to history cache
-    chatQaHistoryCache.unshift(job);
-    updateChatQaStats();
-    renderChatQaHistoryTable();
-
-    // Reset form
+    // Reset form inputs
     if (fileInput) fileInput.value = "";
     if (pasteArea) pasteArea.value = "";
     chatQaSelectedFile = null;
     const dropTitle = document.getElementById("chatQaDropzoneTitle");
     if (dropTitle) dropTitle.textContent = "Drag and drop your Chat JSON file here, or click to browse";
 
-    // View Details
-    viewChatQaDetails(job.id);
+    // If completed immediately (e.g. fallback)
+    if (job.qa_score !== null && job.qa_score !== undefined) {
+      showToast("✓ Chat QA Evaluation complete! Scorecard generated.", "success");
+      chatQaHistoryCache.unshift(job);
+      updateChatQaStats();
+      renderChatQaHistoryTable();
+      viewChatQaDetails(job.id);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origBtnHtml;
+      }
+      return;
+    }
+
+    // Otherwise it is QUEUED in RabbitMQ for QAAuditWorker:
+    showToast("⚡ Chat QA job queued! Background worker is running AI evaluation...", "info");
+    if (btn) {
+      btn.innerHTML = `<i data-lucide="loader-2" style="width: 16px; animation: spin 1s linear infinite;"></i> Worker Processing QA...`;
+    }
+
+    // Add queued record to history table
+    chatQaHistoryCache.unshift(job);
+    updateChatQaStats();
+    renderChatQaHistoryTable();
+
+    // Poll until worker finishes
+    let attempts = 0;
+    const maxAttempts = 45; // ~90 seconds max
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      try {
+        const checkRes = await fetch(`/api/v1/chat-qa/${job.id}`);
+        if (checkRes.ok) {
+          const updatedJob = await checkRes.json();
+          if ((updatedJob.qa_score !== null && updatedJob.qa_score !== undefined) || updatedJob.qa_scorecard_json) {
+            clearInterval(pollInterval);
+
+            // Update in cache
+            const idx = chatQaHistoryCache.findIndex(c => strId(c.id) === strId(job.id));
+            if (idx >= 0) chatQaHistoryCache[idx] = updatedJob;
+            else chatQaHistoryCache.unshift(updatedJob);
+
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = origBtnHtml;
+            }
+
+            updateChatQaStats();
+            renderChatQaHistoryTable();
+            viewChatQaDetails(job.id);
+            showToast("✓ Worker completed Chat QA Evaluation! Scorecard generated.", "success");
+            if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+            return;
+          }
+        }
+      } catch (pollErr) {
+        console.error("Chat QA Poll error", pollErr);
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollInterval);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origBtnHtml;
+        }
+        showToast("QA evaluation is taking longer than expected. Please check QA worker status.", "warning");
+        loadChatQaHistory();
+      }
+    }, 2000);
+
   } catch (err) {
-    showToast(`Evaluation Error: ${err.message}`, "error");
-  } finally {
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = origBtnHtml;
     }
+    showToast(`Evaluation Error: ${err.message}`, "error");
+  } finally {
     if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
   }
 }

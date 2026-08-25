@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.logging import get_logger
+from app.integrations.rabbitmq.publisher import RabbitMQPublisher
 from app.models.call_job import CallJob
 from app.models.employee import Employee
 from app.services.analytics.qa_scorecard_service import QAScorecardService
@@ -130,8 +131,8 @@ async def evaluate_chat_qa(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
-    Accepts JSON chat transcript (file upload or form string), runs Ollama LLM QA audit,
-    and returns the evaluated Enterprise QA scorecard and turns.
+    Accepts JSON chat transcript (file upload or form string), stores it in PostgreSQL,
+    and publishes an asynchronous QA audit job to RabbitMQ for QAAuditWorker.
     """
     raw_content = None
     original_name = title or "Chat Transcript"
@@ -179,25 +180,7 @@ async def evaluate_chat_qa(
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
 
-    # Run Ollama LLM Evaluation
-    qa_service = QAScorecardService()
     temp_call_id = str(uuid4())
-
-    try:
-        scorecard = qa_service.compute_scorecard(
-            transcript_turns=turns,
-            speaker_mappings=speaker_mappings,
-            identified_employee_name=agent_name,
-            duration_seconds=duration_seconds,
-            call_id=temp_call_id
-        )
-    except Exception as e:
-        logger.error(f"Error computing QA Scorecard on chat transcript: {e}", exc_info=True)
-        scorecard = qa_service._empty_scorecard(temp_call_id, duration_seconds)
-
-    overall_score = scorecard.get("overall_qa_score")
-    if overall_score is None and "overall_evaluation" in scorecard:
-        overall_score = scorecard["overall_evaluation"].get("score", 50.0)
 
     # Create CallJob database row
     audit_code = CodeGenerator.generate_code(db, CodePrefix.AUDIT)
@@ -220,13 +203,48 @@ async def evaluate_chat_qa(
             "speaker_mappings": speaker_mappings,
             "type": "chat_qa"
         },
-        qa_score=float(overall_score) if overall_score is not None else 50.0,
-        qa_scorecard_json=scorecard
+        qa_score=None,
+        qa_scorecard_json=None
     )
 
     db.add(call_job)
     db.commit()
     db.refresh(call_job)
+
+    # Publish to RabbitMQ QA Audit Queue for QAAuditWorker
+    publisher = RabbitMQPublisher()
+    job_id = str(uuid4())
+    job_payload = {
+        "event": "QA_AUDIT_PROCESSING",
+        "job_id": job_id,
+        "call_id": str(call_job.id),
+        "attempt": 1,
+    }
+
+    try:
+        publisher.publish_qa_audit_job(job_payload)
+        logger.info(f"Published Chat QA Audit job '{job_id}' for chat '{call_job.id}' to RabbitMQ QA queue.")
+    except Exception as exc:
+        logger.error(f"Failed to publish QA audit job to RabbitMQ: {str(exc)}", exc_info=True)
+        # Fallback to in-process evaluation if RabbitMQ is not connected
+        try:
+            qa_service = QAScorecardService()
+            scorecard = qa_service.compute_scorecard(
+                transcript_turns=turns,
+                speaker_mappings=speaker_mappings,
+                identified_employee_name=agent_name,
+                duration_seconds=duration_seconds,
+                call_id=temp_call_id
+            )
+            overall_score = scorecard.get("overall_qa_score")
+            if overall_score is None and "overall_evaluation" in scorecard:
+                overall_score = scorecard["overall_evaluation"].get("score", 50.0)
+            call_job.qa_score = float(overall_score) if overall_score is not None else 50.0
+            call_job.qa_scorecard_json = scorecard
+            db.commit()
+            db.refresh(call_job)
+        except Exception as fb_exc:
+            logger.error(f"Fallback QA evaluation error: {fb_exc}")
 
     return {
         "id": str(call_job.id),
@@ -239,7 +257,8 @@ async def evaluate_chat_qa(
         "transcript_json": call_job.transcript_json,
         "identified_employee_id": str(call_job.identified_employee_id) if call_job.identified_employee_id else None,
         "created_at": call_job.created_at.isoformat() if call_job.created_at else None,
-        "status": call_job.status
+        "status": "QUEUED" if call_job.qa_score is None else "COMPLETED",
+        "message": "Chat QA evaluation job submitted to QA worker queue."
     }
 
 
