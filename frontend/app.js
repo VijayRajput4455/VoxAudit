@@ -3807,6 +3807,15 @@ document.addEventListener("click", (e) => {
     const chev = document.getElementById("verifyTriggerChevron");
     if (chev) chev.style.transform = "rotate(0deg)";
   }
+
+  // QA Call Selector Dropdown
+  const qaWrapper = document.getElementById("qaCallDropdownWrapper");
+  if (qaWrapper && !qaWrapper.contains(e.target)) {
+    document.getElementById("qaCallMenu")?.classList.remove("show");
+    document.getElementById("qaCallTrigger")?.classList.remove("active");
+    const chev = document.getElementById("qaTriggerChevron");
+    if (chev) chev.style.transform = "rotate(0deg)";
+  }
 });
 
 function initDiarDropzone() {
@@ -4534,11 +4543,7 @@ function triggerQaAuditFromDiar() {
   // Switch to QA Analysis page and auto-select this call
   switchPage("qa-analysis");
   setTimeout(() => {
-    const qaSelect = document.getElementById("qaCallSelect");
-    if (qaSelect) {
-      qaSelect.value = callId;
-      loadSelectedQaDetails();
-    }
+    viewQaScorecardDetails(callId);
   }, 100);
 }
 
@@ -4868,10 +4873,168 @@ async function downloadDiarHistoryJson(callId) {
 }
 
 /* ==========================================================================
-   3. QA QUALITY TEST & SCORECARDS LOGIC
+   3. QA QUALITY TEST & SCORECARDS LOGIC (DIARIZATION-STYLE STUDIO)
    ========================================================================== */
 
 let qaPollTimer = null;
+let currentViewedQaCallId = null;
+let qaSessionQueue = [];
+
+let qaHistoryCurrentPage = 1;
+const QA_HISTORY_PAGE_SIZE = 5;
+let qaHistorySearchQuery = "";
+
+function populateQaCallDropdown(filterText = "") {
+  const listEl = document.getElementById("qaCallOptionsList");
+  if (!listEl) return;
+
+  const currentVal = document.getElementById("qaCallSelect")?.value || "";
+  const query = (filterText || "").toLowerCase().trim();
+
+  let completedCalls = auditsCache.filter(c => c.status === "COMPLETED" || (c.transcript_json && (c.transcript_json.turns || c.transcript_json.segments)));
+
+  if (query) {
+    completedCalls = completedCalls.filter(c => {
+      const fn = (c.audio_filename || c.original_file_name || "").toLowerCase();
+      const ref = (c.call_reference || c.id || "").toLowerCase();
+      const emp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
+      const empName = emp ? `${emp.first_name} ${emp.last_name || ""}`.toLowerCase() : "";
+      return fn.includes(query) || ref.includes(query) || empName.includes(query);
+    });
+  }
+
+  if (completedCalls.length === 0) {
+    listEl.innerHTML = `
+      <div style="padding: 18px 12px; text-align: center; color: #94a3b8; font-size: 12.5px;">
+        <i data-lucide="inbox" style="width: 28px; height: 28px; margin-bottom: 6px; color: #cbd5e1; display: block; margin: 0 auto 6px;"></i>
+        ${query ? 'No matching call recordings found.' : 'No completed calls available. Please run speaker diarization first.'}
+      </div>
+    `;
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+    return;
+  }
+
+  listEl.innerHTML = completedCalls.map(c => {
+    const isSel = strId(c.id) === strId(currentVal);
+    const callRef = c.call_reference || (c.id ? c.id.substring(0, 8) : 'CALL-REC');
+    const fileName = c.audio_filename || c.original_file_name || "call_audio.wav";
+    const identEmp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
+    const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ''}`.trim() : "Unassigned";
+
+    const hasQa = (c.qa_score !== null && c.qa_score !== undefined) || c.qa_scorecard_json;
+    const scoreVal = hasQa ? Math.round(c.qa_score || 50) : null;
+    const isPassed = scoreVal !== null ? scoreVal >= 80 : false;
+
+    const badgeHtml = hasQa
+      ? `<span class="status-pill ${isPassed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 11px; padding: 2px 7px;">${scoreVal}% QA</span>`
+      : `<span class="status-pill badge-processing" style="font-size: 11px; padding: 2px 7px;">Pending QA</span>`;
+
+    return `
+      <div class="agent-option-row ${isSel ? 'selected' : ''}" onclick="selectQaCallOption('${c.id}')"
+        style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 10px; cursor: pointer; transition: all 0.15s ease; background: ${isSel ? '#eff6ff' : 'transparent'};">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="agent-avatar-circle" style="width: 32px; height: 32px; font-size: 11px; border-radius: 8px; background: ${hasQa ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)'};">
+            <i data-lucide="${hasQa ? 'award' : 'phone'}" style="width: 15px; height: 15px;"></i>
+          </div>
+          <div>
+            <strong style="font-size: 13px; color: #0f172a; display: block;">${callRef} • ${fileName}</strong>
+            <small style="font-size: 11px; color: #64748b;">Agent: ${agentName}</small>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          ${badgeHtml}
+          ${isSel ? '<i data-lucide="check" style="width: 14px; color: #2563eb;"></i>' : ''}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function toggleQaCallDropdown(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById("qaCallMenu");
+  const trigger = document.getElementById("qaCallTrigger");
+  const chevron = document.getElementById("qaTriggerChevron");
+  if (!menu) return;
+
+  const isOpen = menu.classList.contains("show");
+  if (isOpen) {
+    menu.classList.remove("show");
+    trigger?.classList.remove("active");
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+  } else {
+    menu.classList.add("show");
+    trigger?.classList.add("active");
+    if (chevron) chevron.style.transform = "rotate(180deg)";
+    populateQaCallDropdown();
+    setTimeout(() => {
+      document.getElementById("qaCallSearchInput")?.focus();
+    }, 50);
+  }
+}
+
+function filterQaCallDropdown(query) {
+  populateQaCallDropdown(query);
+}
+
+function selectQaCallOption(callId) {
+  const hiddenInput = document.getElementById("qaCallSelect");
+  if (hiddenInput) hiddenInput.value = callId || "";
+
+  const titleEl = document.getElementById("qaTriggerTitle");
+  const subEl = document.getElementById("qaTriggerSubtitle");
+  const avatarEl = document.getElementById("qaTriggerAvatar");
+  const badgeEl = document.getElementById("qaSelectedCallStatusBadge");
+
+  if (!callId) {
+    if (titleEl) titleEl.textContent = "Choose a processed call recording...";
+    if (subEl) subEl.textContent = "Browse available calls with transcripts & speaker turns";
+    if (avatarEl) {
+      avatarEl.style.background = "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)";
+      avatarEl.innerHTML = '<i data-lucide="phone" style="width: 16px;"></i>';
+    }
+    if (badgeEl) badgeEl.style.display = "none";
+  } else {
+    const call = auditsCache.find(c => strId(c.id) === strId(callId));
+    if (call) {
+      const callRef = call.call_reference || (call.id ? call.id.substring(0, 8) : 'CALL-REC');
+      const fileName = call.audio_filename || call.original_file_name || "call_audio.wav";
+      const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
+      const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ''}`.trim() : "Unassigned";
+
+      const hasQa = (call.qa_score !== null && call.qa_score !== undefined) || call.qa_scorecard_json;
+      const scoreVal = hasQa ? Math.round(call.qa_score || 50) : null;
+
+      if (titleEl) titleEl.textContent = `${callRef} • ${fileName}`;
+      if (subEl) subEl.textContent = `Identified Agent: ${agentName} • ${hasQa ? `QA Score: ${scoreVal}%` : 'Ready for QA Evaluation'}`;
+      if (avatarEl) {
+        avatarEl.style.background = hasQa ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)";
+        avatarEl.innerHTML = `<i data-lucide="${hasQa ? 'award' : 'phone'}" style="width: 16px;"></i>`;
+      }
+      if (badgeEl) {
+        badgeEl.style.display = "inline-flex";
+        badgeEl.className = `status-pill ${hasQa ? 'badge-completed' : 'badge-processing'}`;
+        badgeEl.textContent = hasQa ? `✓ Evaluated (${scoreVal}%)` : 'Ready to Run';
+      }
+
+      if (hasQa) {
+        viewQaScorecardDetails(callId);
+      }
+    }
+  }
+
+  // Close menu
+  const menu = document.getElementById("qaCallMenu");
+  const trigger = document.getElementById("qaCallTrigger");
+  const chevron = document.getElementById("qaTriggerChevron");
+  menu?.classList.remove("show");
+  trigger?.classList.remove("active");
+  if (chevron) chevron.style.transform = "rotate(0deg)";
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
 
 async function loadQaAnalysisPage() {
   try {
@@ -4879,25 +5042,7 @@ async function loadQaAnalysisPage() {
     if (res.ok) auditsCache = await res.json();
   } catch (e) { }
 
-  const sel = document.getElementById("qaCallSelect");
-  if (sel) {
-    const currentVal = sel.value;
-    const completedCalls = auditsCache.filter(c => c.status === "COMPLETED" || (c.transcript_json && (c.transcript_json.turns || c.transcript_json.segments)));
-    
-    if (completedCalls.length === 0) {
-      sel.innerHTML = `<option value="">-- No Completed Call Recordings Found --</option>`;
-    } else {
-      sel.innerHTML = `<option value="">-- Select Call Audit Recording (${completedCalls.length} Available) --</option>` +
-        completedCalls.map(c => {
-          const scoreStr = (c.qa_score !== null && c.qa_score !== undefined) ? `${Math.round(c.qa_score)}% Score` : 'QA Pending';
-          const refStr = c.call_reference || (c.id ? c.id.substring(0, 8) : 'Call');
-          const fn = c.audio_filename || c.original_file_name || 'call_audio.wav';
-          return `<option value="${c.id}">${refStr} • ${fn} [${scoreStr}]</option>`;
-        }).join("");
-    }
-
-    if (currentVal) sel.value = currentVal;
-  }
+  populateQaCallDropdown();
 
   const evalsEl = document.getElementById("qa-stat-evals");
   const scoreEl = document.getElementById("qa-stat-score");
@@ -4926,57 +5071,65 @@ async function loadQaAnalysisPage() {
     }
   }
 
-  loadSelectedQaDetails();
+  renderQaHistoryTable();
 }
 
-async function loadSelectedQaDetails() {
+function handleQaSelectChange() {
   const callId = document.getElementById("qaCallSelect")?.value;
-  const container = document.getElementById("qaReportContainer");
-  if (!container) return;
+  if (!callId) return;
 
-  if (!callId) {
-    container.innerHTML = `
-      <div style="text-align: center; padding: 48px 20px; color: #94a3b8;">
-        <i data-lucide="award" style="width: 44px; height: 44px; margin-bottom: 12px; color: #cbd5e1; display: block; margin: 0 auto 12px;"></i>
-        <h4 style="font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 4px;">No Call Selected</h4>
-        <p style="font-size: 13px; color: #64748b; margin: 0;">Select a call recording on the left to view its QA scorecard & evaluation report.</p>
-      </div>`;
-    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
-    return;
+  const call = auditsCache.find(c => strId(c.id) === strId(callId));
+  if (call && ((call.qa_score !== null && call.qa_score !== undefined) || call.qa_scorecard_json)) {
+    viewQaScorecardDetails(callId);
   }
+}
+
+function viewQaScorecardDetails(callId) {
+  currentViewedQaCallId = callId;
+  const hiddenInput = document.getElementById("qaCallSelect");
+  if (hiddenInput && callId) hiddenInput.value = callId;
 
   let call = auditsCache.find(c => strId(c.id) === strId(callId));
-
-  // If not cached with QA details, fetch fresh
-  if (!call || (call.qa_score === null && !call.qa_scorecard_json)) {
-    try {
-      const res = await fetch(`/api/v1/calls/${callId}`);
-      if (res.ok) {
-        call = await res.json();
-        const idx = auditsCache.findIndex(c => strId(c.id) === strId(callId));
-        if (idx >= 0) auditsCache[idx] = call;
-        else auditsCache.unshift(call);
-      }
-    } catch (e) { }
-  }
-
   if (!call) return;
 
-  if ((call.qa_score !== null && call.qa_score !== undefined) || call.qa_scorecard_json) {
-    renderQaScorecardView(call);
-  } else {
-    container.innerHTML = `
-      <div style="text-align: center; padding: 42px 20px; color: #64748b; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px;">
-        <i data-lucide="sparkles" style="width: 40px; height: 40px; margin-bottom: 12px; color: #1d61e7; display: block; margin: 0 auto 12px;"></i>
-        <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">QA Scorecard Not Evaluated Yet</h4>
-        <p style="font-size: 13px; color: #64748b; margin: 0 0 16px;">This call has not been evaluated against QA compliance benchmarks yet.</p>
-        <button type="button" class="btn-primary" style="padding: 9px 20px; font-size: 13px; margin: 0 auto; display: inline-flex; align-items: center; gap: 6px;" onclick="runQaEvaluation(event)">
-          <i data-lucide="play" style="width: 14px; height: 14px;"></i> Run Quality Test Now
-        </button>
-      </div>
-    `;
-    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  // Sync trigger UI
+  const titleEl = document.getElementById("qaTriggerTitle");
+  const subEl = document.getElementById("qaTriggerSubtitle");
+  const avatarEl = document.getElementById("qaTriggerAvatar");
+  const badgeEl = document.getElementById("qaSelectedCallStatusBadge");
+
+  const callRef = call.call_reference || (call.id ? call.id.substring(0, 8) : 'CALL-REC');
+  const fileName = call.audio_filename || call.original_file_name || "call_audio.wav";
+  const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
+  const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ''}`.trim() : "Unassigned";
+
+  const hasQa = (call.qa_score !== null && call.qa_score !== undefined) || call.qa_scorecard_json;
+  const scoreVal = hasQa ? Math.round(call.qa_score || 50) : null;
+
+  if (titleEl) titleEl.textContent = `${callRef} • ${fileName}`;
+  if (subEl) subEl.textContent = `Identified Agent: ${agentName} • ${hasQa ? `QA Score: ${scoreVal}%` : 'Ready for QA Evaluation'}`;
+  if (avatarEl) {
+    avatarEl.style.background = hasQa ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)";
+    avatarEl.innerHTML = `<i data-lucide="${hasQa ? 'award' : 'phone'}" style="width: 16px;"></i>`;
   }
+  if (badgeEl) {
+    badgeEl.style.display = "inline-flex";
+    badgeEl.className = `status-pill ${hasQa ? 'badge-completed' : 'badge-processing'}`;
+    badgeEl.textContent = hasQa ? `✓ Evaluated (${scoreVal}%)` : 'Ready to Run';
+  }
+
+  const panel = document.getElementById("qaDetailsBottomSection");
+  if (panel) {
+    panel.style.display = "block";
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  renderQaScorecardView(call);
+}
+
+function closeQaDetailsPanel() {
+  const panel = document.getElementById("qaDetailsBottomSection");
+  if (panel) panel.style.display = "none";
 }
 
 function renderQaScorecardView(call) {
@@ -4995,6 +5148,9 @@ function renderQaScorecardView(call) {
   const cx = scorecard.customer_experience || {};
   const compliance = scorecard.compliance || {};
   const insights = scorecard.insights || {};
+
+  const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
+  const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ''}`.trim() : (scorecard.call?.agent_speaker || "Agent");
 
   // Build criteria list
   const categoryKeys = [
@@ -5043,51 +5199,62 @@ function renderQaScorecardView(call) {
     : ((insights.weaknesses && insights.weaknesses.length > 0) ? insights.weaknesses : ["State the mandatory regulatory disclosure clearly within the first 30 seconds."]);
 
   container.innerHTML = `
-    <div style="background: ${passed ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${passed ? '#bbf7d0' : '#fecaca'}; border-radius: 14px; padding: 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <!-- OVERALL SCORE BANNER -->
+    <div style="background: ${passed ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'}; border: 1.5px solid ${passed ? '#86efac' : '#fca5a5'}; border-radius: 14px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
       <div>
-        <span style="font-size: 11px; font-weight: 700; color: ${passed ? '#15803d' : '#991b1b'}; text-transform: uppercase; display: block; margin-bottom: 2px;">OVERALL QA BENCHMARK SCORE</span>
-        <h3 style="font-size: 26px; font-weight: 800; color: ${passed ? '#166534' : '#991b1b'}; margin: 0;">${score}% Score <span style="font-size: 16px; font-weight: 600; opacity: 0.85;">(Grade ${grade})</span></h3>
+        <span style="font-size: 11px; font-weight: 700; color: ${passed ? '#15803d' : '#991b1b'}; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">OVERALL QA BENCHMARK SCORE • ${agentName}</span>
+        <h3 style="font-size: 28px; font-weight: 800; color: ${passed ? '#166534' : '#991b1b'}; margin: 0; display: flex; align-items: center; gap: 10px;">
+          <span>${score}% Score</span>
+          <span style="font-size: 16px; font-weight: 700; background: ${passed ? '#15803d' : '#991b1b'}; color: #ffffff; padding: 3px 10px; border-radius: 8px;">Grade ${grade}</span>
+        </h3>
       </div>
-      <span class="status-pill ${passed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 13px; padding: 6px 14px;">${passed ? '✓ PASSED AUDIT' : '⚠ NEEDS IMPROVEMENT'}</span>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="status-pill ${passed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 13px; font-weight: 700; padding: 8px 16px;">
+          ${passed ? '✓ PASSED BENCHMARK' : '⚠ NEEDS IMPROVEMENT'}
+        </span>
+      </div>
     </div>
 
     <!-- CX SIGNALS ROW -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; text-align: center;">
         <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">CUSTOMER SENTIMENT</span>
-        <strong style="font-size: 13px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
-          <i data-lucide="${sentimentVal.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 14px; color: #10b981;"></i> ${sentimentVal}
+        <strong style="font-size: 13.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;">
+          <i data-lucide="${sentimentVal.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 16px; color: #10b981;"></i> ${sentimentVal}
         </strong>
       </div>
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; text-align: center;">
-        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">SATISFACTION</span>
-        <strong style="font-size: 13px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
-          <i data-lucide="thumbs-up" style="width: 14px; color: #1d61e7;"></i> ${satisfactionVal}
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">CUSTOMER SATISFACTION</span>
+        <strong style="font-size: 13.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;">
+          <i data-lucide="thumbs-up" style="width: 16px; color: #1d61e7;"></i> ${satisfactionVal}
         </strong>
       </div>
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; text-align: center;">
-        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">RESOLUTION STATUS</span>
-        <strong style="font-size: 13px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
-          <i data-lucide="check-circle" style="width: 14px; color: #059669;"></i> ${resolutionVal}
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">ISSUE RESOLUTION</span>
+        <strong style="font-size: 13.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;">
+          <i data-lucide="check-circle" style="width: 16px; color: #059669;"></i> ${resolutionVal}
         </strong>
       </div>
     </div>
 
-    <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i data-lucide="target" style="width: 14px; color: #1d61e7;"></i> Scorecard Category Breakdown</h4>
-
-    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+    <!-- SCORECARD CRITERIA GRID -->
+    <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i data-lucide="target" style="width: 16px; color: #1d61e7;"></i> Scorecard Category Breakdown</h4>
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
       ${categoriesHtml}
     </div>
 
-    <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 14px;">
-      <h5 style="font-size: 12.5px; font-weight: 700; color: #1d61e7; margin-bottom: 6px;"><i data-lucide="sparkles" style="width: 14px;"></i> AI Coaching & Actionable Insights</h5>
-      <div style="font-size: 12px; color: #334155; line-height: 1.5;">
-        <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Key Strengths:</strong>
-        <ul style="margin: 0 0 8px 16px; padding: 0;">
+    <!-- AI COACHING INSIGHTS -->
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 18px;">
+      <h5 style="font-size: 13.5px; font-weight: 700; color: #1d4ed8; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+        <i data-lucide="sparkles" style="width: 16px;"></i> AI Coaching & Actionable Insights
+      </h5>
+      <div style="font-size: 12.5px; color: #1e293b; line-height: 1.6;">
+        <strong style="color: #1e40af; display: block; margin-bottom: 4px;">Key Strengths:</strong>
+        <ul style="margin: 0 0 10px 18px; padding: 0;">
           ${strengthsList.map(s => `<li>${s}</li>`).join("")}
         </ul>
-        <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Action Items:</strong>
-        <ul style="margin: 0 0 0 16px; padding: 0;">
+        <strong style="color: #1e40af; display: block; margin-bottom: 4px;">Action Items & Recommendations:</strong>
+        <ul style="margin: 0 0 0 18px; padding: 0;">
           ${actionItemsList.map(a => `<li>${a}</li>`).join("")}
         </ul>
       </div>
@@ -5097,13 +5264,278 @@ function renderQaScorecardView(call) {
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
+function copyCurrentQaScorecard() {
+  const call = auditsCache.find(c => strId(c.id) === strId(currentViewedQaCallId));
+  if (!call) {
+    showToast("No QA Scorecard selected to copy", "info");
+    return;
+  }
+
+  const score = Math.round(call.qa_score || 50);
+  const ref = call.call_reference || call.id;
+  const summary = `VoxAudit QA Evaluation Summary\nCall Reference: ${ref}\nOverall Score: ${score}%\nEvaluation Status: ${score >= 80 ? 'PASSED' : 'NEEDS IMPROVEMENT'}`;
+
+  navigator.clipboard.writeText(summary).then(() => {
+    showToast("QA Scorecard summary copied to clipboard!", "success");
+  }).catch(err => {
+    showToast("Failed to copy summary: " + err.message, "error");
+  });
+}
+
+function downloadCurrentQaJson() {
+  const call = auditsCache.find(c => strId(c.id) === strId(currentViewedQaCallId));
+  if (!call || !call.qa_scorecard_json) {
+    showToast("No QA Scorecard data available for download", "info");
+    return;
+  }
+
+  const jsonStr = JSON.stringify(call.qa_scorecard_json, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `qa_scorecard_${call.call_reference || 'call'}_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("QA Scorecard JSON downloaded!", "success");
+}
+
+/* ==========================================================================
+   QA SCORECARDS & EVALUATIONS HISTORY TABLE (PAGINATED - 5 PER PAGE)
+   ========================================================================== */
+
+function setQaHistoryPage(pageNum) {
+  qaHistoryCurrentPage = pageNum;
+  renderQaHistoryTable(qaHistorySearchQuery);
+}
+
+function changeQaHistoryPage(direction) {
+  if (direction === "prev") {
+    if (qaHistoryCurrentPage > 1) {
+      qaHistoryCurrentPage--;
+      renderQaHistoryTable(qaHistorySearchQuery);
+    }
+  } else if (direction === "next") {
+    qaHistoryCurrentPage++;
+    renderQaHistoryTable(qaHistorySearchQuery);
+  }
+}
+
+function filterQaHistoryTable(val) {
+  qaHistorySearchQuery = val || "";
+  qaHistoryCurrentPage = 1;
+  renderQaHistoryTable(qaHistorySearchQuery);
+}
+
+function renderQaHistoryTable(filterQuery = null) {
+  const tbody = document.getElementById("qaHistoryTableBody");
+  if (!tbody) return;
+
+  if (filterQuery !== null && filterQuery !== undefined) {
+    qaHistorySearchQuery = filterQuery;
+  }
+  const query = (qaHistorySearchQuery || "").toLowerCase().trim();
+  let calls = [...auditsCache];
+
+  // Sort calls newest/latest first
+  calls.sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  if (query) {
+    calls = calls.filter(c => {
+      const fn = (c.audio_filename || c.original_file_name || "").toLowerCase();
+      const ref = (c.call_reference || c.id || "").toLowerCase();
+      const emp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
+      const empName = emp ? `${emp.first_name} ${emp.last_name || ""}`.toLowerCase() : "";
+      const scoreStr = c.qa_score !== null && c.qa_score !== undefined ? `${c.qa_score}` : "";
+      return fn.includes(query) || ref.includes(query) || empName.includes(query) || scoreStr.includes(query);
+    });
+  }
+
+  const totalRecords = calls.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / QA_HISTORY_PAGE_SIZE));
+
+  if (qaHistoryCurrentPage > totalPages) {
+    qaHistoryCurrentPage = totalPages;
+  }
+  if (qaHistoryCurrentPage < 1) {
+    qaHistoryCurrentPage = 1;
+  }
+
+  const paginationInfo = document.getElementById("qaHistoryPaginationInfo");
+  const prevBtn = document.getElementById("qaHistPrevBtn");
+  const nextBtn = document.getElementById("qaHistNextBtn");
+  const pageNumbersContainer = document.getElementById("qaHistoryPageNumbers");
+
+  if (totalRecords === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+          <i data-lucide="inbox" style="width: 38px; height: 38px; margin-bottom: 8px; color: #cbd5e1; display: block; margin: 0 auto 8px;"></i>
+          <p style="font-size: 13px; font-weight: 500; margin: 0;">${query ? 'No matching evaluated calls found.' : 'No call evaluations available yet. Select a call above to run the QA evaluation engine.'}</p>
+        </td>
+      </tr>
+    `;
+    if (paginationInfo) paginationInfo.innerHTML = "Showing <strong>0</strong> calls";
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (pageNumbersContainer) pageNumbersContainer.innerHTML = "";
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+    return;
+  }
+
+  const startIndex = (qaHistoryCurrentPage - 1) * QA_HISTORY_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + QA_HISTORY_PAGE_SIZE, totalRecords);
+  const pagedCalls = calls.slice(startIndex, endIndex);
+
+  // Update Pagination Info
+  if (paginationInfo) {
+    paginationInfo.innerHTML = `Showing <strong>${startIndex + 1}</strong> - <strong>${endIndex}</strong> of <strong>${totalRecords}</strong> calls`;
+  }
+
+  // Update Previous / Next Button States
+  if (prevBtn) {
+    const isPrevDisabled = qaHistoryCurrentPage <= 1;
+    prevBtn.disabled = isPrevDisabled;
+    prevBtn.style.opacity = isPrevDisabled ? "0.45" : "1";
+    prevBtn.style.cursor = isPrevDisabled ? "not-allowed" : "pointer";
+    prevBtn.style.background = isPrevDisabled ? "#f1f5f9" : "#ffffff";
+    prevBtn.style.borderColor = isPrevDisabled ? "#e2e8f0" : "#cbd5e1";
+    prevBtn.style.color = isPrevDisabled ? "#94a3b8" : "#1e293b";
+  }
+
+  if (nextBtn) {
+    const isNextDisabled = qaHistoryCurrentPage >= totalPages;
+    nextBtn.disabled = isNextDisabled;
+    nextBtn.style.opacity = isNextDisabled ? "0.45" : "1";
+    nextBtn.style.cursor = isNextDisabled ? "not-allowed" : "pointer";
+    nextBtn.style.background = isNextDisabled ? "#f1f5f9" : "#ffffff";
+    nextBtn.style.borderColor = isNextDisabled ? "#e2e8f0" : "#cbd5e1";
+    nextBtn.style.color = isNextDisabled ? "#94a3b8" : "#1e293b";
+  }
+
+  // Update Page Number Buttons (1, 2, 3, 4...)
+  if (pageNumbersContainer) {
+    let pagesHtml = "";
+    for (let p = 1; p <= totalPages; p++) {
+      const isActive = p === qaHistoryCurrentPage;
+      const baseStyle = "width: 40px; height: 40px; min-width: 40px; padding: 0; border-radius: 11px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);";
+      const btnStyle = isActive
+        ? `${baseStyle} border: 1px solid #1d61e7; background: linear-gradient(135deg, #1d61e7 0%, #174ebc 100%); color: #ffffff; font-weight: 700; box-shadow: 0 4px 14px rgba(29, 97, 231, 0.4); cursor: default; transform: scale(1.05);`
+        : `${baseStyle} border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer;`;
+
+      pagesHtml += `
+        <button type="button" class="diar-page-btn ${isActive ? 'active' : ''}" style="${btnStyle}" onclick="setQaHistoryPage(${p})" title="Page ${p}">
+          ${p}
+        </button>
+      `;
+    }
+    pageNumbersContainer.innerHTML = pagesHtml;
+  }
+
+  const fmtTime = (sec) => {
+    if (sec === null || sec === undefined) return "00:00";
+    if (typeof sec === "string" && sec.includes(":")) return sec;
+    const s = Math.floor(Number(sec));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+  };
+
+  tbody.innerHTML = pagedCalls.map(c => {
+    const identEmp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
+    const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Unidentified Speaker";
+    const empCode = identEmp ? identEmp.employee_code : (c.identified_employee_id ? "AGNT-EMP" : "--");
+
+    const hasQa = (c.qa_score !== null && c.qa_score !== undefined) || c.qa_scorecard_json;
+    const scoreVal = hasQa ? Math.round(c.qa_score || 50) : null;
+    const isPassed = scoreVal !== null ? scoreVal >= 80 : false;
+    const grade = scoreVal ? (scoreVal >= 90 ? 'A' : scoreVal >= 80 ? 'B' : scoreVal >= 70 ? 'C' : scoreVal >= 60 ? 'D' : 'F') : '--';
+
+    const cx = c.qa_scorecard_json?.customer_experience || {};
+    const sentiment = cx.sentiment?.final || (hasQa ? "Positive" : "Pending");
+
+    const scoreBadge = hasQa
+      ? `<span class="status-pill ${isPassed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 12px; font-weight: 700; padding: 4px 10px;">${scoreVal}% [Grade ${grade}]</span>`
+      : `<span class="status-pill badge-processing" style="font-size: 11px; padding: 3px 8px;">Pending Evaluation</span>`;
+
+    const complianceBadge = hasQa
+      ? `<span class="status-pill ${isPassed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 11px; padding: 3px 8px;">${isPassed ? '✓ Passed' : '⚠ Review Required'}</span>`
+      : `<span style="font-size: 12px; color: #94a3b8;">--</span>`;
+
+    const sentimentBadge = hasQa
+      ? `<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: ${sentiment.toLowerCase() === 'positive' ? '#15803d' : '#334155'};">
+          <i data-lucide="${sentiment.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 14px; color: ${sentiment.toLowerCase() === 'positive' ? '#10b981' : '#64748b'};"></i> ${sentiment}
+        </span>`
+      : `<span style="font-size: 12px; color: #94a3b8;">--</span>`;
+
+    const callRef = c.call_reference || (c.id ? c.id.substring(0, 8) : 'CALL-REC');
+    const fileName = c.audio_filename || c.original_file_name || "call_audio.wav";
+
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i data-lucide="phone" style="width: 15px; height: 15px;"></i>
+            </div>
+            <div>
+              <strong style="font-size: 13px; color: #0f172a; display: block;">${callRef}</strong>
+              <small style="font-size: 11px; color: #64748b; font-family: monospace;">${fileName}</small>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div>
+            <span style="font-weight: 600; color: #1e293b; font-size: 12.5px; display: block;">${agentName}</span>
+            <small style="color: #64748b; font-size: 11px; font-family: monospace;">${empCode}</small>
+          </div>
+        </td>
+        <td>${scoreBadge}</td>
+        <td>${complianceBadge}</td>
+        <td>${sentimentBadge}</td>
+        <td>
+          <span style="font-family: monospace; font-size: 12px; color: #334155;">${fmtTime(c.duration_seconds)}</span>
+        </td>
+        <td style="text-align: right;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end;">
+            ${hasQa ? `
+              <button class="btn-secondary" style="font-size: 11.5px; padding: 5px 11px; height: auto;" onclick="viewQaScorecardDetails('${c.id}')" title="Inspect full QA scorecard breakdown">
+                <i data-lucide="eye" style="width: 12px;"></i> View Scorecard
+              </button>
+            ` : ''}
+            <button class="btn-primary" style="font-size: 11.5px; padding: 5px 11px; height: auto; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);" onclick="triggerQaAuditFromRow('${c.id}')" title="Run AI Quality Evaluation on this call">
+              <i data-lucide="play" style="width: 12px;"></i> ${hasQa ? 'Re-Audit' : 'Run Audit'}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function triggerQaAuditFromRow(callId) {
+  const sel = document.getElementById("qaCallSelect");
+  if (sel) sel.value = callId;
+  runQaEvaluation();
+}
+
 async function runQaEvaluation(e) {
   if (e) e.preventDefault();
   const callId = document.getElementById("qaCallSelect")?.value;
   if (!callId) {
-    showToast("Please select a call audit recording first", "info");
+    showToast("Please select a processed call recording first", "info");
     return;
   }
+
+  const callObj = auditsCache.find(c => strId(c.id) === strId(callId));
+  const refStr = callObj?.call_reference || (callId.substring(0, 8));
+  const fileName = callObj?.audio_filename || callObj?.original_file_name || 'call_audio.wav';
 
   const btn = document.getElementById("btnRunQa");
   const origBtnHtml = btn ? btn.innerHTML : "";
@@ -5129,15 +5561,30 @@ async function runQaEvaluation(e) {
       btn.innerHTML = `<i data-lucide="loader-2" style="width: 14px; height: 14px;"></i> Worker Processing...`;
     }
 
-    const container = document.getElementById("qaReportContainer");
-    if (container) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 48px 20px; color: #475569;">
-          <div style="width: 44px; height: 44px; border-radius: 50%; border: 3px solid #e2e8f0; border-top-color: #1d61e7; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-          <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">AI QA Evaluation in Progress</h4>
-          <p style="font-size: 13px; color: #64748b; margin: 0;">RabbitMQ Worker is analyzing call transcript against QA Scorecard & Compliance checks...</p>
+    // Add to session queue tracker
+    const queueSection = document.getElementById("qaQueueSection");
+    const queueList = document.getElementById("qaQueueList");
+    const queueBadge = document.getElementById("qaQueueCountBadge");
+
+    if (queueSection && queueList) {
+      queueSection.style.display = "block";
+      if (!qaSessionQueue.find(j => j.id === callId)) {
+        qaSessionQueue.unshift({ id: callId, ref: refStr, filename: fileName, status: "PROCESSING" });
+      }
+      if (queueBadge) queueBadge.textContent = `${qaSessionQueue.length} Active`;
+      
+      queueList.innerHTML = qaSessionQueue.map(j => `
+        <div style="background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(37,99,235,0.06);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="font-size: 13px; color: #0f172a;">${j.ref} • ${j.filename}</strong>
+            <span class="status-pill badge-processing" style="font-size: 11px; padding: 2px 8px;">Evaluating</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-bottom: 6px;">
+            <div style="width: 75%; height: 100%; background: linear-gradient(90deg, #2563eb, #3b82f6); border-radius: 3px; animation: pulse 1.5s infinite;"></div>
+          </div>
+          <small style="font-size: 11px; color: #64748b;">Ollama LLM evaluating 8 QA criteria & CX sentiment...</small>
         </div>
-      `;
+      `).join("");
     }
 
     // Start polling for QA completion
@@ -5165,10 +5612,15 @@ async function runQaEvaluation(e) {
               btn.innerHTML = origBtnHtml;
             }
 
+            // Remove from queue tracker
+            qaSessionQueue = qaSessionQueue.filter(j => j.id !== callId);
+            if (queueBadge) queueBadge.textContent = `${qaSessionQueue.length} Active`;
+            if (qaSessionQueue.length === 0 && queueSection) {
+              queueSection.style.display = "none";
+            }
+
             loadQaAnalysisPage();
-            const sel = document.getElementById("qaCallSelect");
-            if (sel) sel.value = callId;
-            renderQaScorecardView(updatedCall);
+            viewQaScorecardDetails(callId);
             showToast("QA Audit & Scorecard generated successfully!", "success");
             return;
           }
@@ -5185,7 +5637,7 @@ async function runQaEvaluation(e) {
           btn.innerHTML = origBtnHtml;
         }
         showToast("QA evaluation is taking longer than expected. Please check worker status.", "warning");
-        loadSelectedQaDetails();
+        loadQaAnalysisPage();
       }
     }, 2000);
 
@@ -5197,3 +5649,4 @@ async function runQaEvaluation(e) {
     showToast(`Error queuing QA audit: ${err.message}`, "error");
   }
 }
+

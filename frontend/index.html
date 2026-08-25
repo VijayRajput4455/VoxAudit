@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/styles.css?v=7">
+  <link rel="stylesheet" href="/static/styles.css?v=9">
 </head>
 
 <body>
@@ -1360,92 +1360,240 @@
           </div>
         </section>
 
-        <!-- DUAL COLUMN LAYOUT: QA EVALUATION RUNNER & SCORECARD REPORT -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+        <!-- QA STUDIO: TOP PANEL (RUN EVALUATION & LIVE QUEUE TRACKER) -->
+        <div class="panel-card"
+          style="margin-bottom: 24px; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-header"
+            style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
+            <div class="panel-title">
+              <h3
+                style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span
+                  style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                    data-lucide="sparkles"></i></span>
+                Run AI Quality Evaluation & Checklist Test
+              </h3>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Queue asynchronous Ollama LLM evaluation to compute Agent QA Scorecard, CX signals, and compliance adherence</p>
+            </div>
+          </div>
 
-          <!-- CARD 1: RUN AI QA EVALUATION -->
-          <div class="panel-card"
-            style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
-            <div>
-              <div class="panel-header"
-                style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
-                <div class="panel-title">
-                  <h3
-                    style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span
-                      style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
-                        data-lucide="sparkles"></i></span>
-                    Run AI Quality Evaluation & Checklist Test
-                  </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Evaluate call transcript against
-                    quality scorecard standards & compliance</p>
-                </div>
+          <form id="qaForm" onsubmit="runQaEvaluation(event)">
+            <!-- LUXURY CALL SELECTION WIDGET -->
+            <div style="margin-bottom: 20px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                <label style="font-weight: 700; font-size: 13.5px; color: #1e293b; display: flex; align-items: center; gap: 6px; margin: 0;">
+                  <i data-lucide="phone-call" style="width: 16px; color: #1d4ed8;"></i>
+                  <span>Select Processed Call Recording for QA Audit *</span>
+                </label>
+                <span id="qaSelectedCallStatusBadge" class="status-pill badge-completed" style="font-size: 11px; padding: 2px 8px; display: none;">
+                  Ready for Evaluation
+                </span>
               </div>
 
-              <form id="qaForm" onsubmit="runQaEvaluation(event)">
-                <div class="form-group" style="margin-bottom: 18px;">
-                  <label style="font-weight: 600; font-size: 13px; color: #334155;">Select Call Audit Recording
-                    *</label>
-                  <select id="qaCallSelect" class="custom-select-premium" required onchange="loadSelectedQaDetails()">
-                    <option value="">-- Loading Calls... --</option>
-                  </select>
+              <!-- Hidden input for form submission -->
+              <input type="hidden" id="qaCallSelect" value="">
+
+              <!-- LUXURY CUSTOM CALL DROPDOWN WIDGET -->
+              <div class="agent-dropdown-wrapper" id="qaCallDropdownWrapper">
+                <!-- Trigger Button -->
+                <div class="agent-select-trigger" id="qaCallTrigger" onclick="toggleQaCallDropdown(event)">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="agent-avatar-circle" id="qaTriggerAvatar">
+                      <i data-lucide="phone" style="width: 16px;"></i>
+                    </div>
+                    <div>
+                      <strong id="qaTriggerTitle" style="font-size: 13.5px; color: #0f172a; display: block;">Choose a processed call recording...</strong>
+                      <small id="qaTriggerSubtitle" style="font-size: 11.5px; color: #64748b;">Browse available calls with transcripts & speaker turns</small>
+                    </div>
+                  </div>
+                  <i data-lucide="chevron-down" id="qaTriggerChevron"
+                    style="width: 18px; color: #64748b; transition: transform 0.2s ease;"></i>
                 </div>
 
-                <div
-                  style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 18px;">
-                  <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 10px;"><i
-                      data-lucide="award" style="width: 15px; color: #1d61e7;"></i> 5-Category QA Scorecard Benchmark
-                  </h4>
-                  <div
-                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #475569;">
-                    <div>✓ Greeting & Identification (15%)</div>
-                    <div>✓ Active Listening & Empathy (25%)</div>
-                    <div>✓ Solution Accuracy (30%)</div>
-                    <div>✓ Mandatory Compliance (20%)</div>
-                    <div>✓ Professional Closure (10%)</div>
+                <!-- Floating Dropdown Menu -->
+                <div class="agent-dropdown-menu" id="qaCallMenu">
+                  <div class="agent-search-box">
+                    <i data-lucide="search"
+                      style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                    <input type="text" class="agent-search-input" id="qaCallSearchInput"
+                      placeholder="Search call reference, filename, or agent..." onclick="event.stopPropagation()"
+                      oninput="filterQaCallDropdown(this.value)">
+                  </div>
+
+                  <div class="agent-options-list" id="qaCallOptionsList">
+                    <!-- Populated dynamically via JS -->
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div
-                  style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-                  <span style="font-size: 12px; color: #64748b;"><i data-lucide="cpu"></i> OpenAI / Gemini QA Audit
-                    Engine</span>
-                  <button type="submit" class="btn-primary" style="padding: 10px 20px;" id="btnRunQa"><i
-                      data-lucide="award"></i> Run Quality Test</button>
-                </div>
-              </form>
+            <!-- BENCHMARK SCORECARD CRITERIA HIGHLIGHTS BOX -->
+            <div
+              style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="award" style="width: 16px; color: #1d61e7;"></i> 5-Category Enterprise Scorecard Benchmark
+                </h4>
+                <span class="status-pill badge-completed" style="font-size: 11px; padding: 3px 10px;">
+                  ⚡ Enterprise Schema v1.0 Standard
+                </span>
+              </div>
+              <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 12.5px; color: #334155;">
+                <div style="background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">✓ Greeting & ID (15%)</div>
+                <div style="background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">✓ Active Listening (25%)</div>
+                <div style="background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">✓ Solution Accuracy (30%)</div>
+                <div style="background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">✓ Compliance (20%)</div>
+                <div style="background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">✓ Professional Closure (10%)</div>
+              </div>
+            </div>
+
+            <!-- ACTION FOOTER -->
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid #f1f5f9; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 14px; font-size: 12px; color: #64748b;">
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check"
+                    style="width: 14px; color: #16a34a;"></i> Ollama LLM</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check"
+                    style="width: 14px; color: #16a34a;"></i> Enterprise v1.0</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check"
+                    style="width: 14px; color: #16a34a;"></i> CX Sentiment</span>
+              </div>
+              <button type="submit" class="btn-primary"
+                style="padding: 12px 28px; font-size: 13.5px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);"
+                id="btnRunQa">
+                <i data-lucide="play-circle"></i> Queue & Run QA Scorecard Engine
+              </button>
+            </div>
+          </form>
+
+          <!-- ASYNCHRONOUS RABBITMQ QA QUEUE STATUS TRACKER -->
+          <div id="qaQueueSection"
+            style="display: none; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <h4
+                style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span class="pulse-dot-active"></span>
+                <span>Live QA Evaluation Queue Tracker</span>
+              </h4>
+              <span id="qaQueueCountBadge" class="status-pill badge-processing"
+                style="font-size: 11.5px; padding: 3px 10px;">0 Active</span>
+            </div>
+            <div id="qaQueueList"
+              style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- QA STUDIO: MIDDLE DETAILS PANEL (EVALUATION REPORT & SCORECARD) -->
+        <div id="qaDetailsBottomSection" class="panel-card"
+          style="display: none; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
+          <div class="panel-header"
+            style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3
+                style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span
+                  style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                    data-lucide="award"></i></span>
+                Evaluated Call QA Scorecard & CX Report
+              </h3>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Comprehensive category breakdown, customer sentiment analysis, compliance checks, and AI coaching</p>
+            </div>
+
+            <!-- ACTION CONTROLS & CLOSE BUTTON -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="qaHeaderActionBtns">
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;"
+                onclick="copyCurrentQaScorecard()" title="Copy QA scorecard summary to clipboard">
+                <i data-lucide="copy" style="width: 13px;"></i> Copy Scorecard
+              </button>
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;"
+                onclick="downloadCurrentQaJson()" title="Download raw QA evaluation JSON">
+                <i data-lucide="download" style="width: 13px;"></i> Export JSON
+              </button>
+              <button class="btn-secondary"
+                style="font-size: 12px; padding: 7px 12px; height: auto; color: #64748b; border-color: #cbd5e1;"
+                onclick="closeQaDetailsPanel()" title="Close details panel">
+                <i data-lucide="x" style="width: 14px;"></i> Close Panel
+              </button>
             </div>
           </div>
 
-          <!-- CARD 2: QA REPORT & SCORECARD BREAKDOWN -->
-          <div class="panel-card"
-            style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
-            <div>
-              <div class="panel-header"
-                style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9;">
-                <div class="panel-title">
-                  <h3
-                    style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span
-                      style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
-                        data-lucide="target"></i></span>
-                    QA Scorecard & Compliance Report
-                  </h3>
-                  <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Detailed Category breakdown, checklist
-                    compliance, and coaching notes</p>
-                </div>
-              </div>
+          <div id="qaReportContainer">
+            <!-- Dynamically populated via renderQaScorecardView -->
+          </div>
+        </div>
 
-              <div id="qaReportContainer">
-                <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
-                  <i data-lucide="award" style="width: 44px; height: 44px; margin-bottom: 10px; color: #cbd5e1;"></i>
-                  <p style="font-size: 13.5px;">Select a call recording on the left to view its QA scorecard &
-                    evaluation details.</p>
-                </div>
+        <!-- QA STUDIO: HISTORY PANEL (EVALUATED CALLS & SCORECARDS TABLE) -->
+        <div class="panel-card" id="qaHistoryPanelCard"
+          style="border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <div class="panel-title">
+              <h3 style="font-size: 16.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;">
+                  <i data-lucide="history"></i>
+                </span>
+                QA Scorecard Evaluations & History
+              </h3>
+              <p style="font-size: 12px; color: #64748b; margin-top: 2px;">Browse, inspect, and export all past evaluated call scorecards and compliance ratings</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div style="position: relative; min-width: 240px;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="qaHistorySearchInput" placeholder="Search call reference, agent, score..."
+                  style="width: 100%; padding: 7px 12px 7px 32px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background: #fff;"
+                  oninput="filterQaHistoryTable(this.value)">
               </div>
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;" onclick="loadQaAnalysisPage()">
+                <i data-lucide="refresh-cw" style="width: 13px;"></i> Refresh
+              </button>
             </div>
           </div>
+          <div class="table-responsive">
+            <table class="data-table" id="qaHistoryTable">
+              <thead>
+                <tr>
+                  <th>Call Audio / Reference</th>
+                  <th>Identified Agent</th>
+                  <th>Overall QA Score</th>
+                  <th>Compliance Status</th>
+                  <th>Customer Sentiment</th>
+                  <th>Duration</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="qaHistoryTableBody">
+                <!-- Rendered dynamically via renderQaHistoryTable -->
+              </tbody>
+            </table>
+          </div>
 
+          <!-- QA HISTORY PAGINATION CONTROLS (BOTTOM CENTERED & ATTRACTIVE) -->
+          <div id="qaHistoryPagination" class="diar-pagination-container"
+            style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin-top: 26px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: center; gap: 14px;">
+            <div class="diar-pagination-wrapper"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: rgba(248, 250, 252, 0.95); padding: 8px 12px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);">
+              <button id="qaHistPrevBtn" class="diar-nav-btn" onclick="changeQaHistoryPage('prev')" title="Previous page"
+                style="display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 11px; font-size: 13.5px; font-weight: 600; color: #1e293b; background: #ffffff; border: 1px solid #cbd5e1; cursor: pointer; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04); transition: all 0.2s ease;">
+                <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+                <span>Previous</span>
+              </button>
+              <div id="qaHistoryPageNumbers" class="diar-pages-list"
+                style="display: inline-flex; align-items: center; gap: 6px;">
+                <!-- Page numbers (1, 2, 3, 4...) rendered dynamically -->
+              </div>
+              <button id="qaHistNextBtn" class="diar-nav-btn" onclick="changeQaHistoryPage('next')" title="Next page"
+                style="display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 11px; font-size: 13.5px; font-weight: 600; color: #1e293b; background: #ffffff; border: 1px solid #cbd5e1; cursor: pointer; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04); transition: all 0.2s ease;">
+                <span>Next</span>
+                <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
+            <div id="qaHistoryPaginationInfo" class="diar-pagination-info"
+              style="font-size: 13px; color: #64748b; font-weight: 500; text-align: center;">
+              Showing 0 calls
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2485,7 +2633,7 @@
   <!-- BOTTOM-CENTER FLOATING TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="/static/app.js?v=7"></script>
+  <script src="/static/app.js?v=9"></script>
 </body>
 
 </html>
