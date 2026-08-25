@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     shifts,
     vectors,
     voice_samples,
+    chat_qa,
 )
 
 
@@ -61,4 +62,10 @@ router.include_router(
     calls.router,
     prefix="/calls",
     tags=["Call Processing"],
+)
+
+router.include_router(
+    chat_qa.router,
+    prefix="/chat-qa",
+    tags=["Chat QA Audit"],
 )

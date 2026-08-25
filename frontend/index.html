@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/styles.css?v=20">
+  <link rel="stylesheet" href="/static/styles.css?v=21">
 </head>
 
 <body>
@@ -73,6 +73,10 @@
         <a href="#" class="nav-item" id="nav-qa-analysis" onclick="showView('qa-analysis', event)">
           <i data-lucide="award"></i>
           <span>QA Quality Test</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-chat-qa" onclick="showView('chat-qa', event)">
+          <i data-lucide="messages-square"></i>
+          <span>Chat QA Audit</span>
         </a>
         <a href="#" class="nav-item" id="nav-audits" onclick="showView('audits', event)">
           <i data-lucide="file-audio"></i>
@@ -1603,6 +1607,263 @@
       </div>
 
       <!-- ==================================================================== -->
+      <!-- VIEW: CHAT QA AUDIT & JSON TRANSCRIPT EVALUATION PAGE -->
+      <!-- ==================================================================== -->
+      <div id="view-chat-qa" class="page-view">
+        <!-- METRICS GRID -->
+        <section class="metrics-grid-4" style="margin-bottom: 20px;">
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>EVALUATED CHATS</span>
+                <h2 id="chat-qa-stat-total">0</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="messages-square"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>JSON Chat Transcripts</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>AVERAGE QA SCORE</span>
+                <h2 id="chat-qa-stat-score">0%</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="target"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Chat Quality Benchmark</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>COMPLIANCE RATE</span>
+                <h2 id="chat-qa-stat-compliance">100%</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="shield-check"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>Policy & Disclosures</span></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>POSITIVE SENTIMENT</span>
+                <h2 id="chat-qa-stat-sentiment">0%</h2>
+              </div>
+              <div class="metric-icon-circle"><i data-lucide="smile"></i></div>
+            </div>
+            <div class="metric-trend up"><i data-lucide="thumbs-up"></i><span>Customer Experience</span></div>
+          </div>
+        </section>
+
+        <!-- CHAT QA STUDIO: TOP PANEL (UPLOAD JSON / PASTE & RUN EVALUATION) -->
+        <div class="panel-card"
+          style="margin-bottom: 24px; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+          <div class="panel-header"
+            style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3
+                style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span
+                  style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                    data-lucide="sparkles"></i></span>
+                Upload JSON Chat Conversation & Run AI Audit
+              </h3>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Upload chat logs (JSON array of turns or message objects) to compute 8-category scorecard, CX sentiment, and coaching</p>
+            </div>
+
+            <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 14px;" onclick="downloadSampleChatJson()">
+              <i data-lucide="download" style="width: 13px;"></i> Sample JSON Format
+            </button>
+          </div>
+
+          <form id="chatQaForm" onsubmit="runChatQaEvaluation(event)">
+            <!-- FORM META FIELDS: TITLE & AGENT SELECTION -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 18px;">
+              <div>
+                <label style="font-size: 13px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                  Conversation Reference / Title *
+                </label>
+                <input type="text" id="chatQaTitle" placeholder="e.g. Support Ticket #4089 - Billing Dispute" class="form-input" required
+                  style="width: 100%; padding: 9px 12px; font-size: 13px; border-radius: 10px; border: 1.5px solid #cbd5e1; outline: none; background: #ffffff;">
+              </div>
+
+              <div>
+                <label style="font-size: 13px; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
+                  Assigned Agent / Staff (Optional)
+                </label>
+                <select id="chatQaAgentSelect" class="form-input"
+                  style="width: 100%; padding: 9px 12px; font-size: 13px; border-radius: 10px; border: 1.5px solid #cbd5e1; outline: none; background: #ffffff;">
+                  <option value="">Auto-Detect from Transcript</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- INPUT MODE SWITCHER: FILE UPLOAD VS DIRECT PASTE -->
+            <div style="display: flex; gap: 8px; margin-bottom: 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+              <button type="button" id="btnChatQaMode_upload" class="time-range-btn active" style="font-size: 12px; padding: 6px 14px; border-radius: 8px;" onclick="switchChatQaInputMode('upload')">
+                <i data-lucide="file-up" style="width: 13px;"></i> Upload .JSON File
+              </button>
+              <button type="button" id="btnChatQaMode_paste" class="time-range-btn" style="font-size: 12px; padding: 6px 14px; border-radius: 8px;" onclick="switchChatQaInputMode('paste')">
+                <i data-lucide="code" style="width: 13px;"></i> Direct JSON Paste
+              </button>
+            </div>
+
+            <!-- MODE 1: FILE DROPZONE -->
+            <div id="chatQaDropzoneContainer" style="display: block; margin-bottom: 18px;">
+              <div id="chatQaDropzone"
+                style="border: 2px dashed #93c5fd; background: #f0f7ff; border-radius: 14px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.2s ease;"
+                onclick="document.getElementById('chatQaFileInput').click()">
+                <i data-lucide="file-json" style="width: 42px; height: 42px; color: #2563eb; margin: 0 auto 10px; display: block;"></i>
+                <h4 style="font-size: 14.5px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;" id="chatQaDropzoneTitle">
+                  Drag and drop your Chat JSON file here, or click to browse
+                </h4>
+                <p style="font-size: 12px; color: #64748b; margin: 0;" id="chatQaDropzoneSubtitle">
+                  Supports .json files containing message turns or conversation history
+                </p>
+                <input type="file" id="chatQaFileInput" accept=".json,application/json" style="display: none;" onchange="handleChatQaFileSelected(this)">
+              </div>
+            </div>
+
+            <!-- MODE 2: DIRECT PASTE TEXTAREA -->
+            <div id="chatQaPasteContainer" style="display: none; margin-bottom: 18px;">
+              <div style="position: relative;">
+                <textarea id="chatQaJsonPaste" rows="8" placeholder='[&#10;  { "speaker": "agent", "text": "Thank you for calling support. How can I help you today?" },&#10;  { "speaker": "customer", "text": "Hello, I need help with my account." }&#10;]'
+                  style="width: 100%; padding: 12px 14px; font-family: monospace; font-size: 12.5px; border-radius: 12px; border: 1.5px solid #cbd5e1; outline: none; background: #ffffff; resize: vertical; line-height: 1.5;"></textarea>
+              </div>
+            </div>
+
+            <!-- ACTION FOOTER -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid #f1f5f9; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 14px; font-size: 12px; color: #64748b;">
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> Multi-Format Parser</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> 8 QA Categories</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><i data-lucide="check" style="width: 14px; color: #16a34a;"></i> CX Sentiment</span>
+              </div>
+              <button type="submit" class="btn-primary"
+                style="padding: 11px 26px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);"
+                id="btnRunChatQa">
+                <i data-lucide="play-circle"></i> Run AI Chat QA Evaluation
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- CHAT QA STUDIO: DETAILS PANEL (EVALUATED SCORECARD & CHAT STREAM) -->
+        <div id="chatQaDetailsBottomSection" class="panel-card"
+          style="display: none; border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
+          <div class="panel-header"
+            style="margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div class="panel-title">
+              <h3
+                style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span
+                  style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;"><i
+                    data-lucide="award"></i></span>
+                Evaluated Chat QA Scorecard & Dialogue Studio
+              </h3>
+              <p style="font-size: 12.5px; color: #64748b; margin-top: 4px;">Comprehensive category breakdown, customer sentiment analysis, compliance checks, and AI coaching</p>
+            </div>
+
+            <!-- ACTION CONTROLS & CLOSE BUTTON -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="chatQaHeaderActionBtns">
+              <button class="btn-primary" id="btnSaveChatQaCalibration"
+                style="display: none; font-size: 12px; padding: 7px 16px; height: auto; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-color: #16a34a; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);"
+                onclick="saveCalibratedChatQaScorecard()" title="Save auditor calibrated scores to database">
+                <i data-lucide="save" style="width: 13px;"></i> Save Calibrated Scorecard
+              </button>
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;"
+                onclick="copyCurrentChatQaScorecard()" title="Copy scorecard summary to clipboard">
+                <i data-lucide="copy" style="width: 13px;"></i> Copy Scorecard
+              </button>
+              <button class="btn-secondary" style="font-size: 12px; padding: 7px 14px; height: auto;"
+                onclick="downloadCurrentChatQaJson()" title="Download raw QA evaluation JSON">
+                <i data-lucide="download" style="width: 13px;"></i> Export JSON
+              </button>
+              <button class="btn-secondary"
+                style="font-size: 12px; padding: 7px 12px; height: auto; color: #64748b; border-color: #cbd5e1;"
+                onclick="closeChatQaDetailsPanel()" title="Close details panel">
+                <i data-lucide="x" style="width: 14px;"></i> Close Panel
+              </button>
+            </div>
+          </div>
+
+          <div id="chatQaReportContainer">
+            <!-- Dynamically populated via renderChatQaScorecardView -->
+          </div>
+        </div>
+
+        <!-- CHAT QA STUDIO: HISTORY PANEL (EVALUATED CHATS TABLE) -->
+        <div class="panel-card" id="chatQaHistoryPanelCard"
+          style="border: 1px solid rgba(226, 232, 240, 0.8); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); margin-bottom: 28px;">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <div class="panel-title">
+              <h3 style="font-size: 16.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span style="background: rgba(29, 97, 231, 0.1); padding: 8px; border-radius: 10px; color: #1d61e7; display: flex;">
+                  <i data-lucide="history"></i>
+                </span>
+                Chat QA Evaluation History & Audited Transcripts Log
+              </h3>
+              <p style="font-size: 12px; color: #64748b; margin-top: 3px;">Historical log of evaluated chat conversations, quality benchmark scores, and sentiment reports</p>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div style="position: relative;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: #94a3b8;"></i>
+                <input type="text" id="chatQaHistorySearchInput" placeholder="Search reference, title, agent..."
+                  style="padding: 6px 12px 6px 30px; font-size: 12.5px; border-radius: 8px; border: 1.5px solid #cbd5e1; outline: none; background: #ffffff; width: 220px;"
+                  oninput="filterChatQaHistoryTable(this.value)">
+              </div>
+              <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px; height: auto;" onclick="loadChatQaHistory()">
+                <i data-lucide="refresh-cw" style="width: 12px;"></i> Refresh
+              </button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="table" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1.5px solid #e2e8f0; text-align: left; font-size: 11.5px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <th style="padding: 10px 14px;">Audit ID</th>
+                  <th style="padding: 10px 14px;">Conversation Title</th>
+                  <th style="padding: 10px 14px;">Assigned Agent</th>
+                  <th style="padding: 10px 14px;">Turns</th>
+                  <th style="padding: 10px 14px;">QA Score</th>
+                  <th style="padding: 10px 14px;">Sentiment</th>
+                  <th style="padding: 10px 14px;">Audited Date</th>
+                  <th style="padding: 10px 14px; text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="chatQaHistoryTableBody">
+                <tr>
+                  <td colspan="8" style="text-align: center; padding: 32px; color: #94a3b8; font-size: 13px;">
+                    <i data-lucide="loader-2" style="width: 24px; height: 24px; animation: spin 1s linear infinite; display: block; margin: 0 auto 8px;"></i>
+                    Loading chat QA evaluation records...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- PAGINATION -->
+          <div id="chatQaPaginationControls" style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+              <button id="chatQaHistPrevBtn" class="diar-nav-btn" onclick="changeChatQaHistoryPage('prev')" title="Previous page">
+                <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+                <span>Previous</span>
+              </button>
+              <div id="chatQaHistPageNumbers" class="diar-page-numbers-container" style="display: flex; align-items: center; gap: 5px;"></div>
+              <button id="chatQaHistNextBtn" class="diar-nav-btn" onclick="changeChatQaHistoryPage('next')" title="Next page">
+                <span>Next</span>
+                <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
+            <div id="chatQaHistoryPaginationInfo" class="diar-pagination-info" style="font-size: 12.5px; color: #64748b; font-weight: 500; text-align: center;">
+              Showing 0 chat evaluations
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
       <!-- VIEW: EMPLOYEES MANAGEMENT PAGE -->
       <!-- ==================================================================== -->
       <div id="view-employees" class="page-view">
@@ -2638,7 +2899,7 @@
   <!-- BOTTOM-CENTER FLOATING TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="/static/app.js?v=20"></script>
+  <script src="/static/app.js?v=21"></script>
 </body>
 
 </html>

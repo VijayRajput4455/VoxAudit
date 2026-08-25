@@ -226,6 +226,11 @@ function showView(viewName, e) {
       subEl.textContent = "Automated AI quality evaluation, compliance checklist scoring, and agent performance insights.";
       loadQaAnalysisPage();
       break;
+    case "chat-qa":
+      titleEl.textContent = "Chat QA Audit Studio";
+      subEl.textContent = "AI Quality Evaluation, CX Sentiment & Scorecards on JSON Chat Transcripts.";
+      loadChatQaPage();
+      break;
     default:
       titleEl.textContent = "Dashboard";
       subEl.textContent = "AI-Powered Call Analysis & Voice Audit";
@@ -5084,13 +5089,55 @@ function handleQaSelectChange() {
   }
 }
 
-function viewQaScorecardDetails(callId) {
+function formatTurnTime(sec) {
+  if (sec === undefined || sec === null || isNaN(sec)) return "00:00";
+  const total = Math.floor(Number(sec));
+  const m = String(Math.floor(total / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function copyTurnText(encodedText) {
+  if (!encodedText) return;
+  try {
+    const text = decodeURIComponent(encodedText);
+    navigator.clipboard.writeText(text).then(() => {
+      showToast("Dialogue text copied to clipboard!", "success");
+    }).catch(() => {
+      showToast("Failed to copy dialogue text", "error");
+    });
+  } catch (e) {
+    navigator.clipboard.writeText(encodedText);
+    showToast("Dialogue text copied!", "success");
+  }
+}
+
+async function viewQaScorecardDetails(callId) {
+  if (!callId) return;
   currentViewedQaCallId = callId;
   const hiddenInput = document.getElementById("qaCallSelect");
   if (hiddenInput && callId) hiddenInput.value = callId;
 
   let call = auditsCache.find(c => strId(c.id) === strId(callId));
-  if (!call) return;
+
+  // Always fetch detailed call record to ensure full transcript_json and qa_scorecard_json are loaded
+  try {
+    const res = await fetch(`/api/v1/calls/${callId}`);
+    if (res.ok) {
+      const detailedCall = await res.json();
+      const idx = auditsCache.findIndex(c => strId(c.id) === strId(callId));
+      if (idx !== -1) auditsCache[idx] = detailedCall;
+      else auditsCache.push(detailedCall);
+      call = detailedCall;
+    }
+  } catch (err) {
+    console.warn("Could not fetch detailed call record", err);
+  }
+
+  if (!call) {
+    showToast("Could not find selected call recording", "error");
+    return;
+  }
 
   // Sync trigger UI
   const titleEl = document.getElementById("qaTriggerTitle");
@@ -5132,6 +5179,203 @@ function closeQaDetailsPanel() {
   if (panel) panel.style.display = "none";
 }
 
+let currentQaState = {
+  callId: null,
+  categories: {},
+  overallScore: 0,
+  grade: 'A',
+  passed: true,
+  isModified: false,
+  transcriptFilter: 'ALL'
+};
+
+function switchQaDetailTab(tabId) {
+  ['scorecard', 'transcript', 'cx-insights'].forEach(t => {
+    const btn = document.getElementById(`btnQaTab_${t}`);
+    const content = document.getElementById(`qaTabContent_${t}`);
+    if (btn) btn.classList.toggle('active', t === tabId);
+    if (content) content.style.display = (t === tabId) ? 'block' : 'none';
+  });
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function adjustQaCategoryScore(key, delta) {
+  if (!currentQaState.categories[key]) return;
+  const currentVal = currentQaState.categories[key].score;
+  onQaCategoryScoreChange(key, currentVal + delta);
+}
+
+function onQaCategoryScoreChange(key, value) {
+  if (!currentQaState.categories[key]) return;
+  const max = currentQaState.categories[key].max;
+  const numVal = Math.min(max, Math.max(0, parseFloat(value) || 0));
+  currentQaState.categories[key].score = numVal;
+  currentQaState.isModified = true;
+
+  // Sync inputs
+  const slider = document.getElementById(`qaSlider_${key}`);
+  const numInput = document.getElementById(`qaInput_${key}`);
+  const pctEl = document.getElementById(`qaPct_${key}`);
+
+  if (slider && parseFloat(slider.value) !== numVal) slider.value = numVal;
+  if (numInput && parseFloat(numInput.value) !== numVal) numInput.value = numVal;
+
+  const pct = Math.round((numVal / max) * 100);
+  const isPassed = pct >= 75;
+  const fillColor = isPassed ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#ef4444');
+
+  if (pctEl) {
+    pctEl.innerHTML = `<span style="color: ${isPassed ? '#15803d' : '#b91c1c'}; font-weight: 700;">${numVal}/${max} (${pct}%)</span>`;
+  }
+  if (slider) {
+    slider.style.background = `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%)`;
+  }
+
+  // Recalculate overall score
+  let totalScore = 0;
+  let totalMax = 0;
+  for (const k in currentQaState.categories) {
+    totalScore += currentQaState.categories[k].score;
+    totalMax += currentQaState.categories[k].max;
+  }
+
+  const overallScore = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+  const grade = overallScore >= 90 ? 'A' : overallScore >= 80 ? 'B' : overallScore >= 70 ? 'C' : overallScore >= 60 ? 'D' : 'F';
+  const passed = overallScore >= 80;
+
+  currentQaState.overallScore = overallScore;
+  currentQaState.grade = grade;
+  currentQaState.passed = passed;
+
+  // Update Overall Score Banner
+  const scoreText = document.getElementById("qaOverallScoreText");
+  const gradeBadge = document.getElementById("qaOverallGradeBadge");
+  const statusPill = document.getElementById("qaOverallStatusPill");
+  const bannerContainer = document.getElementById("qaOverallBannerContainer");
+  const saveBtn = document.getElementById("btnSaveQaCalibration");
+
+  if (scoreText) scoreText.textContent = `${overallScore}% Score`;
+  if (gradeBadge) gradeBadge.textContent = `Grade ${grade}`;
+  if (statusPill) {
+    statusPill.className = `status-pill ${passed ? 'badge-completed' : 'badge-inactive'}`;
+    statusPill.textContent = passed ? '✓ PASSED BENCHMARK' : '⚠ NEEDS IMPROVEMENT';
+  }
+  if (bannerContainer) {
+    bannerContainer.style.background = passed ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)';
+    bannerContainer.style.borderColor = passed ? '#86efac' : '#fca5a5';
+  }
+
+  if (saveBtn) {
+    saveBtn.style.display = "inline-flex";
+  }
+}
+
+async function saveCalibratedQaScorecard() {
+  const callId = currentQaState.callId;
+  if (!callId) {
+    showToast("No call scorecard selected to save", "error");
+    return;
+  }
+
+  const saveBtn = document.getElementById("btnSaveQaCalibration");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<i data-lucide="loader-2" style="width: 13px; animation: spin 1s linear infinite;"></i> Saving Calibration...`;
+  }
+
+  try {
+    const call = auditsCache.find(c => strId(c.id) === strId(callId));
+    let scorecard = call?.qa_scorecard_json ? JSON.parse(JSON.stringify(call.qa_scorecard_json)) : {};
+    if (!scorecard.agent_evaluation) scorecard.agent_evaluation = {};
+    if (!scorecard.overall_evaluation) scorecard.overall_evaluation = {};
+
+    scorecard.overall_qa_score = currentQaState.overallScore;
+    scorecard.overall_evaluation.score = currentQaState.overallScore;
+    scorecard.overall_evaluation.grade = currentQaState.grade;
+
+    for (const k in currentQaState.categories) {
+      const cat = currentQaState.categories[k];
+      if (k === "compliance") {
+        if (!scorecard.compliance) scorecard.compliance = {};
+        scorecard.compliance.score = cat.score;
+        scorecard.compliance.max_score = cat.max;
+        scorecard.compliance.passed = (cat.score / cat.max) >= 0.75;
+      } else {
+        if (!scorecard.agent_evaluation[k]) scorecard.agent_evaluation[k] = {};
+        scorecard.agent_evaluation[k].score = cat.score;
+        scorecard.agent_evaluation[k].max_score = cat.max;
+        scorecard.agent_evaluation[k].passed = (cat.score / cat.max) >= 0.75;
+      }
+    }
+
+    const payload = {
+      qa_score: currentQaState.overallScore,
+      qa_scorecard_json: scorecard
+    };
+
+    const res = await fetch(`/api/v1/calls/${callId}/scorecard`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to save scorecard: ${res.statusText}`);
+    }
+
+    const updatedJob = await res.json();
+    showToast("✓ Calibrated QA Scorecard saved to database!", "success");
+
+    // Update in local cache
+    const idx = auditsCache.findIndex(c => strId(c.id) === strId(callId));
+    if (idx !== -1) {
+      auditsCache[idx] = updatedJob;
+    }
+
+    currentQaState.isModified = false;
+    if (saveBtn) {
+      saveBtn.style.display = "none";
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `<i data-lucide="save" style="width: 13px;"></i> Save Calibrated Scorecard`;
+    }
+
+    renderQaHistoryTable();
+  } catch (err) {
+    showToast(`Error saving scorecard: ${err.message}`, "error");
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `<i data-lucide="save" style="width: 13px;"></i> Save Calibrated Scorecard`;
+    }
+  }
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function filterQaTranscriptTurns(filterType = null) {
+  if (filterType !== null) {
+    currentQaState.transcriptFilter = filterType;
+    ['ALL', 'AGENT', 'CUSTOMER'].forEach(t => {
+      const btn = document.getElementById(`btnQaTurnFilter_${t}`);
+      if (btn) btn.classList.toggle('active', t === filterType);
+    });
+  }
+
+  const searchInput = document.getElementById("qaTurnSearchInput");
+  const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
+  const filter = currentQaState.transcriptFilter;
+
+  const items = document.querySelectorAll(".qa-turn-bubble-item");
+  items.forEach(el => {
+    const spk = el.getAttribute("data-speaker") || "";
+    const text = (el.getAttribute("data-text") || "").toLowerCase();
+
+    const matchesSpk = (filter === "ALL") || (spk === filter);
+    const matchesQuery = !query || text.includes(query);
+
+    el.style.display = (matchesSpk && matchesQuery) ? "block" : "none";
+  });
+}
+
 function renderQaScorecardView(call) {
   const container = document.getElementById("qaReportContainer");
   if (!container) return;
@@ -5152,7 +5396,17 @@ function renderQaScorecardView(call) {
   const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
   const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ''}`.trim() : (scorecard.call?.agent_speaker || "Agent");
 
-  // Build criteria list
+  // Extract transcript turns
+  let turns = [];
+  if (call.transcript_json) {
+    if (Array.isArray(call.transcript_json.turns)) {
+      turns = call.transcript_json.turns;
+    } else if (Array.isArray(call.transcript_json.segments)) {
+      turns = call.transcript_json.segments;
+    }
+  }
+
+  // Build criteria list with interactive state
   const categoryKeys = [
     { key: "professional_greeting", label: "Professional Greeting & Identification", max: 10, defaultScore: 10 },
     { key: "problem_understanding", label: "Problem Understanding & Active Listening", max: 15, defaultScore: 14 },
@@ -5164,21 +5418,56 @@ function renderQaScorecardView(call) {
     { key: "compliance", label: "Mandatory Compliance & Disclosures", max: 15, defaultScore: 15 }
   ];
 
+  currentQaState.callId = call.id;
+  currentQaState.overallScore = score;
+  currentQaState.grade = grade;
+  currentQaState.passed = passed;
+  currentQaState.isModified = false;
+  currentQaState.categories = {};
+
   const categoriesHtml = categoryKeys.map(cat => {
     let item = cat.key === "compliance" ? compliance : agentEval[cat.key];
     let catScore = (item && item.score !== null && item.score !== undefined) ? item.score : Math.round((cat.defaultScore / 100) * score);
     let catMax = (item && item.max_score) ? item.max_score : cat.max;
     let pct = Math.round((catScore / catMax) * 100);
     let isCatPassed = (item && item.passed !== undefined && item.passed !== null) ? item.passed : (pct >= 75);
+    let fillColor = isCatPassed ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#ef4444');
+
+    currentQaState.categories[cat.key] = {
+      score: catScore,
+      max: catMax,
+      label: cat.label
+    };
 
     return `
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 600; color: #334155; margin-bottom: 6px;">
-          <span>${cat.label} <small style="color: #94a3b8;">(Max ${catMax} pts)</small></span>
-          <strong style="color: ${isCatPassed ? '#15803d' : '#b91c1c'};">${catScore}/${catMax} (${pct}%)</strong>
+      <div class="qa-category-row-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px; flex-wrap: nowrap; gap: 8px;">
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${cat.label} <small style="color: #64748b; font-weight: 500;">(Max ${catMax} pts)</small>
+          </span>
+          
+          <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+            <div style="display: inline-flex; align-items: center; gap: 3px;">
+              <button type="button" class="btn-secondary" style="width: 24px; height: 24px; min-width: 24px; padding: 0; font-size: 13px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;"
+                onclick="adjustQaCategoryScore('${cat.key}', -1)" title="Decrease score">-</button>
+              
+              <input type="number" id="qaInput_${cat.key}" class="qa-score-input" min="0" max="${catMax}" value="${catScore}"
+                oninput="onQaCategoryScoreChange('${cat.key}', this.value)">
+              
+              <button type="button" class="btn-secondary" style="width: 24px; height: 24px; min-width: 24px; padding: 0; font-size: 13px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;"
+                onclick="adjustQaCategoryScore('${cat.key}', 1)" title="Increase score">+</button>
+            </div>
+            
+            <span id="qaPct_${cat.key}" style="font-size: 12px; min-width: 78px; text-align: right; white-space: nowrap;">
+              <span style="color: ${isCatPassed ? '#15803d' : '#b91c1c'}; font-weight: 700;">${catScore}/${catMax} (${pct}%)</span>
+            </span>
+          </div>
         </div>
-        <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
-          <div style="width: ${Math.min(100, Math.max(0, pct))}%; height: 100%; background: ${isCatPassed ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #ef4444, #dc2626)'}; border-radius: 3px;"></div>
+
+        <div style="width: 100%; display: block; margin-top: 4px;">
+          <input type="range" id="qaSlider_${cat.key}" class="qa-score-slider" min="0" max="${catMax}" value="${catScore}" step="1"
+            style="width: 100% !important; background: linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%);"
+            oninput="onQaCategoryScoreChange('${cat.key}', this.value)">
         </div>
       </div>
     `;
@@ -5198,66 +5487,152 @@ function renderQaScorecardView(call) {
     ? insights.action_items
     : ((insights.weaknesses && insights.weaknesses.length > 0) ? insights.weaknesses : ["State the mandatory regulatory disclosure clearly within the first 30 seconds."]);
 
+  // Generate turns chat HTML
+  const turnsHtml = turns.length === 0
+    ? `<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+        <i data-lucide="message-square-off" style="width: 36px; height: 36px; margin-bottom: 8px; display: block; margin: 0 auto 8px;"></i>
+        <p style="font-size: 13px;">No audio turns or dialogue segments available for this recording.</p>
+       </div>`
+    : turns.map((t, idx) => {
+      const spk = t.speaker || t.speaker_label || (idx % 2 === 0 ? "AGENT" : "CUSTOMER");
+      const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
+      const label = isAgent ? `Agent (${agentName})` : "Customer / Caller";
+      const textContent = t.text || t.transcript || t.content || "";
+      const startTime = formatTurnTime(t.start || 0);
+      const endTime = formatTurnTime(t.end || 0);
+      const enc = encodeURIComponent(textContent);
+
+      return `
+        <div class="qa-turn-bubble-item ${isAgent ? 'qa-chat-turn-agent' : 'qa-chat-turn-customer'}" data-speaker="${isAgent ? 'AGENT' : 'CUSTOMER'}" data-text="${encodeURIComponent(textContent.toLowerCase())}">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="background: ${isAgent ? '#dbeafe' : '#f3e8ff'}; color: ${isAgent ? '#1e40af' : '#7e22ce'}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
+              <i data-lucide="${isAgent ? 'headset' : 'user'}" style="width: 12px;"></i> ${label}
+            </span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <small style="font-family: monospace; color: #64748b; font-size: 11.5px; font-weight: 600;">${startTime} - ${endTime}</small>
+              <button type="button" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 2px;" title="Copy turn text" onclick="copyTurnText('${enc}')">
+                <i data-lucide="copy" style="width: 11px;"></i>
+              </button>
+            </div>
+          </div>
+          <p style="font-size: 13px; color: #1e293b; line-height: 1.5; margin: 0; white-space: pre-wrap;">${textContent}</p>
+        </div>
+      `;
+    }).join("");
+
   container.innerHTML = `
     <!-- OVERALL SCORE BANNER -->
-    <div style="background: ${passed ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'}; border: 1.5px solid ${passed ? '#86efac' : '#fca5a5'}; border-radius: 14px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+    <div id="qaOverallBannerContainer" style="background: ${passed ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'}; border: 1.5px solid ${passed ? '#86efac' : '#fca5a5'}; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
       <div>
         <span style="font-size: 11px; font-weight: 700; color: ${passed ? '#15803d' : '#991b1b'}; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">OVERALL QA BENCHMARK SCORE • ${agentName}</span>
-        <h3 style="font-size: 28px; font-weight: 800; color: ${passed ? '#166534' : '#991b1b'}; margin: 0; display: flex; align-items: center; gap: 10px;">
-          <span>${score}% Score</span>
-          <span style="font-size: 16px; font-weight: 700; background: ${passed ? '#15803d' : '#991b1b'}; color: #ffffff; padding: 3px 10px; border-radius: 8px;">Grade ${grade}</span>
+        <h3 style="font-size: 26px; font-weight: 800; color: ${passed ? '#166534' : '#991b1b'}; margin: 0; display: flex; align-items: center; gap: 10px;">
+          <span id="qaOverallScoreText">${score}% Score</span>
+          <span id="qaOverallGradeBadge" style="font-size: 15px; font-weight: 700; background: ${passed ? '#15803d' : '#991b1b'}; color: #ffffff; padding: 3px 10px; border-radius: 8px;">Grade ${grade}</span>
         </h3>
       </div>
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span class="status-pill ${passed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 13px; font-weight: 700; padding: 8px 16px;">
+        <span id="qaOverallStatusPill" class="status-pill ${passed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 13px; font-weight: 700; padding: 8px 16px;">
           ${passed ? '✓ PASSED BENCHMARK' : '⚠ NEEDS IMPROVEMENT'}
         </span>
       </div>
     </div>
 
-    <!-- CX SIGNALS ROW -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; text-align: center;">
-        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">CUSTOMER SENTIMENT</span>
-        <strong style="font-size: 13.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;">
-          <i data-lucide="${sentimentVal.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 16px; color: #10b981;"></i> ${sentimentVal}
-        </strong>
-      </div>
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; text-align: center;">
-        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">CUSTOMER SATISFACTION</span>
-        <strong style="font-size: 13.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;">
-          <i data-lucide="thumbs-up" style="width: 16px; color: #1d61e7;"></i> ${satisfactionVal}
-        </strong>
-      </div>
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; text-align: center;">
-        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">ISSUE RESOLUTION</span>
-        <strong style="font-size: 13.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;">
-          <i data-lucide="check-circle" style="width: 16px; color: #059669;"></i> ${resolutionVal}
-        </strong>
-      </div>
-    </div>
+    <!-- DUAL-COLUMN STUDIO GRID: SCORECARD CALIBRATION (LEFT 50%) & LIVE CHAT TRANSCRIPT (RIGHT 50%) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; width: 100%;">
+      
+      <!-- LEFT COLUMN: 8 CATEGORY SINGLE-BAR SLIDERS & CX METRICS -->
+      <div style="min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 12px;">
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="sliders" style="width: 16px; flex-shrink: 0;"></i>
+          <span><strong>Auditor Interactive Calibration</strong>: Drag slider or adjust point counters to calibrate each category. Overall score updates in real-time.</span>
+        </div>
 
-    <!-- SCORECARD CRITERIA GRID -->
-    <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px;"><i data-lucide="target" style="width: 16px; color: #1d61e7;"></i> Scorecard Category Breakdown</h4>
-    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-      ${categoriesHtml}
-    </div>
+        <!-- 8 Categories with Single Slider Bars -->
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          ${categoriesHtml}
+        </div>
 
-    <!-- AI COACHING INSIGHTS -->
-    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 18px;">
-      <h5 style="font-size: 13.5px; font-weight: 700; color: #1d4ed8; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-        <i data-lucide="sparkles" style="width: 16px;"></i> AI Coaching & Actionable Insights
-      </h5>
-      <div style="font-size: 12.5px; color: #1e293b; line-height: 1.6;">
-        <strong style="color: #1e40af; display: block; margin-bottom: 4px;">Key Strengths:</strong>
-        <ul style="margin: 0 0 10px 18px; padding: 0;">
-          ${strengthsList.map(s => `<li>${s}</li>`).join("")}
-        </ul>
-        <strong style="color: #1e40af; display: block; margin-bottom: 4px;">Action Items & Recommendations:</strong>
-        <ul style="margin: 0 0 0 18px; padding: 0;">
-          ${actionItemsList.map(a => `<li>${a}</li>`).join("")}
-        </ul>
+        <!-- CX Signals Row -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center;">
+            <span style="font-size: 10px; color: #64748b; display: block; font-weight: 600;">SENTIMENT</span>
+            <strong style="font-size: 12.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <i data-lucide="${sentimentVal.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 13px; color: #10b981;"></i> ${sentimentVal}
+            </strong>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center;">
+            <span style="font-size: 10px; color: #64748b; display: block; font-weight: 600;">SATISFACTION</span>
+            <strong style="font-size: 12.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <i data-lucide="thumbs-up" style="width: 13px; color: #1d61e7;"></i> ${satisfactionVal}
+            </strong>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center;">
+            <span style="font-size: 10px; color: #64748b; display: block; font-weight: 600;">RESOLUTION</span>
+            <strong style="font-size: 12.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <i data-lucide="check-circle" style="width: 13px; color: #059669;"></i> ${resolutionVal}
+            </strong>
+          </div>
+        </div>
+
+        <!-- AI Coaching Box -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+          <h5 style="font-size: 12px; font-weight: 700; color: #1d4ed8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="sparkles" style="width: 13px;"></i> AI Coaching & Insights
+          </h5>
+          <div style="font-size: 11.5px; color: #334155; line-height: 1.5;">
+            <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Key Strengths:</strong>
+            <ul style="margin: 0 0 6px 16px; padding: 0;">
+              ${strengthsList.map(s => `<li>${s}</li>`).join("")}
+            </ul>
+            <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Action Items:</strong>
+            <ul style="margin: 0 0 0 16px; padding: 0;">
+              ${actionItemsList.map(a => `<li>${a}</li>`).join("")}
+            </ul>
+          </div>
+        </div>
       </div>
+
+      <!-- RIGHT COLUMN: LIVE CALL DIALOGUE CHAT TRANSCRIPT -->
+      <div style="min-width: 0; width: 100%; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="message-square" style="width: 16px; color: #1d61e7;"></i>
+              <span>Call Dialogue & Chat Transcript</span>
+            </h4>
+            <small style="color: #64748b; font-size: 11.5px;">${turns.length} Spoken Audio Turns in this recording</small>
+          </div>
+          <span class="status-pill badge-completed" style="font-size: 11px; padding: 2px 8px;">
+            ${turns.length} Turns
+          </span>
+        </div>
+
+        <!-- Filter & Search Strip -->
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="time-range-btn active" id="btnQaTurnFilter_ALL" style="font-size: 11px; padding: 4px 10px; border-radius: 8px;" onclick="filterQaTranscriptTurns('ALL')">
+              All (${turns.length})
+            </button>
+            <button class="time-range-btn" id="btnQaTurnFilter_AGENT" style="font-size: 11px; padding: 4px 10px; border-radius: 8px;" onclick="filterQaTranscriptTurns('AGENT')">
+              Agent Only
+            </button>
+            <button class="time-range-btn" id="btnQaTurnFilter_CUSTOMER" style="font-size: 11px; padding: 4px 10px; border-radius: 8px;" onclick="filterQaTranscriptTurns('CUSTOMER')">
+              Customer Only
+            </button>
+          </div>
+
+          <div style="position: relative; width: 100%;">
+            <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 13px; color: #94a3b8;"></i>
+            <input type="text" id="qaTurnSearchInput" placeholder="Search spoken dialogue keywords..." style="width: 100%; padding: 6px 10px 6px 30px; font-size: 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; background: #ffffff;" oninput="filterQaTranscriptTurns()">
+          </div>
+        </div>
+
+        <!-- Chat Dialogue Stream -->
+        <div class="qa-dialogue-container" style="max-height: 680px; height: 680px; overflow-y: auto; padding-right: 6px;">
+          ${turnsHtml}
+        </div>
+      </div>
+
     </div>
   `;
 
@@ -5648,5 +6023,905 @@ async function runQaEvaluation(e) {
     }
     showToast(`Error queuing QA audit: ${err.message}`, "error");
   }
+}
+
+/* ==========================================================================
+   CHAT QA AUDIT & JSON TRANSCRIPT EVALUATION STUDIO
+   ========================================================================== */
+let chatQaHistoryCache = [];
+let chatQaFilteredHistory = [];
+let chatQaCurrentPage = 1;
+const chatQaPageSize = 10;
+let chatQaSelectedFile = null;
+let currentChatQaState = {
+  id: null,
+  categories: {},
+  overallScore: 0,
+  grade: 'A',
+  passed: true,
+  isModified: false,
+  transcriptFilter: 'ALL'
+};
+
+async function loadChatQaPage() {
+  populateChatQaAgentDropdown();
+  await loadChatQaHistory();
+}
+
+function populateChatQaAgentDropdown() {
+  const select = document.getElementById("chatQaAgentSelect");
+  if (!select) return;
+
+  const currentVal = select.value;
+  select.innerHTML = `<option value="">Auto-Detect from Transcript</option>`;
+
+  employeesCache.forEach(emp => {
+    const opt = document.createElement("option");
+    opt.value = emp.id;
+    opt.textContent = `${emp.first_name} ${emp.last_name || ''} (${emp.employee_code || 'EMP'})`.trim();
+    select.appendChild(opt);
+  });
+
+  if (currentVal) select.value = currentVal;
+}
+
+function switchChatQaInputMode(mode) {
+  const btnUpload = document.getElementById("btnChatQaMode_upload");
+  const btnPaste = document.getElementById("btnChatQaMode_paste");
+  const dropzoneCont = document.getElementById("chatQaDropzoneContainer");
+  const pasteCont = document.getElementById("chatQaPasteContainer");
+
+  if (mode === "upload") {
+    if (btnUpload) btnUpload.classList.add("active");
+    if (btnPaste) btnPaste.classList.remove("active");
+    if (dropzoneCont) dropzoneCont.style.display = "block";
+    if (pasteCont) pasteCont.style.display = "none";
+  } else {
+    if (btnUpload) btnUpload.classList.remove("active");
+    if (btnPaste) btnPaste.classList.add("active");
+    if (dropzoneCont) dropzoneCont.style.display = "none";
+    if (pasteCont) pasteCont.style.display = "block";
+  }
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function handleChatQaFileSelected(input) {
+  if (!input.files || input.files.length === 0) return;
+  const file = input.files[0];
+  chatQaSelectedFile = file;
+
+  const titleEl = document.getElementById("chatQaDropzoneTitle");
+  const subEl = document.getElementById("chatQaDropzoneSubtitle");
+  const titleInput = document.getElementById("chatQaTitle");
+
+  if (titleEl) {
+    titleEl.textContent = `✓ Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+  }
+  if (subEl) {
+    subEl.textContent = "Ready to evaluate. Click 'Run AI Chat QA Evaluation' below.";
+  }
+  if (titleInput && !titleInput.value.trim()) {
+    titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+  }
+}
+
+function downloadSampleChatJson() {
+  const sampleData = [
+    { "speaker": "agent", "text": "Thank you for contacting VoxAudit Support. My name is Alex. How may I assist you today?" },
+    { "speaker": "customer", "text": "Hello Alex, I was charged twice on my monthly subscription and I need a refund for the duplicate charge." },
+    { "speaker": "agent", "text": "I understand how frustrating billing errors can be. I will gladly look into this duplicate charge right away. May I please verify your account email address?" },
+    { "speaker": "customer", "text": "Sure, it is customer@example.com." },
+    { "speaker": "agent", "text": "Thank you. I have verified your account and I see the duplicate transaction of $49.00 processed on August 22nd. I have just initiated an immediate refund of $49.00 back to your original payment method." },
+    { "speaker": "customer", "text": "That was very quick, thank you so much!" },
+    { "speaker": "agent", "text": "You are very welcome! Please note that this call is recorded for quality purposes and funds typically appear within 3-5 business days. Is there anything else I can help you with today?" },
+    { "speaker": "customer", "text": "No, that resolves everything. Have a great day!" },
+    { "speaker": "agent", "text": "Thank you for choosing VoxAudit. Have a wonderful day and goodbye!" }
+  ];
+
+  const blob = new Blob([JSON.stringify(sampleData, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sample_support_chat.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("Sample Chat JSON file downloaded!", "info");
+}
+
+async function runChatQaEvaluation(e) {
+  if (e) e.preventDefault();
+
+  const titleInput = document.getElementById("chatQaTitle");
+  const agentSelect = document.getElementById("chatQaAgentSelect");
+  const fileInput = document.getElementById("chatQaFileInput");
+  const pasteArea = document.getElementById("chatQaJsonPaste");
+  const btn = document.getElementById("btnRunChatQa");
+
+  const title = titleInput ? titleInput.value.trim() : "Chat Transcript";
+  const employeeId = agentSelect ? agentSelect.value : "";
+  const isPasteMode = document.getElementById("chatQaPasteContainer")?.style.display !== "none";
+
+  const formData = new FormData();
+  formData.append("title", title);
+  if (employeeId) formData.append("employee_id", employeeId);
+
+  if (isPasteMode) {
+    const rawJson = pasteArea ? pasteArea.value.trim() : "";
+    if (!rawJson) {
+      showToast("Please paste your JSON chat conversation text.", "warning");
+      return;
+    }
+    try {
+      JSON.parse(rawJson);
+    } catch (err) {
+      showToast("Invalid JSON syntax. Please verify JSON format.", "error");
+      return;
+    }
+    formData.append("raw_json_str", rawJson);
+  } else {
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      showToast("Please select or drop a .json chat file to evaluate.", "warning");
+      return;
+    }
+    formData.append("file", fileInput.files[0]);
+  }
+
+  const origBtnHtml = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" style="width: 16px; animation: spin 1s linear infinite;"></i> Running AI Quality Evaluation...`;
+  }
+
+  try {
+    const res = await fetch("/api/v1/chat-qa/evaluate", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.detail || `Evaluation failed (${res.status})`);
+    }
+
+    const job = await res.json();
+    showToast("✓ Chat QA Evaluation complete! Scorecard generated.", "success");
+
+    // Add to history cache
+    chatQaHistoryCache.unshift(job);
+    updateChatQaStats();
+    renderChatQaHistoryTable();
+
+    // Reset form
+    if (fileInput) fileInput.value = "";
+    if (pasteArea) pasteArea.value = "";
+    chatQaSelectedFile = null;
+    const dropTitle = document.getElementById("chatQaDropzoneTitle");
+    if (dropTitle) dropTitle.textContent = "Drag and drop your Chat JSON file here, or click to browse";
+
+    // View Details
+    viewChatQaDetails(job.id);
+  } catch (err) {
+    showToast(`Evaluation Error: ${err.message}`, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+    }
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  }
+}
+
+async function loadChatQaHistory() {
+  const tbody = document.getElementById("chatQaHistoryTableBody");
+  try {
+    const res = await fetch("/api/v1/chat-qa/history?limit=100");
+    if (!res.ok) throw new Error("Failed to load chat QA history");
+
+    const data = await res.json();
+    chatQaHistoryCache = data.items || [];
+    chatQaFilteredHistory = [...chatQaHistoryCache];
+
+    updateChatQaStats();
+    renderChatQaHistoryTable();
+  } catch (err) {
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 24px; color: #ef4444; font-size: 13px;">
+            Error loading chat QA history: ${err.message}
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+function updateChatQaStats() {
+  const totalEl = document.getElementById("chat-qa-stat-total");
+  const scoreEl = document.getElementById("chat-qa-stat-score");
+  const compEl = document.getElementById("chat-qa-stat-compliance");
+  const sentEl = document.getElementById("chat-qa-stat-sentiment");
+
+  const total = chatQaHistoryCache.length;
+  if (totalEl) totalEl.textContent = total;
+
+  if (total === 0) {
+    if (scoreEl) scoreEl.textContent = "0%";
+    if (compEl) compEl.textContent = "100%";
+    if (sentEl) sentEl.textContent = "0%";
+    return;
+  }
+
+  let totalScore = 0;
+  let compPassed = 0;
+  let posSentiment = 0;
+
+  chatQaHistoryCache.forEach(c => {
+    totalScore += (c.qa_score || 0);
+    const sc = c.qa_scorecard_json || {};
+    if (sc.compliance?.passed !== false) compPassed++;
+    const s = sc.customer_experience?.sentiment?.final || sc.customer_experience?.sentiment?.initial || "";
+    if (s.toLowerCase() === "positive") posSentiment++;
+  });
+
+  if (scoreEl) scoreEl.textContent = `${Math.round(totalScore / total)}%`;
+  if (compEl) compEl.textContent = `${Math.round((compPassed / total) * 100)}%`;
+  if (sentEl) sentEl.textContent = `${Math.round((posSentiment / total) * 100)}%`;
+}
+
+function filterChatQaHistoryTable(query) {
+  const q = (query || "").toLowerCase().trim();
+  if (!q) {
+    chatQaFilteredHistory = [...chatQaHistoryCache];
+  } else {
+    chatQaFilteredHistory = chatQaHistoryCache.filter(c => {
+      const code = (c.audit_code || c.code || "").toLowerCase();
+      const title = (c.original_file_name || "").toLowerCase();
+      const agent = (c.agent_name || "").toLowerCase();
+      return code.includes(q) || title.includes(q) || agent.includes(q);
+    });
+  }
+  chatQaCurrentPage = 1;
+  renderChatQaHistoryTable();
+}
+
+function changeChatQaHistoryPage(dir) {
+  const totalPages = Math.ceil(chatQaFilteredHistory.length / chatQaPageSize) || 1;
+  if (typeof dir === "number") {
+    chatQaCurrentPage = Math.max(1, Math.min(totalPages, dir));
+  } else if (dir === "prev" && chatQaCurrentPage > 1) {
+    chatQaCurrentPage--;
+  } else if (dir === "next" && chatQaCurrentPage < totalPages) {
+    chatQaCurrentPage++;
+  }
+  renderChatQaHistoryTable();
+}
+
+function renderChatQaHistoryTable() {
+  const tbody = document.getElementById("chatQaHistoryTableBody");
+  if (!tbody) return;
+
+  if (chatQaFilteredHistory.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+          <i data-lucide="messages-square" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block; opacity: 0.5;"></i>
+          <p style="font-size: 13px; font-weight: 600; margin: 0;">No Chat QA evaluation records found.</p>
+          <small style="color: #64748b;">Upload a JSON chat log above to generate your first Chat QA audit scorecard.</small>
+        </td>
+      </tr>
+    `;
+    updateChatQaPaginationControls(0, 0, 0);
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+    return;
+  }
+
+  const totalPages = Math.ceil(chatQaFilteredHistory.length / chatQaPageSize) || 1;
+  chatQaCurrentPage = Math.max(1, Math.min(totalPages, chatQaCurrentPage));
+  const startIdx = (chatQaCurrentPage - 1) * chatQaPageSize;
+  const endIdx = Math.min(startIdx + chatQaPageSize, chatQaFilteredHistory.length);
+  const pageItems = chatQaFilteredHistory.slice(startIdx, endIdx);
+
+  tbody.innerHTML = pageItems.map(c => {
+    const auditId = c.audit_code || c.code || (c.id ? `CHAT-${c.id.substring(0, 6).toUpperCase()}` : "CHAT-AUDIT");
+    const title = c.original_file_name || "Chat Conversation";
+    const agent = c.agent_name || "Unassigned";
+    const turns = c.turns_count || (c.transcript_json?.turns?.length || 0);
+    const score = (c.qa_score !== null && c.qa_score !== undefined) ? Math.round(c.qa_score) : 50;
+    const passed = score >= 80;
+    const grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
+
+    const cx = c.qa_scorecard_json?.customer_experience || {};
+    const sentiment = cx.sentiment?.final || cx.sentiment?.initial || (passed ? "Positive" : "Neutral");
+    const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "--";
+
+    return `
+      <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;">
+        <td style="padding: 10px 14px; font-weight: 700; color: #1e40af; font-family: monospace; font-size: 12.5px;">
+          ${auditId}
+        </td>
+        <td style="padding: 10px 14px; font-weight: 600; color: #0f172a; font-size: 13px;">
+          ${title}
+        </td>
+        <td style="padding: 10px 14px; color: #334155; font-size: 12.5px;">
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="user" style="width: 13px; color: #64748b;"></i> ${agent}
+          </span>
+        </td>
+        <td style="padding: 10px 14px; color: #64748b; font-size: 12px; font-weight: 600;">
+          ${turns} Turns
+        </td>
+        <td style="padding: 10px 14px;">
+          <span class="status-pill ${passed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 11.5px; padding: 3px 10px; font-weight: 700;">
+            ${score}% (Grade ${grade})
+          </span>
+        </td>
+        <td style="padding: 10px 14px; font-size: 12px; color: #334155;">
+          <span style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+            <i data-lucide="${sentiment.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 13px; color: ${sentiment.toLowerCase() === 'positive' ? '#10b981' : '#f59e0b'};"></i>
+            ${sentiment}
+          </span>
+        </td>
+        <td style="padding: 10px 14px; color: #64748b; font-size: 11.5px; white-space: nowrap;">
+          ${dateStr}
+        </td>
+        <td style="padding: 10px 14px; text-align: right; white-space: nowrap;">
+          <button type="button" class="btn-primary" style="font-size: 11.5px; padding: 5px 12px; margin-right: 4px;" onclick="viewChatQaDetails('${c.id}')" title="View Scorecard & Dialogue">
+            <i data-lucide="award" style="width: 12px;"></i> View Scorecard
+          </button>
+          <button type="button" class="btn-secondary" style="font-size: 11.5px; padding: 5px 8px; color: #ef4444; border-color: #fca5a5;" onclick="deleteChatQaRecord('${c.id}')" title="Delete record">
+            <i data-lucide="trash-2" style="width: 12px;"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  updateChatQaPaginationControls(startIdx + 1, endIdx, chatQaFilteredHistory.length);
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function updateChatQaPaginationControls(start, end, total) {
+  const infoEl = document.getElementById("chatQaHistoryPaginationInfo");
+  const prevBtn = document.getElementById("chatQaHistPrevBtn");
+  const nextBtn = document.getElementById("chatQaHistNextBtn");
+  const pagesContainer = document.getElementById("chatQaHistPageNumbers");
+
+  if (infoEl) {
+    infoEl.innerHTML = total === 0 ? "Showing 0 chat evaluations" : `Showing <strong>${start}-${end}</strong> of <strong>${total}</strong> chat evaluations`;
+  }
+
+  const totalPages = Math.ceil(total / chatQaPageSize) || 1;
+  if (prevBtn) prevBtn.disabled = chatQaCurrentPage <= 1;
+  if (nextBtn) nextBtn.disabled = chatQaCurrentPage >= totalPages;
+
+  if (pagesContainer) {
+    let pagesHtml = "";
+    for (let p = 1; p <= totalPages; p++) {
+      if (p === 1 || p === totalPages || (p >= chatQaCurrentPage - 1 && p <= chatQaCurrentPage + 1)) {
+        pagesHtml += `
+          <button type="button" class="diar-page-btn ${p === chatQaCurrentPage ? 'active' : ''}" onclick="changeChatQaHistoryPage(${p})">
+            ${p}
+          </button>
+        `;
+      } else if (p === chatQaCurrentPage - 2 || p === chatQaCurrentPage + 2) {
+        pagesHtml += `<span style="padding: 0 4px; color: #94a3b8;">...</span>`;
+      }
+    }
+    pagesContainer.innerHTML = pagesHtml;
+  }
+}
+
+async function viewChatQaDetails(id) {
+  let record = chatQaHistoryCache.find(c => strId(c.id) === strId(id));
+  if (!record) {
+    try {
+      const res = await fetch(`/api/v1/chat-qa/${id}`);
+      if (res.ok) record = await res.json();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (!record) {
+    showToast("Chat QA record details not found.", "error");
+    return;
+  }
+
+  const panel = document.getElementById("chatQaDetailsBottomSection");
+  if (panel) {
+    panel.style.display = "block";
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  renderChatQaScorecardView(record);
+}
+
+function closeChatQaDetailsPanel() {
+  const panel = document.getElementById("chatQaDetailsBottomSection");
+  if (panel) panel.style.display = "none";
+}
+
+function onChatQaCategoryScoreChange(key, value) {
+  if (!currentChatQaState.categories[key]) return;
+  const max = currentChatQaState.categories[key].max;
+  const numVal = Math.min(max, Math.max(0, parseFloat(value) || 0));
+  currentChatQaState.categories[key].score = numVal;
+  currentChatQaState.isModified = true;
+
+  const slider = document.getElementById(`chatQaSlider_${key}`);
+  const numInput = document.getElementById(`chatQaInput_${key}`);
+  const pctEl = document.getElementById(`chatQaPct_${key}`);
+
+  if (slider && parseFloat(slider.value) !== numVal) slider.value = numVal;
+  if (numInput && parseFloat(numInput.value) !== numVal) numInput.value = numVal;
+
+  const pct = Math.round((numVal / max) * 100);
+  const isPassed = pct >= 75;
+  const fillColor = isPassed ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#ef4444');
+
+  if (pctEl) {
+    pctEl.innerHTML = `<span style="color: ${isPassed ? '#15803d' : '#b91c1c'}; font-weight: 700;">${numVal}/${max} (${pct}%)</span>`;
+  }
+  if (slider) {
+    slider.style.background = `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%)`;
+  }
+
+  // Recalculate overall score
+  let totalScore = 0;
+  let totalMax = 0;
+  for (const k in currentChatQaState.categories) {
+    totalScore += currentChatQaState.categories[k].score;
+    totalMax += currentChatQaState.categories[k].max;
+  }
+
+  const overallScore = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+  const grade = overallScore >= 90 ? 'A' : overallScore >= 80 ? 'B' : overallScore >= 70 ? 'C' : overallScore >= 60 ? 'D' : 'F';
+  const passed = overallScore >= 80;
+
+  currentChatQaState.overallScore = overallScore;
+  currentChatQaState.grade = grade;
+  currentChatQaState.passed = passed;
+
+  const scoreText = document.getElementById("chatQaOverallScoreText");
+  const gradeBadge = document.getElementById("chatQaOverallGradeBadge");
+  const statusPill = document.getElementById("chatQaOverallStatusPill");
+  const bannerContainer = document.getElementById("chatQaOverallBannerContainer");
+  const saveBtn = document.getElementById("btnSaveChatQaCalibration");
+
+  if (scoreText) scoreText.textContent = `${overallScore}% Score`;
+  if (gradeBadge) gradeBadge.textContent = `Grade ${grade}`;
+  if (statusPill) {
+    statusPill.className = `status-pill ${passed ? 'badge-completed' : 'badge-inactive'}`;
+    statusPill.textContent = passed ? '✓ PASSED BENCHMARK' : '⚠ NEEDS IMPROVEMENT';
+  }
+  if (bannerContainer) {
+    bannerContainer.style.background = passed ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)';
+    bannerContainer.style.borderColor = passed ? '#86efac' : '#fca5a5';
+  }
+  if (saveBtn) saveBtn.style.display = "inline-flex";
+}
+
+function adjustChatQaCategoryScore(key, delta) {
+  if (!currentChatQaState.categories[key]) return;
+  const currentVal = currentChatQaState.categories[key].score;
+  onChatQaCategoryScoreChange(key, currentVal + delta);
+}
+
+async function saveCalibratedChatQaScorecard() {
+  const callId = currentChatQaState.id;
+  if (!callId) {
+    showToast("No chat scorecard selected to save", "error");
+    return;
+  }
+
+  const saveBtn = document.getElementById("btnSaveChatQaCalibration");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<i data-lucide="loader-2" style="width: 13px; animation: spin 1s linear infinite;"></i> Saving Calibration...`;
+  }
+
+  try {
+    const record = chatQaHistoryCache.find(c => strId(c.id) === strId(callId));
+    let scorecard = record?.qa_scorecard_json ? JSON.parse(JSON.stringify(record.qa_scorecard_json)) : {};
+    if (!scorecard.agent_evaluation) scorecard.agent_evaluation = {};
+    if (!scorecard.overall_evaluation) scorecard.overall_evaluation = {};
+
+    scorecard.overall_qa_score = currentChatQaState.overallScore;
+    scorecard.overall_evaluation.score = currentChatQaState.overallScore;
+    scorecard.overall_evaluation.grade = currentChatQaState.grade;
+
+    for (const k in currentChatQaState.categories) {
+      const cat = currentChatQaState.categories[k];
+      if (k === "compliance") {
+        if (!scorecard.compliance) scorecard.compliance = {};
+        scorecard.compliance.score = cat.score;
+        scorecard.compliance.max_score = cat.max;
+        scorecard.compliance.passed = (cat.score / cat.max) >= 0.75;
+      } else {
+        if (!scorecard.agent_evaluation[k]) scorecard.agent_evaluation[k] = {};
+        scorecard.agent_evaluation[k].score = cat.score;
+        scorecard.agent_evaluation[k].max_score = cat.max;
+        scorecard.agent_evaluation[k].passed = (cat.score / cat.max) >= 0.75;
+      }
+    }
+
+    const payload = {
+      qa_score: currentChatQaState.overallScore,
+      qa_scorecard_json: scorecard
+    };
+
+    const res = await fetch(`/api/v1/calls/${callId}/scorecard`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error("Failed to save scorecard calibration");
+
+    const updatedJob = await res.json();
+    showToast("✓ Calibrated Chat Scorecard saved to database!", "success");
+
+    const idx = chatQaHistoryCache.findIndex(c => strId(c.id) === strId(callId));
+    if (idx !== -1) chatQaHistoryCache[idx] = updatedJob;
+
+    currentChatQaState.isModified = false;
+    if (saveBtn) {
+      saveBtn.style.display = "none";
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `<i data-lucide="save" style="width: 13px;"></i> Save Calibrated Scorecard`;
+    }
+
+    updateChatQaStats();
+    renderChatQaHistoryTable();
+  } catch (err) {
+    showToast(`Error saving scorecard: ${err.message}`, "error");
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `<i data-lucide="save" style="width: 13px;"></i> Save Calibrated Scorecard`;
+    }
+  }
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+function filterChatQaTranscriptTurns(filterType = null) {
+  if (filterType !== null) {
+    currentChatQaState.transcriptFilter = filterType;
+    ['ALL', 'AGENT', 'CUSTOMER'].forEach(t => {
+      const btn = document.getElementById(`btnChatQaTurnFilter_${t}`);
+      if (btn) btn.classList.toggle('active', t === filterType);
+    });
+  }
+
+  const searchInput = document.getElementById("chatQaTurnSearchInput");
+  const query = (searchInput ? searchInput.value : "").toLowerCase().trim();
+  const filter = currentChatQaState.transcriptFilter;
+
+  const items = document.querySelectorAll(".chat-qa-turn-bubble-item");
+  items.forEach(el => {
+    const spk = el.getAttribute("data-speaker") || "";
+    const text = (el.getAttribute("data-text") || "").toLowerCase();
+
+    const matchesSpk = (filter === "ALL") || (spk === filter);
+    const matchesQuery = !query || text.includes(query);
+
+    el.style.display = (matchesSpk && matchesQuery) ? "block" : "none";
+  });
+}
+
+function renderChatQaScorecardView(call) {
+  const container = document.getElementById("chatQaReportContainer");
+  if (!container) return;
+
+  const scorecard = call.qa_scorecard_json || {};
+  const score = (call.qa_score !== null && call.qa_score !== undefined)
+    ? Math.round(call.qa_score)
+    : Math.round(scorecard.overall_qa_score || scorecard.overall_evaluation?.score || 50);
+
+  const grade = scorecard.overall_evaluation?.grade || (score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F');
+  const passed = score >= 80;
+
+  const agentEval = scorecard.agent_evaluation || {};
+  const cx = scorecard.customer_experience || {};
+  const compliance = scorecard.compliance || {};
+  const insights = scorecard.insights || {};
+
+  const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
+  const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ''}`.trim() : (call.agent_name || scorecard.call?.agent_speaker || "Agent");
+
+  // Extract transcript turns
+  let turns = [];
+  if (call.transcript_json) {
+    if (Array.isArray(call.transcript_json.turns)) turns = call.transcript_json.turns;
+    else if (Array.isArray(call.transcript_json.segments)) turns = call.transcript_json.segments;
+  }
+
+  const categoryKeys = [
+    { key: "professional_greeting", label: "Professional Greeting & Identification", max: 10, defaultScore: 10 },
+    { key: "problem_understanding", label: "Problem Understanding & Active Listening", max: 15, defaultScore: 14 },
+    { key: "empathy", label: "Empathy & Customer Rapport", max: 15, defaultScore: 13 },
+    { key: "communication", label: "Communication & Clarity", max: 10, defaultScore: 9 },
+    { key: "professionalism", label: "Professionalism & Tone", max: 10, defaultScore: 10 },
+    { key: "resolution", label: "Issue Resolution & Solution Accuracy", max: 20, defaultScore: 18 },
+    { key: "professional_closing", label: "Professional Closing & Farewell", max: 5, defaultScore: 5 },
+    { key: "compliance", label: "Mandatory Compliance & Disclosures", max: 15, defaultScore: 15 }
+  ];
+
+  currentChatQaState.id = call.id;
+  currentChatQaState.overallScore = score;
+  currentChatQaState.grade = grade;
+  currentChatQaState.passed = passed;
+  currentChatQaState.isModified = false;
+  currentChatQaState.categories = {};
+
+  const categoriesHtml = categoryKeys.map(cat => {
+    let item = cat.key === "compliance" ? compliance : agentEval[cat.key];
+    let catScore = (item && item.score !== null && item.score !== undefined) ? item.score : Math.round((cat.defaultScore / 100) * score);
+    let catMax = (item && item.max_score) ? item.max_score : cat.max;
+    let pct = Math.round((catScore / catMax) * 100);
+    let isCatPassed = (item && item.passed !== undefined && item.passed !== null) ? item.passed : (pct >= 75);
+    let fillColor = isCatPassed ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#ef4444');
+
+    currentChatQaState.categories[cat.key] = {
+      score: catScore,
+      max: catMax,
+      label: cat.label
+    };
+
+    return `
+      <div class="qa-category-row-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px; flex-wrap: nowrap; gap: 8px;">
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${cat.label} <small style="color: #64748b; font-weight: 500;">(Max ${catMax} pts)</small>
+          </span>
+          
+          <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+            <div style="display: inline-flex; align-items: center; gap: 3px;">
+              <button type="button" class="btn-secondary" style="width: 24px; height: 24px; min-width: 24px; padding: 0; font-size: 13px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;"
+                onclick="adjustChatQaCategoryScore('${cat.key}', -1)" title="Decrease score">-</button>
+              
+              <input type="number" id="chatQaInput_${cat.key}" class="qa-score-input" min="0" max="${catMax}" value="${catScore}"
+                oninput="onChatQaCategoryScoreChange('${cat.key}', this.value)">
+              
+              <button type="button" class="btn-secondary" style="width: 24px; height: 24px; min-width: 24px; padding: 0; font-size: 13px; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;"
+                onclick="adjustChatQaCategoryScore('${cat.key}', 1)" title="Increase score">+</button>
+            </div>
+            
+            <span id="chatQaPct_${cat.key}" style="font-size: 12px; min-width: 78px; text-align: right; white-space: nowrap;">
+              <span style="color: ${isCatPassed ? '#15803d' : '#b91c1c'}; font-weight: 700;">${catScore}/${catMax} (${pct}%)</span>
+            </span>
+          </div>
+        </div>
+
+        <div style="width: 100%; display: block; margin-top: 4px;">
+          <input type="range" id="chatQaSlider_${cat.key}" class="qa-score-slider" min="0" max="${catMax}" value="${catScore}" step="1"
+            style="width: 100% !important; background: linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%);"
+            oninput="onChatQaCategoryScoreChange('${cat.key}', this.value)">
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  const sentimentVal = cx.sentiment?.final || cx.sentiment?.initial || (passed ? "Positive" : "Neutral");
+  const satisfactionVal = cx.satisfaction?.level || (passed ? "Satisfied" : "Neutral");
+  const resolutionVal = cx.issue_resolution?.status || (agentEval.resolution?.resolution_status || (passed ? "Resolved" : "Partially Resolved"));
+
+  const strengthsList = (insights.strengths && insights.strengths.length > 0)
+    ? insights.strengths
+    : ["Clear communication and professional tone maintained throughout the chat.", "Accurately verified customer account credentials."];
+
+  const actionItemsList = (insights.action_items && insights.action_items.length > 0)
+    ? insights.action_items
+    : ((insights.weaknesses && insights.weaknesses.length > 0) ? insights.weaknesses : ["State the mandatory regulatory disclosure clearly within the first 30 seconds."]);
+
+  const turnsHtml = turns.length === 0
+    ? `<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+        <i data-lucide="messages-square" style="width: 36px; height: 36px; margin: 0 auto 8px; display: block;"></i>
+        <p style="font-size: 13px;">No dialogue turns available for this chat record.</p>
+       </div>`
+    : turns.map((t, idx) => {
+      const spk = t.speaker || t.speaker_label || (idx % 2 === 0 ? "AGENT" : "CUSTOMER");
+      const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
+      const label = isAgent ? `Agent (${agentName})` : "Customer / User";
+      const textContent = t.text || t.transcript || t.content || "";
+      const startTime = formatTurnTime(t.start || 0);
+      const endTime = formatTurnTime(t.end || 0);
+      const enc = encodeURIComponent(textContent);
+
+      return `
+        <div class="chat-qa-turn-bubble-item ${isAgent ? 'qa-chat-turn-agent' : 'qa-chat-turn-customer'}" data-speaker="${isAgent ? 'AGENT' : 'CUSTOMER'}" data-text="${encodeURIComponent(textContent.toLowerCase())}">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="background: ${isAgent ? '#dbeafe' : '#f3e8ff'}; color: ${isAgent ? '#1e40af' : '#7e22ce'}; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
+              <i data-lucide="${isAgent ? 'headset' : 'user'}" style="width: 12px;"></i> ${label}
+            </span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <small style="font-family: monospace; color: #64748b; font-size: 11px; font-weight: 600;">${startTime} - ${endTime}</small>
+              <button type="button" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 2px;" title="Copy text" onclick="copyTurnText('${enc}')">
+                <i data-lucide="copy" style="width: 11px;"></i>
+              </button>
+            </div>
+          </div>
+          <p style="font-size: 12.5px; color: #1e293b; line-height: 1.5; margin: 0; white-space: pre-wrap;">${textContent}</p>
+        </div>
+      `;
+    }).join("");
+
+  container.innerHTML = `
+    <!-- OVERALL SCORE BANNER -->
+    <div id="chatQaOverallBannerContainer" style="background: ${passed ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'}; border: 1.5px solid ${passed ? '#86efac' : '#fca5a5'}; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+      <div>
+        <span style="font-size: 11px; font-weight: 700; color: ${passed ? '#15803d' : '#991b1b'}; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">CHAT QA BENCHMARK SCORE • ${agentName}</span>
+        <h3 style="font-size: 26px; font-weight: 800; color: ${passed ? '#166534' : '#991b1b'}; margin: 0; display: flex; align-items: center; gap: 10px;">
+          <span id="chatQaOverallScoreText">${score}% Score</span>
+          <span id="chatQaOverallGradeBadge" style="font-size: 15px; font-weight: 700; background: ${passed ? '#15803d' : '#991b1b'}; color: #ffffff; padding: 3px 10px; border-radius: 8px;">Grade ${grade}</span>
+        </h3>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span id="chatQaOverallStatusPill" class="status-pill ${passed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 13px; font-weight: 700; padding: 8px 16px;">
+          ${passed ? '✓ PASSED BENCHMARK' : '⚠ NEEDS IMPROVEMENT'}
+        </span>
+      </div>
+    </div>
+
+    <!-- DUAL-COLUMN STUDIO GRID: SCORECARD CALIBRATION (LEFT 50%) & LIVE CHAT TRANSCRIPT (RIGHT 50%) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; width: 100%;">
+      
+      <!-- LEFT COLUMN: 8 CATEGORY SINGLE-BAR SLIDERS & CX METRICS -->
+      <div style="min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 12px;">
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="sliders" style="width: 16px; flex-shrink: 0;"></i>
+          <span><strong>Auditor Interactive Calibration</strong>: Drag slider or adjust point counters to calibrate each category. Overall score updates in real-time.</span>
+        </div>
+
+        <!-- 8 Categories with Single Slider Bars -->
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          ${categoriesHtml}
+        </div>
+
+        <!-- CX Signals Row -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center;">
+            <span style="font-size: 10px; color: #64748b; display: block; font-weight: 600;">SENTIMENT</span>
+            <strong style="font-size: 12.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <i data-lucide="${sentimentVal.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 13px; color: #10b981;"></i> ${sentimentVal}
+            </strong>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center;">
+            <span style="font-size: 10px; color: #64748b; display: block; font-weight: 600;">SATISFACTION</span>
+            <strong style="font-size: 12.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <i data-lucide="thumbs-up" style="width: 13px; color: #1d61e7;"></i> ${satisfactionVal}
+            </strong>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center;">
+            <span style="font-size: 10px; color: #64748b; display: block; font-weight: 600;">RESOLUTION</span>
+            <strong style="font-size: 12.5px; color: #0f172a; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <i data-lucide="check-circle" style="width: 13px; color: #059669;"></i> ${resolutionVal}
+            </strong>
+          </div>
+        </div>
+
+        <!-- AI Coaching Box -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+          <h5 style="font-size: 12px; font-weight: 700; color: #1d4ed8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="sparkles" style="width: 13px;"></i> AI Coaching & Insights
+          </h5>
+          <div style="font-size: 11.5px; color: #334155; line-height: 1.5;">
+            <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Key Strengths:</strong>
+            <ul style="margin: 0 0 6px 16px; padding: 0;">
+              ${strengthsList.map(s => `<li>${s}</li>`).join("")}
+            </ul>
+            <strong style="color: #1e40af; display: block; margin-bottom: 2px;">Action Items:</strong>
+            <ul style="margin: 0 0 0 16px; padding: 0;">
+              ${actionItemsList.map(a => `<li>${a}</li>`).join("")}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: LIVE CALL DIALOGUE CHAT TRANSCRIPT -->
+      <div style="min-width: 0; width: 100%; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h4 style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="message-square" style="width: 16px; color: #1d61e7;"></i>
+              <span>Chat Conversation Dialogue</span>
+            </h4>
+            <small style="color: #64748b; font-size: 11.5px;">${turns.length} Chat message turns in this session</small>
+          </div>
+          <span class="status-pill badge-completed" style="font-size: 11px; padding: 2px 8px;">
+            ${turns.length} Turns
+          </span>
+        </div>
+
+        <!-- Filter & Search Strip -->
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="time-range-btn active" id="btnChatQaTurnFilter_ALL" style="font-size: 11px; padding: 4px 10px; border-radius: 8px;" onclick="filterChatQaTranscriptTurns('ALL')">
+              All (${turns.length})
+            </button>
+            <button class="time-range-btn" id="btnChatQaTurnFilter_AGENT" style="font-size: 11px; padding: 4px 10px; border-radius: 8px;" onclick="filterChatQaTranscriptTurns('AGENT')">
+              Agent Only
+            </button>
+            <button class="time-range-btn" id="btnChatQaTurnFilter_CUSTOMER" style="font-size: 11px; padding: 4px 10px; border-radius: 8px;" onclick="filterChatQaTranscriptTurns('CUSTOMER')">
+              Customer Only
+            </button>
+          </div>
+
+          <div style="position: relative; width: 100%;">
+            <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 13px; color: #94a3b8;"></i>
+            <input type="text" id="chatQaTurnSearchInput" placeholder="Search chat messages..." style="width: 100%; padding: 6px 10px 6px 30px; font-size: 12px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; background: #ffffff;" oninput="filterChatQaTranscriptTurns()">
+          </div>
+        </div>
+
+        <!-- Chat Dialogue Stream -->
+        <div class="qa-dialogue-container" style="max-height: 520px; height: 520px; overflow-y: auto; padding-right: 6px;">
+          ${turnsHtml}
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+}
+
+async function deleteChatQaRecord(id) {
+  if (!confirm("Are you sure you want to delete this Chat QA evaluation record?")) return;
+
+  try {
+    const res = await fetch(`/api/v1/chat-qa/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete record");
+
+    showToast("Chat QA record deleted successfully", "info");
+    chatQaHistoryCache = chatQaHistoryCache.filter(c => strId(c.id) !== strId(id));
+    chatQaFilteredHistory = chatQaFilteredHistory.filter(c => strId(c.id) !== strId(id));
+
+    updateChatQaStats();
+    renderChatQaHistoryTable();
+
+    const panel = document.getElementById("chatQaDetailsBottomSection");
+    if (panel && currentChatQaState.id === id) {
+      panel.style.display = "none";
+    }
+  } catch (err) {
+    showToast(`Error deleting record: ${err.message}`, "error");
+  }
+}
+
+function copyCurrentChatQaScorecard() {
+  const callId = currentChatQaState.id;
+  const record = chatQaHistoryCache.find(c => strId(c.id) === strId(callId));
+  if (!record) {
+    showToast("No scorecard loaded to copy", "warning");
+    return;
+  }
+
+  const sc = record.qa_scorecard_json || {};
+  const text = `VoxAudit Chat QA Scorecard: ${record.original_file_name || 'Chat'}\nOverall Score: ${record.qa_score}%\nAgent: ${record.agent_name || 'Agent'}\nDate: ${record.created_at || ''}`;
+  navigator.clipboard.writeText(text);
+  showToast("✓ Chat QA scorecard summary copied to clipboard!", "success");
+}
+
+function downloadCurrentChatQaJson() {
+  const callId = currentChatQaState.id;
+  const record = chatQaHistoryCache.find(c => strId(c.id) === strId(callId));
+  if (!record) {
+    showToast("No scorecard loaded to export", "warning");
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `chat_qa_${record.audit_code || record.id || 'export'}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("Chat QA JSON exported successfully!", "info");
 }
 
