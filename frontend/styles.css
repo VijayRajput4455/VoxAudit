@@ -558,8 +558,8 @@ html, body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
-/* Premium Impressive Dropdown Select */
-select, .custom-select-premium {
+/* Premium Impressive Dropdown Select (Form Groups & Modals) */
+.form-group select, .modal-box select, .custom-select-full {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -581,17 +581,58 @@ select, .custom-select-premium {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-select:hover, .custom-select-premium:hover {
+.form-group select:hover, .modal-box select:hover, .custom-select-full:hover {
   border-color: #93c5fd;
   background-color: #f8fafc;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
 
-select:focus, .custom-select-premium:focus {
+.form-group select:focus, .modal-box select:focus, .custom-select-full:focus {
   border-color: #2563eb;
   outline: none;
   background-color: #ffffff;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18), 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+/* Toolbar & Filter Selects (Inline, Auto-Width) */
+.select-filter, select:not(.form-group select):not(.modal-box select):not(.custom-select-full) {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: auto;
+  min-width: 140px;
+  max-width: 220px;
+  height: 38px;
+  padding: 0 34px 0 13px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%232563eb' stroke-width='2.2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+}
+
+.select-filter:hover, select:not(.form-group select):not(.modal-box select):not(.custom-select-full):hover {
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.08);
+}
+
+.select-filter:focus, select:not(.form-group select):not(.modal-box select):not(.custom-select-full):focus {
+  border-color: #2563eb;
+  outline: none;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 select option {
@@ -1322,8 +1363,28 @@ code {
   margin-top: 20px;
 }
 
-.page-view { display: none; }
-.page-view.active { display: block; }
+.page-view {
+  display: none;
+  width: 100%;
+}
+
+.page-view.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 20px;
+}
+
+.page-view > .panel-card:last-child {
+  flex: 1;
+  min-height: calc(100vh - 340px);
+  display: flex;
+  flex-direction: column;
+}
+
+.page-view > .panel-card:last-child .table-responsive {
+  flex: 1;
+}
 
 /* ==========================================================================
    MEDIA QUERIES FOR COMPREHENSIVE RESPONSIVENESS (100% - 150% ZOOM)
