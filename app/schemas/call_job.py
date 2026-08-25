@@ -59,3 +59,9 @@ class CallJobResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
+class QAScorecardUpdateRequest(BaseModel):
+    qa_score: Optional[float] = None
+    qa_scorecard_json: Optional[Dict[str, Any]] = None
+
+

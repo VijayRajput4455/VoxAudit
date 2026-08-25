@@ -9,7 +9,7 @@ from app.api.deps import get_db
 from app.core.exceptions import VoxAuditException
 from app.core.logging import get_logger
 from app.models.call_job import CallJob
-from app.schemas.call_job import CallJobResponse, CallSubmissionResponse
+from app.schemas.call_job import CallJobResponse, CallSubmissionResponse, QAScorecardUpdateRequest
 from app.services.call.call_service import CallService
 
 logger = get_logger(__name__)
@@ -161,6 +161,44 @@ def get_call_scorecard(
         raise HTTPException(status_code=404, detail=f"QA Scorecard not available for call '{call_id}'.")
 
     return call_job.qa_scorecard_json
+
+
+@router.put(
+    "/{call_id}/scorecard",
+    response_model=CallJobResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update or Override Call QA Scorecard",
+    description="Allows QA auditors to adjust category scores, recalibrate overall QA score, and save custom scorecard evaluations.",
+)
+def update_call_scorecard(
+    call_id: UUID,
+    payload: QAScorecardUpdateRequest,
+    db: Session = Depends(get_db),
+) -> CallJobResponse:
+    """Updates QA scorecard and overall score for a call based on auditor calibration."""
+    statement = select(CallJob).where(CallJob.id == call_id)
+    call_job = db.scalar(statement)
+
+    if not call_job:
+        raise HTTPException(status_code=404, detail=f"Call job '{call_id}' not found.")
+
+    if payload.qa_score is not None:
+        call_job.qa_score = float(payload.qa_score)
+
+    if payload.qa_scorecard_json is not None:
+        call_job.qa_scorecard_json = payload.qa_scorecard_json
+        if payload.qa_score is None and "overall_qa_score" in payload.qa_scorecard_json:
+            call_job.qa_score = float(payload.qa_scorecard_json["overall_qa_score"])
+        
+        if call_job.transcript_json:
+            updated_trans = dict(call_job.transcript_json)
+            updated_trans["qa_scorecard"] = call_job.qa_scorecard_json
+            call_job.transcript_json = updated_trans
+
+    db.commit()
+    db.refresh(call_job)
+    return CallJobResponse.model_validate(call_job)
+
 
 
 @router.get(
