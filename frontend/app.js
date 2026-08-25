@@ -4438,15 +4438,52 @@ function triggerQaAuditFromDiar() {
 }
 
 /* ==========================================================================
-   DIARIZED CALLS & TRANSCRIPTS HISTORY TABLE
+   DIARIZED CALLS & TRANSCRIPTS HISTORY TABLE (PAGINATED - 5 PER PAGE)
    ========================================================================== */
 
-function renderDiarHistoryTable(filterQuery = "") {
+let diarHistoryCurrentPage = 1;
+const DIAR_HISTORY_PAGE_SIZE = 5;
+let diarHistorySearchQuery = "";
+
+function setDiarHistoryPage(pageNum) {
+  diarHistoryCurrentPage = pageNum;
+  renderDiarHistoryTable(diarHistorySearchQuery);
+}
+
+function changeDiarHistoryPage(direction) {
+  if (direction === "prev") {
+    if (diarHistoryCurrentPage > 1) {
+      diarHistoryCurrentPage--;
+      renderDiarHistoryTable(diarHistorySearchQuery);
+    }
+  } else if (direction === "next") {
+    diarHistoryCurrentPage++;
+    renderDiarHistoryTable(diarHistorySearchQuery);
+  }
+}
+
+function filterDiarHistoryTable(val) {
+  diarHistorySearchQuery = val || "";
+  diarHistoryCurrentPage = 1; // Reset to first page on search
+  renderDiarHistoryTable(diarHistorySearchQuery);
+}
+
+function renderDiarHistoryTable(filterQuery = null) {
   const tbody = document.getElementById("diarHistoryTableBody");
   if (!tbody) return;
 
-  const query = (filterQuery || "").toLowerCase().trim();
+  if (filterQuery !== null && filterQuery !== undefined) {
+    diarHistorySearchQuery = filterQuery;
+  }
+  const query = (diarHistorySearchQuery || "").toLowerCase().trim();
   let calls = [...auditsCache];
+
+  // Sort calls newest/latest first
+  calls.sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return timeB - timeA;
+  });
 
   if (query) {
     calls = calls.filter(c => {
@@ -4459,7 +4496,22 @@ function renderDiarHistoryTable(filterQuery = "") {
     });
   }
 
-  if (calls.length === 0) {
+  const totalRecords = calls.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / DIAR_HISTORY_PAGE_SIZE));
+
+  if (diarHistoryCurrentPage > totalPages) {
+    diarHistoryCurrentPage = totalPages;
+  }
+  if (diarHistoryCurrentPage < 1) {
+    diarHistoryCurrentPage = 1;
+  }
+
+  const paginationInfo = document.getElementById("diarHistoryPaginationInfo");
+  const prevBtn = document.getElementById("diarHistPrevBtn");
+  const nextBtn = document.getElementById("diarHistNextBtn");
+  const pageNumbersContainer = document.getElementById("diarHistoryPageNumbers");
+
+  if (totalRecords === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="7" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
@@ -4468,8 +4520,61 @@ function renderDiarHistoryTable(filterQuery = "") {
         </td>
       </tr>
     `;
+    if (paginationInfo) paginationInfo.innerHTML = "Showing <strong>0</strong> calls";
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (pageNumbersContainer) pageNumbersContainer.innerHTML = "";
     if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
     return;
+  }
+
+  const startIndex = (diarHistoryCurrentPage - 1) * DIAR_HISTORY_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + DIAR_HISTORY_PAGE_SIZE, totalRecords);
+  const pagedCalls = calls.slice(startIndex, endIndex);
+
+  // Update Pagination Info
+  if (paginationInfo) {
+    paginationInfo.innerHTML = `Showing <strong>${startIndex + 1}</strong> - <strong>${endIndex}</strong> of <strong>${totalRecords}</strong> calls`;
+  }
+
+  // Update Previous / Next Button States
+  if (prevBtn) {
+    const isPrevDisabled = diarHistoryCurrentPage <= 1;
+    prevBtn.disabled = isPrevDisabled;
+    prevBtn.style.opacity = isPrevDisabled ? "0.45" : "1";
+    prevBtn.style.cursor = isPrevDisabled ? "not-allowed" : "pointer";
+    prevBtn.style.background = isPrevDisabled ? "#f1f5f9" : "#ffffff";
+    prevBtn.style.borderColor = isPrevDisabled ? "#e2e8f0" : "#cbd5e1";
+    prevBtn.style.color = isPrevDisabled ? "#94a3b8" : "#1e293b";
+  }
+
+  if (nextBtn) {
+    const isNextDisabled = diarHistoryCurrentPage >= totalPages;
+    nextBtn.disabled = isNextDisabled;
+    nextBtn.style.opacity = isNextDisabled ? "0.45" : "1";
+    nextBtn.style.cursor = isNextDisabled ? "not-allowed" : "pointer";
+    nextBtn.style.background = isNextDisabled ? "#f1f5f9" : "#ffffff";
+    nextBtn.style.borderColor = isNextDisabled ? "#e2e8f0" : "#cbd5e1";
+    nextBtn.style.color = isNextDisabled ? "#94a3b8" : "#1e293b";
+  }
+
+  // Update Page Number Buttons (1, 2, 3, 4...)
+  if (pageNumbersContainer) {
+    let pagesHtml = "";
+    for (let p = 1; p <= totalPages; p++) {
+      const isActive = p === diarHistoryCurrentPage;
+      const baseStyle = "width: 40px; height: 40px; min-width: 40px; padding: 0; border-radius: 11px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);";
+      const btnStyle = isActive
+        ? `${baseStyle} border: 1px solid #1d61e7; background: linear-gradient(135deg, #1d61e7 0%, #174ebc 100%); color: #ffffff; font-weight: 700; box-shadow: 0 4px 14px rgba(29, 97, 231, 0.4); cursor: default; transform: scale(1.05);`
+        : `${baseStyle} border: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer;`;
+
+      pagesHtml += `
+        <button type="button" class="diar-page-btn ${isActive ? 'active' : ''}" style="${btnStyle}" onclick="setDiarHistoryPage(${p})" title="Page ${p}">
+          ${p}
+        </button>
+      `;
+    }
+    pageNumbersContainer.innerHTML = pagesHtml;
   }
 
   const fmtTime = (sec) => {
@@ -4481,7 +4586,7 @@ function renderDiarHistoryTable(filterQuery = "") {
     return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
   };
 
-  tbody.innerHTML = calls.map(c => {
+  tbody.innerHTML = pagedCalls.map(c => {
     const identEmp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
     const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Unidentified Speaker";
     const empCode = identEmp ? identEmp.employee_code : (c.identified_employee_id ? "AGNT-EMP" : "--");
@@ -4562,10 +4667,6 @@ function renderDiarHistoryTable(filterQuery = "") {
   }).join("");
 
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
-}
-
-function filterDiarHistoryTable(val) {
-  renderDiarHistoryTable(val);
 }
 
 async function inspectDiarHistoryCall(callId) {

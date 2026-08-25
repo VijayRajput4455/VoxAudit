@@ -1536,3 +1536,133 @@ code {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   filter: brightness(0.95);
 }
+
+/* ==========================================================================
+   Speaker Diarization History Table Premium Centered Pagination
+   ========================================================================== */
+.diar-pagination-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-top: 26px !important;
+  padding-top: 20px !important;
+  border-top: 1px solid #f1f5f9 !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+.diar-pagination-wrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  background: rgba(248, 250, 252, 0.95) !important;
+  padding: 8px 12px !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05) !important;
+  flex-wrap: wrap !important;
+}
+
+.diar-nav-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 40px !important;
+  padding: 0 18px !important;
+  border-radius: 11px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-family, inherit) !important;
+  color: #1e293b !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+}
+
+.diar-nav-btn:hover:not(:disabled) {
+  background: #eff6ff !important;
+  border-color: #1d61e7 !important;
+  color: #1d61e7 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(29, 97, 231, 0.18) !important;
+}
+
+.diar-nav-btn:active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+
+.diar-nav-btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.diar-pages-list {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.diar-page-btn {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  padding: 0 !important;
+  border-radius: 11px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-family, inherit) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+}
+
+.diar-page-btn:hover:not(.active) {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d61e7 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(29, 97, 231, 0.15) !important;
+}
+
+.diar-page-btn.active {
+  background: linear-gradient(135deg, #1d61e7 0%, #174ebc 100%) !important;
+  color: #ffffff !important;
+  border-color: #1d61e7 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(29, 97, 231, 0.4) !important;
+  cursor: default !important;
+  transform: scale(1.05) !important;
+}
+
+.diar-pagination-info {
+  font-size: 13px !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+}
+
+.diar-pagination-info strong {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+
+

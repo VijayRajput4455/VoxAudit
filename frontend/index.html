@@ -19,7 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=4">
 </head>
 
 <body>
@@ -1257,6 +1257,32 @@
               </tbody>
             </table>
           </div>
+
+          <!-- DIARIZATION HISTORY PAGINATION CONTROLS (BOTTOM CENTERED & ATTRACTIVE) -->
+          <div id="diarHistoryPagination" class="diar-pagination-container"
+            style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin-top: 26px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: center; gap: 14px;">
+            <div class="diar-pagination-wrapper"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: rgba(248, 250, 252, 0.95); padding: 8px 12px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);">
+              <button id="diarHistPrevBtn" class="diar-nav-btn" onclick="changeDiarHistoryPage('prev')" title="Previous page"
+                style="display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 11px; font-size: 13.5px; font-weight: 600; color: #1e293b; background: #ffffff; border: 1px solid #cbd5e1; cursor: pointer; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04); transition: all 0.2s ease;">
+                <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
+                <span>Previous</span>
+              </button>
+              <div id="diarHistoryPageNumbers" class="diar-pages-list"
+                style="display: inline-flex; align-items: center; gap: 6px;">
+                <!-- Page numbers (1, 2, 3, 4...) rendered dynamically -->
+              </div>
+              <button id="diarHistNextBtn" class="diar-nav-btn" onclick="changeDiarHistoryPage('next')" title="Next page"
+                style="display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 11px; font-size: 13.5px; font-weight: 600; color: #1e293b; background: #ffffff; border: 1px solid #cbd5e1; cursor: pointer; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04); transition: all 0.2s ease;">
+                <span>Next</span>
+                <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
+            <div id="diarHistoryPaginationInfo" class="diar-pagination-info"
+              style="font-size: 13px; color: #64748b; font-weight: 500; text-align: center;">
+              Showing 0 calls
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2433,7 +2459,7 @@
   <!-- BOTTOM-CENTER FLOATING TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 
 </html>
