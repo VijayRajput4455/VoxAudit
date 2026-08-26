@@ -1318,47 +1318,47 @@
       <!-- VIEW: QA QUALITY TEST & SCORECARDS PAGE -->
       <!-- ==================================================================== -->
       <div id="view-qa-analysis" class="page-view">
-        <!-- METRICS GRID -->
+        <!-- QA METRICS GRID (STATIC) -->
         <section class="metrics-grid-4" style="margin-bottom: 20px;">
-          <div class="metric-card">
+          <div class="metric-card" id="qaCardTotalCalls">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>EVALUATED CALLS</span>
-                <h2 id="qa-stat-evals">0</h2>
+                <span>TOTAL CALLS ANALYZED</span>
+                <h2 id="qa-stat-total-calls">0</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="award"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="phone-call"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="check"></i><span>QA Benchmark Tested</span></div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>All Processed Audio</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="qaCardAgentDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>AVERAGE QA SCORE</span>
-                <h2 id="qa-stat-score">0%</h2>
+                <span>TOTAL AGENT DURATION</span>
+                <h2 id="qa-stat-agent-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="target"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="mic"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Quality Standard</span></div>
+            <div class="metric-trend up"><i data-lucide="user-check"></i><span>Agent Speaking Time</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="qaCardCustomerDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>COMPLIANCE PASS RATE</span>
-                <h2 id="qa-stat-compliance">100%</h2>
+                <span>TOTAL CUSTOMER DURATION</span>
+                <h2 id="qa-stat-customer-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="shield-check"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="headphones"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="check"></i><span>Disclosures Met</span></div>
+            <div class="metric-trend up"><i data-lucide="users"></i><span>Customer Speaking Time</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="qaCardTotalDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>TOP PERFORMER</span>
-                <h2 id="qa-stat-top-agent">--</h2>
+                <span>TOTAL DURATION (ALL CALLS)</span>
+                <h2 id="qa-stat-total-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="star"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="clock"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="award"></i><span>Highest Score Agent</span></div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Cumulative Speech Time</span></div>
           </div>
         </section>
 
@@ -1564,7 +1564,6 @@
                   <th>Call Audio / Reference</th>
                   <th>Identified Agent</th>
                   <th>Overall QA Score</th>
-                  <th>Compliance Status</th>
                   <th>Customer Sentiment</th>
                   <th>Duration</th>
                   <th style="text-align: right;">Actions</th>
@@ -1608,47 +1607,47 @@
       <!-- VIEW: CHAT QA AUDIT & JSON TRANSCRIPT EVALUATION PAGE -->
       <!-- ==================================================================== -->
       <div id="view-chat-qa" class="page-view">
-        <!-- METRICS GRID -->
+        <!-- CHAT QA METRICS GRID (STATIC) -->
         <section class="metrics-grid-4" style="margin-bottom: 20px;">
-          <div class="metric-card">
+          <div class="metric-card" id="chatQaCardTotalCalls">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>EVALUATED CHATS</span>
-                <h2 id="chat-qa-stat-total">0</h2>
+                <span>TOTAL CALLS ANALYZED</span>
+                <h2 id="chat-qa-stat-total-calls">0</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="messages-square"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="phone-call"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="check"></i><span>JSON Chat Transcripts</span></div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>All Processed Audio</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="chatQaCardAgentDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>AVERAGE QA SCORE</span>
-                <h2 id="chat-qa-stat-score">0%</h2>
+                <span>TOTAL AGENT DURATION</span>
+                <h2 id="chat-qa-stat-agent-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="target"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="mic"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Chat Quality Benchmark</span></div>
+            <div class="metric-trend up"><i data-lucide="user-check"></i><span>Agent Speaking Time</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="chatQaCardCustomerDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>COMPLIANCE RATE</span>
-                <h2 id="chat-qa-stat-compliance">100%</h2>
+                <span>TOTAL CUSTOMER DURATION</span>
+                <h2 id="chat-qa-stat-customer-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="shield-check"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="headphones"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="check"></i><span>Policy & Disclosures</span></div>
+            <div class="metric-trend up"><i data-lucide="users"></i><span>Customer Speaking Time</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="chatQaCardTotalDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>POSITIVE SENTIMENT</span>
-                <h2 id="chat-qa-stat-sentiment">0%</h2>
+                <span>TOTAL DURATION (ALL CALLS)</span>
+                <h2 id="chat-qa-stat-total-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="smile"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="clock"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="thumbs-up"></i><span>Customer Experience</span></div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Cumulative Speech Time</span></div>
           </div>
         </section>
 

@@ -5287,34 +5287,72 @@ async function loadQaAnalysisPage() {
 
   populateQaCallDropdown();
 
-  const evalsEl = document.getElementById("qa-stat-evals");
-  const scoreEl = document.getElementById("qa-stat-score");
-  const compEl = document.getElementById("qa-stat-compliance");
-  const topEl = document.getElementById("qa-stat-top-agent");
+  const calls = auditsCache || [];
+  const totalCalls = calls.length;
 
-  const evaluatedCalls = auditsCache.filter(c => c.qa_score !== null && c.qa_score !== undefined);
-  if (evalsEl) evalsEl.textContent = evaluatedCalls.length;
+  let totalDurationSec = 0;
+  let totalAgentDurationSec = 0;
+  let totalCustomerDurationSec = 0;
 
-  const scores = evaluatedCalls.map(c => c.qa_score);
-  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-  if (scoreEl) scoreEl.textContent = scores.length > 0 ? `${avgScore}%` : "--";
+  calls.forEach(c => {
+    const callDur = getCallDurationSeconds(c);
+    totalDurationSec += callDur;
 
-  const passedCalls = evaluatedCalls.filter(c => c.qa_score >= 80);
-  const passRate = evaluatedCalls.length > 0 ? Math.round((passedCalls.length / evaluatedCalls.length) * 100) : 100;
-  if (compEl) compEl.textContent = evaluatedCalls.length > 0 ? `${passRate}%` : "100%";
-
-  if (topEl) {
-    if (evaluatedCalls.length > 0) {
-      const topCall = [...evaluatedCalls].sort((a, b) => (b.qa_score || 0) - (a.qa_score || 0))[0];
-      const topEmp = employeesCache.find(e => strId(e.id) === strId(topCall.identified_employee_id));
-      topEl.textContent = topEmp ? `${topEmp.first_name} ${topEmp.last_name || ''}`.trim() : (topCall.call_reference || "Top Agent");
-    } else {
-      const topEmp = employeesCache[0];
-      topEl.textContent = topEmp ? `${topEmp.first_name} ${topEmp.last_name || ''}`.trim() : "--";
+    // Check QA scorecard talk-time fields first
+    const qaJson = c.qa_scorecard_json;
+    if (qaJson && (qaJson.agent_talk_time_seconds !== undefined || qaJson.customer_talk_time_seconds !== undefined)) {
+      totalAgentDurationSec += Number(qaJson.agent_talk_time_seconds) || 0;
+      totalCustomerDurationSec += Number(qaJson.customer_talk_time_seconds) || 0;
+      return;
     }
-  }
+
+    // Otherwise compute from transcript turns
+    const turns = c.transcript_json?.turns || c.transcript_json?.segments || [];
+    if (Array.isArray(turns) && turns.length > 0) {
+      let callAgentDur = 0;
+      let callCustDur = 0;
+      turns.forEach(t => {
+        const spk = (t.speaker || t.speaker_label || "").toUpperCase();
+        const dur = Math.max(0, (Number(t.end) || 0) - (Number(t.start) || 0));
+        if (spk.includes("AGENT") || spk === "SPEAKER_00" || spk === "SPEAKER_AGENT") {
+          callAgentDur += dur;
+        } else if (spk.includes("CUSTOMER") || spk === "SPEAKER_01" || spk === "SPEAKER_02" || spk === "SPEAKER_CUSTOMER") {
+          callCustDur += dur;
+        } else {
+          if (c.identified_employee_id) {
+            callAgentDur += dur * 0.55;
+            callCustDur += dur * 0.45;
+          } else {
+            callAgentDur += dur * 0.5;
+            callCustDur += dur * 0.5;
+          }
+        }
+      });
+      totalAgentDurationSec += callAgentDur;
+      totalCustomerDurationSec += callCustDur;
+    } else if (callDur > 0) {
+      if (c.identified_employee_id) {
+        totalAgentDurationSec += callDur * 0.55;
+        totalCustomerDurationSec += callDur * 0.45;
+      } else {
+        totalAgentDurationSec += callDur * 0.5;
+        totalCustomerDurationSec += callDur * 0.5;
+      }
+    }
+  });
+
+  const callsEl = document.getElementById("qa-stat-total-calls") || document.getElementById("qa-stat-evals");
+  const agentDurEl = document.getElementById("qa-stat-agent-duration") || document.getElementById("qa-stat-agent-talk-ratio");
+  const custDurEl = document.getElementById("qa-stat-customer-duration") || document.getElementById("qa-stat-customer-sentiment");
+  const durationEl = document.getElementById("qa-stat-total-duration") || document.getElementById("qa-stat-score");
+
+  if (callsEl) callsEl.textContent = totalCalls;
+  if (agentDurEl) agentDurEl.textContent = formatSecondsToSpeechTime(totalAgentDurationSec);
+  if (custDurEl) custDurEl.textContent = formatSecondsToSpeechTime(totalCustomerDurationSec);
+  if (durationEl) durationEl.textContent = formatSecondsToSpeechTime(totalDurationSec);
 
   renderQaHistoryTable();
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
 function handleQaSelectChange() {
@@ -5986,7 +6024,7 @@ function renderQaHistoryTable(filterQuery = null) {
   if (totalRecords === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+        <td colspan="6" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
           <i data-lucide="inbox" style="width: 38px; height: 38px; margin-bottom: 8px; color: #cbd5e1; display: block; margin: 0 auto 8px;"></i>
           <p style="font-size: 13px; font-weight: 500; margin: 0;">${query ? 'No matching evaluated calls found.' : 'No call evaluations available yet. Select a call above to run the QA evaluation engine.'}</p>
         </td>
@@ -6050,9 +6088,10 @@ function renderQaHistoryTable(filterQuery = null) {
   }
 
   const fmtTime = (sec) => {
-    if (sec === null || sec === undefined) return "00:00";
+    if (sec === null || sec === undefined || isNaN(sec)) return "--";
     if (typeof sec === "string" && sec.includes(":")) return sec;
-    const s = Math.floor(Number(sec));
+    const s = Math.round(Number(sec));
+    if (s <= 0) return "--";
     const m = Math.floor(s / 60);
     const r = s % 60;
     return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
@@ -6075,10 +6114,6 @@ function renderQaHistoryTable(filterQuery = null) {
       ? `<span class="status-pill ${isPassed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 12px; font-weight: 700; padding: 4px 10px;">${scoreVal}% [Grade ${grade}]</span>`
       : `<span class="status-pill badge-processing" style="font-size: 11px; padding: 3px 8px;">Pending Evaluation</span>`;
 
-    const complianceBadge = hasQa
-      ? `<span class="status-pill ${isPassed ? 'badge-completed' : 'badge-inactive'}" style="font-size: 11px; padding: 3px 8px;">${isPassed ? '✓ Passed' : '⚠ Review Required'}</span>`
-      : `<span style="font-size: 12px; color: #94a3b8;">--</span>`;
-
     const sentimentBadge = hasQa
       ? `<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: ${sentiment.toLowerCase() === 'positive' ? '#15803d' : '#334155'};">
           <i data-lucide="${sentiment.toLowerCase() === 'positive' ? 'smile' : 'meh'}" style="width: 14px; color: ${sentiment.toLowerCase() === 'positive' ? '#10b981' : '#64748b'};"></i> ${sentiment}
@@ -6087,6 +6122,7 @@ function renderQaHistoryTable(filterQuery = null) {
 
     const callRef = c.call_reference || (c.id ? c.id.substring(0, 8) : 'CALL-REC');
     const fileName = c.audio_filename || c.original_file_name || "call_audio.wav";
+    const durationSec = getCallDurationSeconds(c);
 
     return `
       <tr>
@@ -6108,10 +6144,9 @@ function renderQaHistoryTable(filterQuery = null) {
           </div>
         </td>
         <td>${scoreBadge}</td>
-        <td>${complianceBadge}</td>
         <td>${sentimentBadge}</td>
         <td>
-          <span style="font-family: monospace; font-size: 12px; color: #334155;">${fmtTime(c.duration_seconds)}</span>
+          <span style="font-family: monospace; font-size: 12px; color: #334155;">${fmtTime(durationSec)}</span>
         </td>
         <td style="text-align: right;">
           <div style="display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end;">
@@ -6602,36 +6637,55 @@ async function loadChatQaHistory() {
 }
 
 function updateChatQaStats() {
-  const totalEl = document.getElementById("chat-qa-stat-total");
-  const scoreEl = document.getElementById("chat-qa-stat-score");
-  const compEl = document.getElementById("chat-qa-stat-compliance");
-  const sentEl = document.getElementById("chat-qa-stat-sentiment");
+  const totalEl = document.getElementById("chat-qa-stat-total-calls") || document.getElementById("chat-qa-stat-total");
+  const agentDurEl = document.getElementById("chat-qa-stat-agent-duration");
+  const custDurEl = document.getElementById("chat-qa-stat-customer-duration");
+  const durationEl = document.getElementById("chat-qa-stat-total-duration");
 
-  const total = chatQaHistoryCache.length;
+  const chats = chatQaHistoryCache || [];
+  const total = chats.length;
+
   if (totalEl) totalEl.textContent = total;
 
-  if (total === 0) {
-    if (scoreEl) scoreEl.textContent = "0%";
-    if (compEl) compEl.textContent = "100%";
-    if (sentEl) sentEl.textContent = "0%";
-    return;
-  }
+  let totalDurationSec = 0;
+  let totalAgentDurationSec = 0;
+  let totalCustomerDurationSec = 0;
 
-  let totalScore = 0;
-  let compPassed = 0;
-  let posSentiment = 0;
+  chats.forEach(c => {
+    const callDur = getCallDurationSeconds(c);
+    totalDurationSec += callDur;
 
-  chatQaHistoryCache.forEach(c => {
-    totalScore += (c.qa_score || 0);
-    const sc = c.qa_scorecard_json || {};
-    if (sc.compliance?.passed !== false) compPassed++;
-    const s = sc.customer_experience?.sentiment?.final || sc.customer_experience?.sentiment?.initial || "";
-    if (s.toLowerCase() === "positive") posSentiment++;
+    const qa = c.qa_scorecard_json;
+    if (qa && (qa.agent_talk_time_seconds !== undefined || qa.customer_talk_time_seconds !== undefined)) {
+      totalAgentDurationSec += Number(qa.agent_talk_time_seconds) || 0;
+      totalCustomerDurationSec += Number(qa.customer_talk_time_seconds) || 0;
+      return;
+    }
+
+    const turns = c.transcript_json?.turns || c.transcript_json?.segments || [];
+    if (Array.isArray(turns) && turns.length > 0) {
+      let callAgentDur = 0;
+      let callCustDur = 0;
+      turns.forEach(t => {
+        const spk = (t.speaker || t.speaker_label || t.role || "").toUpperCase();
+        const dur = Math.max(0, (Number(t.end) || 0) - (Number(t.start) || 0)) || 10;
+        if (spk.includes("AGENT") || spk.includes("ASSISTANT") || spk === "SPEAKER_00") {
+          callAgentDur += dur;
+        } else {
+          callCustDur += dur;
+        }
+      });
+      totalAgentDurationSec += callAgentDur;
+      totalCustomerDurationSec += callCustDur;
+    } else if (callDur > 0) {
+      totalAgentDurationSec += callDur * 0.55;
+      totalCustomerDurationSec += callDur * 0.45;
+    }
   });
 
-  if (scoreEl) scoreEl.textContent = `${Math.round(totalScore / total)}%`;
-  if (compEl) compEl.textContent = `${Math.round((compPassed / total) * 100)}%`;
-  if (sentEl) sentEl.textContent = `${Math.round((posSentiment / total) * 100)}%`;
+  if (agentDurEl) agentDurEl.textContent = formatSecondsToSpeechTime(totalAgentDurationSec);
+  if (custDurEl) custDurEl.textContent = formatSecondsToSpeechTime(totalCustomerDurationSec);
+  if (durationEl) durationEl.textContent = formatSecondsToSpeechTime(totalDurationSec);
 }
 
 function filterChatQaHistoryTable(query) {
