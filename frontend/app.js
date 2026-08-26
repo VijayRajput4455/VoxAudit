@@ -1363,7 +1363,13 @@ async function deleteCallAudit(callId) {
   const call = auditsCache.find(c => strId(c.id) === strId(callId));
   const callName = call?.original_file_name || call?.call_reference || (call?.id ? call.id.substring(0, 8) : "this call");
 
-  if (!confirm(`Are you sure you want to permanently delete "${callName}" and its transcript?`)) return;
+  const confirmed = await showConfirmModal({
+    title: "Delete Call Audit Record",
+    message: `Are you sure you want to permanently delete "${callName}" and its transcript?`,
+    confirmText: "Delete Call Audit",
+    isDanger: true
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/v1/calls/${callId}`, { method: "DELETE" });
@@ -2921,10 +2927,22 @@ function renderVoiceEnrollmentDirectory(summaryData = null) {
         <td><strong>${sampleCount} audio clip(s)</strong></td>
         <td><span class="status-pill ${statusClass}" style="display:inline-flex; align-items:center; gap:5px;">${statusText}</span></td>
         <td>${durStr}</td>
-        <td>
-          <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="selectEmployeeForEnrollment('${prof.employee_id}')">+ Add Sample</button>
-          ${isEnrolled ? `<button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #1d61e7;" onclick="openManageVoiceClipsModal('${prof.employee_id}', '${fullName}')">Manage Clips (${sampleCount})</button>` : ""}
-          ${isEnrolled ? `<button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="deleteEmployeeVoiceSamples('${prof.employee_id}', '${fullName}')">Clear All</button>` : ""}
+        <td style="text-align: right;">
+          <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
+            <button class="btn-primary" style="font-size: 11.5px; padding: 5px 12px; height: auto; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; box-shadow: 0 2px 6px rgba(29, 97, 231, 0.2);" onclick="selectEmployeeForEnrollment('${prof.employee_id}')" title="Enroll new voice sample for ${fullName}">
+              <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Add Sample
+            </button>
+            ${isEnrolled ? `
+              <button class="btn-secondary" style="font-size: 11.5px; padding: 5px 11px; height: auto; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; font-weight: 600;" onclick="openManageVoiceClipsModal('${prof.employee_id}', '${fullName}')" title="Inspect voice samples (${sampleCount})">
+                <i data-lucide="music" style="width: 12px; height: 12px;"></i> Clips (${sampleCount})
+              </button>
+            ` : ""}
+            ${isEnrolled ? `
+              <button class="btn-secondary" style="font-size: 11px; padding: 5px 9px; height: auto; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: #ef4444; background: #fff5f5; border: 1px solid #fecaca; cursor: pointer; transition: all 0.2s;" onclick="deleteEmployeeVoiceSamples('${prof.employee_id}', '${fullName}')" title="Clear all voice samples & vector embeddings">
+                <i data-lucide="trash-2" style="width: 13px; height: 13px; color: #ef4444;"></i>
+              </button>
+            ` : ""}
+          </div>
         </td>
       </tr>
     `;
@@ -5144,11 +5162,15 @@ async function downloadDiarHistoryJson(callId) {
 
 async function deleteDiarHistoryCall(callId) {
   const call = auditsCache.find(c => strId(c.id) === strId(callId));
-  const callName = call?.original_file_name || call?.audio_filename || "this call";
+  const callName = call?.original_file_name || call?.audio_filename || (call?.id ? call.id.substring(0, 8) : "this call");
 
-  if (!confirm(`Are you sure you want to permanently delete "${callName}" and its transcript?`)) {
-    return;
-  }
+  const confirmed = await showConfirmModal({
+    title: "Delete Call & Transcript",
+    message: `Are you sure you want to permanently delete "${callName}" and its transcript?`,
+    confirmText: "Delete Call",
+    isDanger: true
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/v1/calls/${callId}`, {
@@ -7356,7 +7378,13 @@ function renderChatQaScorecardView(call) {
 }
 
 async function deleteChatQaRecord(id) {
-  if (!confirm("Are you sure you want to delete this Chat QA evaluation record?")) return;
+  const confirmed = await showConfirmModal({
+    title: "Delete Chat QA Record",
+    message: "Are you sure you want to permanently delete this Chat QA evaluation record?",
+    confirmText: "Delete Record",
+    isDanger: true
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/v1/chat-qa/${id}`, { method: "DELETE" });
