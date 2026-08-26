@@ -973,47 +973,47 @@
       <!-- VIEW: SPEAKER DIARIZATION STUDIO PAGE -->
       <!-- ==================================================================== -->
       <div id="view-diarization" class="page-view">
-        <!-- METRICS GRID -->
+        <!-- STATIC SUMMARY METRICS GRID -->
         <section class="metrics-grid-4" style="margin-bottom: 20px;">
-          <div class="metric-card">
+          <div class="metric-card" id="diarCardTotalCalls">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>DIARIZED CALLS</span>
-                <h2 id="diar-stat-calls">0</h2>
+                <span>TOTAL CALLS ANALYZED</span>
+                <h2 id="diar-stat-total-calls">0</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="audio-lines"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="phone-call"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="check"></i><span>PyAnnote 3.1 Segmentation</span></div>
+            <div class="metric-trend up"><i data-lucide="check"></i><span>All Processed Audio</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="diarCardAgentDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>SPEAKER TURNS</span>
-                <h2 id="diar-stat-turns">0</h2>
+                <span>TOTAL AGENT DURATION</span>
+                <h2 id="diar-stat-agent-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="users"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="mic"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Turn-by-Turn Audio</span></div>
+            <div class="metric-trend up"><i data-lucide="user-check"></i><span>Agent Speaking Time</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="diarCardCustomerDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>IDENTIFIED AGENTS</span>
-                <h2 id="diar-stat-matched">0</h2>
+                <span>TOTAL CUSTOMER DURATION</span>
+                <h2 id="diar-stat-customer-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="user-check"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="headphones"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="cpu"></i><span>Milvus 192d Matched</span></div>
+            <div class="metric-trend up"><i data-lucide="users"></i><span>Customer Speaking Time</span></div>
           </div>
-          <div class="metric-card">
+          <div class="metric-card" id="diarCardTotalDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>AVG CONFIDENCE</span>
-                <h2 id="diar-stat-conf">94.8%</h2>
+                <span>TOTAL DURATION (ALL CALLS)</span>
+                <h2 id="diar-stat-total-duration">0s</h2>
               </div>
-              <div class="metric-icon-circle"><i data-lucide="shield-check"></i></div>
+              <div class="metric-icon-circle"><i data-lucide="clock"></i></div>
             </div>
-            <div class="metric-trend up"><i data-lucide="activity"></i><span>High Precision</span></div>
+            <div class="metric-trend up"><i data-lucide="trending-up"></i><span>Cumulative Speech Time</span></div>
           </div>
         </section>
 
@@ -1275,9 +1275,7 @@
                 <tr>
                   <th>Call Audio File</th>
                   <th>Identified Agent</th>
-                  <th>Biometric Match</th>
                   <th>Duration</th>
-                  <th>Turns</th>
                   <th>Status</th>
                   <th style="text-align: right;">Actions</th>
                 </tr>

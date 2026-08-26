@@ -1294,6 +1294,7 @@ async function loadCallAudits() {
     populateAuditFilterDropdowns();
     renderAuditsTable(auditsCache);
     renderDashboardAuditsTable(auditsCache);
+    if (typeof updateDiarMetrics === "function") updateDiarMetrics();
 
     // Auto-poll if any jobs are currently in PENDING or PROCESSING state
     const hasPending = auditsCache.some(c => c.status === "PENDING" || c.status === "PROCESSING");
@@ -3764,12 +3765,8 @@ async function loadDiarizationPage() {
 
   populateDiarAgentDropdown();
 
-  const callsEl = document.getElementById("diar-stat-calls");
-  const turnsEl = document.getElementById("diar-stat-turns");
-  const matchedEl = document.getElementById("diar-stat-matched");
-  if (callsEl) callsEl.textContent = auditsCache.length;
-  if (turnsEl) turnsEl.textContent = auditsCache.reduce((a, b) => a + (b.speakers_count || 2) * 4, 0);
-  if (matchedEl) matchedEl.textContent = auditsCache.filter(c => c.identified_employee_id).length;
+  // Compute live real-time metrics for Speaker Diarization
+  updateDiarMetrics();
 
   // Render Diarized Calls History Table
   renderDiarHistoryTable();
@@ -3794,6 +3791,7 @@ async function loadDiarizationPage() {
   }
 
   initDiarDropzone();
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
 function populateDiarAgentDropdown(filterText = "") {
@@ -4304,11 +4302,17 @@ function startDiarQueuePolling() {
             if (!currentViewedDiarJobId || currentViewedDiarJobId === job.id) {
               renderProcessingSplash(job);
             }
-          } else if (data.status === "COMPLETED" && data.transcript_json?.turns?.length > 0) {
+          } else if (data.status === "COMPLETED") {
             showToast(`Speaker Diarization complete for ${job.filename}!`, "success");
             currentViewedDiarJobId = job.id;
-            renderRealDiarizationData(data);
-            await loadCallAudits();
+            if (data.transcript_json && ((data.transcript_json.turns && data.transcript_json.turns.length > 0) || (data.transcript_json.segments && data.transcript_json.segments.length > 0))) {
+              renderRealDiarizationData(data);
+            }
+            try {
+              const freshRes = await fetch("/api/v1/calls/");
+              if (freshRes.ok) auditsCache = await freshRes.json();
+            } catch (e) {}
+            updateDiarMetrics();
             renderDiarHistoryTable();
           }
         } else if (job.status === "PROCESSING" && (!currentViewedDiarJobId || currentViewedDiarJobId === job.id)) {
@@ -4460,7 +4464,7 @@ function renderRealDiarizationData(call) {
     return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
   };
 
-  const durationSec = call.audio_duration_seconds || (turns.length > 0 ? (turns[turns.length - 1].end || 0) : 0);
+  const durationSec = getCallDurationSeconds(call) || (turns.length > 0 ? (turns[turns.length - 1].end || 0) : 0);
   const totalWords = turns.reduce((acc, t) => acc + (t.text || "").trim().split(/\s+/).filter(Boolean).length, 0);
 
   // Compute talk-time split
@@ -4723,6 +4727,107 @@ function changeDiarHistoryPage(direction) {
   }
 }
 
+let diarActiveMetricFilter = "ALL";
+
+function getCallDurationSeconds(c) {
+  if (!c) return 0;
+  if (c.duration_seconds !== undefined && c.duration_seconds !== null && !isNaN(c.duration_seconds)) {
+    return Number(c.duration_seconds);
+  }
+  if (c.audio_duration_seconds !== undefined && c.audio_duration_seconds !== null && !isNaN(c.audio_duration_seconds)) {
+    return Number(c.audio_duration_seconds);
+  }
+  if (c.transcript_json) {
+    if (c.transcript_json.duration_seconds) return Number(c.transcript_json.duration_seconds);
+    const turns = c.transcript_json.turns || c.transcript_json.segments;
+    if (Array.isArray(turns) && turns.length > 0) {
+      const lastTurn = turns[turns.length - 1];
+      if (lastTurn && lastTurn.end) return Number(lastTurn.end);
+    }
+  }
+  return 0;
+}
+
+function formatSecondsToSpeechTime(sec) {
+  const totalSec = Math.round(Number(sec) || 0);
+  if (totalSec >= 3600) {
+    return `${Math.floor(totalSec / 3600)}h ${Math.floor((totalSec % 3600) / 60)}m`;
+  } else if (totalSec >= 60) {
+    return `${Math.floor(totalSec / 60)}m ${totalSec % 60}s`;
+  } else if (totalSec > 0) {
+    return `${totalSec}s`;
+  }
+  return "0s";
+}
+
+function updateDiarMetrics() {
+  const calls = auditsCache || [];
+  
+  // 1. TOTAL CALLS ANALYZED
+  const totalCalls = calls.length;
+
+  let totalDurationSec = 0;
+  let totalAgentDurationSec = 0;
+  let totalCustomerDurationSec = 0;
+
+  calls.forEach(c => {
+    const callDur = getCallDurationSeconds(c);
+    totalDurationSec += callDur;
+
+    // Check QA scorecard talk-time fields first
+    const qaJson = c.qa_scorecard_json;
+    if (qaJson && (qaJson.agent_talk_time_seconds !== undefined || qaJson.customer_talk_time_seconds !== undefined)) {
+      totalAgentDurationSec += Number(qaJson.agent_talk_time_seconds) || 0;
+      totalCustomerDurationSec += Number(qaJson.customer_talk_time_seconds) || 0;
+      return;
+    }
+
+    // Otherwise compute from transcript turns
+    const turns = c.transcript_json?.turns || c.transcript_json?.segments || [];
+    if (Array.isArray(turns) && turns.length > 0) {
+      let callAgentDur = 0;
+      let callCustDur = 0;
+      turns.forEach(t => {
+        const spk = (t.speaker || t.speaker_label || "").toUpperCase();
+        const dur = Math.max(0, (Number(t.end) || 0) - (Number(t.start) || 0));
+        if (spk.includes("AGENT") || spk === "SPEAKER_00" || spk === "SPEAKER_AGENT") {
+          callAgentDur += dur;
+        } else if (spk.includes("CUSTOMER") || spk === "SPEAKER_01" || spk === "SPEAKER_02" || spk === "SPEAKER_CUSTOMER") {
+          callCustDur += dur;
+        } else {
+          if (c.identified_employee_id) {
+            callAgentDur += dur * 0.55;
+            callCustDur += dur * 0.45;
+          } else {
+            callAgentDur += dur * 0.5;
+            callCustDur += dur * 0.5;
+          }
+        }
+      });
+      totalAgentDurationSec += callAgentDur;
+      totalCustomerDurationSec += callCustDur;
+    } else if (callDur > 0) {
+      if (c.identified_employee_id) {
+        totalAgentDurationSec += callDur * 0.55;
+        totalCustomerDurationSec += callDur * 0.45;
+      } else {
+        totalAgentDurationSec += callDur * 0.5;
+        totalCustomerDurationSec += callDur * 0.5;
+      }
+    }
+  });
+
+  const callsEl = document.getElementById("diar-stat-total-calls") || document.getElementById("diar-stat-calls");
+  const agentDurEl = document.getElementById("diar-stat-agent-duration") || document.getElementById("diar-stat-agent-calls");
+  const custDurEl = document.getElementById("diar-stat-customer-duration") || document.getElementById("diar-stat-customer-calls");
+  const durationEl = document.getElementById("diar-stat-total-duration") || document.getElementById("diar-stat-duration");
+
+  if (callsEl) callsEl.textContent = totalCalls;
+  if (agentDurEl) agentDurEl.textContent = formatSecondsToSpeechTime(totalAgentDurationSec);
+  if (custDurEl) custDurEl.textContent = formatSecondsToSpeechTime(totalCustomerDurationSec);
+  if (durationEl) durationEl.textContent = formatSecondsToSpeechTime(totalDurationSec);
+}
+
 function filterDiarHistoryTable(val) {
   diarHistorySearchQuery = val || "";
   diarHistoryCurrentPage = 1; // Reset to first page on search
@@ -4739,7 +4844,7 @@ function renderDiarHistoryTable(filterQuery = null) {
   const query = (diarHistorySearchQuery || "").toLowerCase().trim();
   let calls = [...auditsCache];
 
-  // Sort calls newest/latest first
+  // Default Sort calls newest/latest first
   calls.sort((a, b) => {
     const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
     const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -4775,7 +4880,7 @@ function renderDiarHistoryTable(filterQuery = null) {
   if (totalRecords === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
+        <td colspan="5" style="text-align: center; padding: 36px 20px; color: #94a3b8;">
           <i data-lucide="inbox" style="width: 38px; height: 38px; margin-bottom: 8px; color: #cbd5e1; display: block; margin: 0 auto 8px;"></i>
           <p style="font-size: 13px; font-weight: 500; margin: 0;">${query ? 'No matching diarized calls found.' : 'No call transcripts available yet. Upload an audio recording above to generate diarized transcripts.'}</p>
         </td>
@@ -4839,9 +4944,10 @@ function renderDiarHistoryTable(filterQuery = null) {
   }
 
   const fmtTime = (sec) => {
-    if (sec === null || sec === undefined) return "00:00";
+    if (sec === null || sec === undefined || isNaN(sec)) return "--";
     if (typeof sec === "string" && sec.includes(":")) return sec;
-    const s = Math.floor(Number(sec));
+    const s = Math.round(Number(sec));
+    if (s <= 0) return "--";
     const m = Math.floor(s / 60);
     const r = s % 60;
     return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
@@ -4853,21 +4959,8 @@ function renderDiarHistoryTable(filterQuery = null) {
     const empCode = identEmp ? identEmp.employee_code : (c.identified_employee_id ? "AGNT-EMP" : "--");
     const deptName = (identEmp ? departmentsCache.find(d => strId(d.id) === strId(identEmp.department_id))?.name : null) || "Customer Care";
 
-    const confPct = c.identification_confidence !== null && c.identification_confidence !== undefined
-      ? Math.round(c.identification_confidence * 100)
-      : 0;
-
-    const confBadge = c.identified_employee_id
-      ? `<span class="status-pill badge-completed" style="font-size: 11px; padding: 2px 8px;"><i data-lucide="shield-check" style="width: 12px; vertical-align: middle;"></i> ${confPct}% Match</span>`
-      : `<span class="status-pill badge-pending" style="font-size: 11px; padding: 2px 8px;"><i data-lucide="globe" style="width: 12px; vertical-align: middle;"></i> Open Speaker</span>`;
-
-    let turnsCount = 0;
-    if (c.transcript_json) {
-      const turns = c.transcript_json.turns || c.transcript_json.segments || [];
-      turnsCount = Array.isArray(turns) ? turns.length : 0;
-    }
-
-    const durStr = fmtTime(c.audio_duration_seconds);
+    const durationSec = getCallDurationSeconds(c);
+    const durStr = fmtTime(durationSec);
     const filename = c.audio_filename || c.original_file_name || "call_audio.wav";
     const dateStr = c.created_at ? new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent";
 
@@ -4900,11 +4993,10 @@ function renderDiarHistoryTable(filterQuery = null) {
             </div>
           </div>
         </td>
-        <td>${confBadge}</td>
-        <td style="font-family: monospace; font-size: 12px; font-weight: 600; color: #475569;">${durStr}</td>
-        <td>
-          <span style="font-size: 11.5px; font-weight: 600; color: #1e293b; background: #f1f5f9; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-            ${turnsCount} turns
+        <td style="font-family: monospace; font-size: 12.5px; font-weight: 600; color: #334155;">
+          <span style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 7px; display: inline-flex; align-items: center; gap: 4px;">
+            <i data-lucide="clock" style="width: 11px; color: #64748b;"></i>
+            ${durStr}
           </span>
         </td>
         <td>
