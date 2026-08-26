@@ -145,74 +145,74 @@
       <!-- ==================================================================== -->
       <div id="view-dashboard" class="page-view active">
 
-        <!-- TOP 4 METRIC CARDS -->
+        <!-- TOP 4 METRIC CARDS (STATIC) -->
         <section class="metrics-grid-4" style="margin-bottom: 20px;">
 
-          <!-- CARD 1: TOTAL AUDITS -->
-          <div class="metric-card">
+          <!-- CARD 1: TOTAL CALLS ANALYZED -->
+          <div class="metric-card" id="dashCardTotalCalls">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>TOTAL AUDITS</span>
-                <h2 id="stat-total-audits">124</h2>
+                <span>TOTAL CALLS ANALYZED</span>
+                <h2 id="dash-stat-total-calls">0</h2>
+              </div>
+              <div class="metric-icon-circle">
+                <i data-lucide="phone-call"></i>
+              </div>
+            </div>
+            <div class="metric-trend up">
+              <i data-lucide="check"></i>
+              <span>All Processed Audio</span>
+            </div>
+          </div>
+
+          <!-- CARD 2: TOTAL AGENT DURATION -->
+          <div class="metric-card" id="dashCardAgentDuration">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL AGENT DURATION</span>
+                <h2 id="dash-stat-agent-duration">0s</h2>
               </div>
               <div class="metric-icon-circle">
                 <i data-lucide="mic"></i>
               </div>
             </div>
             <div class="metric-trend up">
-              <i data-lucide="trending-up"></i>
-              <span>↑ 18.5% vs last period</span>
+              <i data-lucide="user-check"></i>
+              <span>Agent Speaking Time</span>
             </div>
           </div>
 
-          <!-- CARD 2: AVERAGE ACCURACY -->
-          <div class="metric-card">
+          <!-- CARD 3: TOTAL CUSTOMER DURATION -->
+          <div class="metric-card" id="dashCardCustomerDuration">
             <div class="metric-card-top">
               <div class="metric-card-info">
-                <span>AVERAGE ACCURACY</span>
-                <h2 id="stat-avg-accuracy">92%</h2>
+                <span>TOTAL CUSTOMER DURATION</span>
+                <h2 id="dash-stat-customer-duration">0s</h2>
               </div>
               <div class="metric-icon-circle">
-                <i data-lucide="target"></i>
+                <i data-lucide="headphones"></i>
+              </div>
+            </div>
+            <div class="metric-trend up">
+              <i data-lucide="users"></i>
+              <span>Customer Speaking Time</span>
+            </div>
+          </div>
+
+          <!-- CARD 4: TOTAL DURATION (ALL CALLS) -->
+          <div class="metric-card" id="dashCardTotalDuration">
+            <div class="metric-card-top">
+              <div class="metric-card-info">
+                <span>TOTAL DURATION (ALL CALLS)</span>
+                <h2 id="dash-stat-total-duration">0s</h2>
+              </div>
+              <div class="metric-icon-circle">
+                <i data-lucide="clock"></i>
               </div>
             </div>
             <div class="metric-trend up">
               <i data-lucide="trending-up"></i>
-              <span>↑ 6.3% vs last period</span>
-            </div>
-          </div>
-
-          <!-- CARD 3: PASS RATE -->
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-card-info">
-                <span>PASS RATE</span>
-                <h2 id="stat-pass-rate">89%</h2>
-              </div>
-              <div class="metric-icon-circle">
-                <i data-lucide="shield-check"></i>
-              </div>
-            </div>
-            <div class="metric-trend up">
-              <i data-lucide="trending-up"></i>
-              <span>↑ 7.8% vs last period</span>
-            </div>
-          </div>
-
-          <!-- CARD 4: ISSUES FOUND -->
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-card-info">
-                <span>ISSUES FOUND</span>
-                <h2 id="stat-issues-found">16</h2>
-              </div>
-              <div class="metric-icon-circle" style="background: #fef2f2; color: #ef4444;">
-                <i data-lucide="alert-triangle"></i>
-              </div>
-            </div>
-            <div class="metric-trend down">
-              <i data-lucide="trending-down"></i>
-              <span>↓ 12.7% vs last period</span>
+              <span>Cumulative Speech Time</span>
             </div>
           </div>
 
@@ -244,31 +244,27 @@
               <div class="panel-title">
                 <h3>Audits by Status</h3>
               </div>
-              <select class="select-filter">
-                <option>This Week</option>
-                <option>This Month</option>
-              </select>
             </div>
             <div class="donut-wrapper">
               <div class="donut-chart-box">
                 <canvas id="auditsStatusChart"></canvas>
                 <div class="donut-center-label">
-                  <h4 id="donut-center-total">124</h4>
+                  <h4 id="donut-center-total">0</h4>
                   <span>Audits</span>
                 </div>
               </div>
               <div class="chart-legend">
                 <div class="legend-row">
                   <div class="legend-left"><span class="legend-dot dot-green"></span> Completed</div>
-                  <strong id="legend-completed">89 (71.8%)</strong>
+                  <strong id="legend-completed">0 (0%)</strong>
                 </div>
                 <div class="legend-row">
-                  <div class="legend-left"><span class="legend-dot dot-yellow"></span> Pending</div>
-                  <strong id="legend-pending">18 (14.5%)</strong>
+                  <div class="legend-left"><span class="legend-dot dot-yellow"></span> Pending / Processing</div>
+                  <strong id="legend-pending">0 (0%)</strong>
                 </div>
                 <div class="legend-row">
                   <div class="legend-left"><span class="legend-dot dot-red"></span> Failed / Issues</div>
-                  <strong id="legend-failed">17 (13.7%)</strong>
+                  <strong id="legend-failed">0 (0%)</strong>
                 </div>
               </div>
             </div>
@@ -283,40 +279,37 @@
           <div class="panel-card">
             <div class="panel-header">
               <div class="panel-title">
-                <h3>Top Model Requests</h3>
+                <h3>AI Speech Engines & Models</h3>
               </div>
-              <select class="select-filter">
-                <option>This Week</option>
-              </select>
             </div>
-            <div class="progress-list">
+            <div class="progress-list" id="dashboardModelProgressList">
               <div class="progress-item">
-                <div class="model-name"><i data-lucide="cpu" style="width:14px;"></i> Whisper Large V3</div>
+                <div class="model-name"><i data-lucide="mic" style="width:14px;"></i> Whisper ASR (Large-v3)</div>
                 <div class="progress-bar-container">
-                  <div class="progress-fill" style="width: 78%;"></div>
+                  <div class="progress-fill" id="model-whisper-bar" style="width: 100%;"></div>
                 </div>
-                <div class="model-count">48 (38%)</div>
+                <div class="model-count" id="model-whisper-count">0 calls</div>
               </div>
               <div class="progress-item">
-                <div class="model-name"><i data-lucide="zap" style="width:14px;"></i> GPT-4o Mini</div>
+                <div class="model-name"><i data-lucide="layers" style="width:14px;"></i> PyAnnote 3.1 Diarization</div>
                 <div class="progress-bar-container">
-                  <div class="progress-fill" style="width: 55%;"></div>
+                  <div class="progress-fill" id="model-pyannote-bar" style="width: 100%;"></div>
                 </div>
-                <div class="model-count">32 (25%)</div>
+                <div class="model-count" id="model-pyannote-count">0 calls</div>
               </div>
               <div class="progress-item">
-                <div class="model-name"><i data-lucide="sparkles" style="width:14px;"></i> Gemini 1.5 Pro</div>
+                <div class="model-name"><i data-lucide="database" style="width:14px;"></i> Milvus 192D Biometrics</div>
                 <div class="progress-bar-container">
-                  <div class="progress-fill" style="width: 40%;"></div>
+                  <div class="progress-fill" id="model-milvus-bar" style="width: 100%;"></div>
                 </div>
-                <div class="model-count">24 (19%)</div>
+                <div class="model-count" id="model-milvus-count">0 vectors</div>
               </div>
               <div class="progress-item">
-                <div class="model-name"><i data-lucide="bot" style="width:14px;"></i> Claude 3.5 Sonnet</div>
+                <div class="model-name"><i data-lucide="bot" style="width:14px;"></i> Ollama LLM QA Auditor</div>
                 <div class="progress-bar-container">
-                  <div class="progress-fill" style="width: 32%;"></div>
+                  <div class="progress-fill" id="model-ollama-bar" style="width: 100%;"></div>
                 </div>
-                <div class="model-count">20 (16%)</div>
+                <div class="model-count" id="model-ollama-count">0 scorecards</div>
               </div>
             </div>
           </div>
@@ -325,34 +318,29 @@
           <div class="panel-card">
             <div class="panel-header">
               <div class="panel-title">
-                <h3>Category Share</h3>
-                <p style="font-size: 11px; color:#94a3b8;">8 Categories</p>
+                <h3>QA Category Breakdown</h3>
               </div>
             </div>
             <div class="donut-wrapper">
               <div class="donut-chart-box">
                 <canvas id="categoryShareChart"></canvas>
                 <div class="donut-center-label">
-                  <h4>124</h4>
-                  <span>Audits</span>
+                  <h4 id="category-donut-total">0</h4>
+                  <span>Evals</span>
                 </div>
               </div>
               <div class="chart-legend" style="font-size: 11.5px;">
                 <div class="legend-row">
-                  <div class="legend-left"><span class="legend-dot dot-blue"></span> Agent Comm.</div><span>32
-                    (25.8%)</span>
+                  <div class="legend-left"><span class="legend-dot dot-blue"></span> Agent Comm.</div><span id="cat-legend-comm">0%</span>
                 </div>
                 <div class="legend-row">
-                  <div class="legend-left"><span class="legend-dot dot-purple"></span> Customer Exp.</div><span>28
-                    (22.6%)</span>
+                  <div class="legend-left"><span class="legend-dot dot-purple"></span> Customer Exp.</div><span id="cat-legend-cx">0%</span>
                 </div>
                 <div class="legend-row">
-                  <div class="legend-left"><span class="legend-dot dot-green"></span> Compliance</div><span>24
-                    (19.4%)</span>
+                  <div class="legend-left"><span class="legend-dot dot-green"></span> Compliance</div><span id="cat-legend-comp">0%</span>
                 </div>
                 <div class="legend-row">
-                  <div class="legend-left"><span class="legend-dot dot-yellow"></span> Product Knowl.</div><span>20
-                    (16.1%)</span>
+                  <div class="legend-left"><span class="legend-dot dot-yellow"></span> Product Knowl.</div><span id="cat-legend-prod">0%</span>
                 </div>
               </div>
             </div>
@@ -392,10 +380,10 @@
 
         </section>
 
-        <!-- ROW 3: RECENT AUDIT ACTIVITY TABLE WITH STATUS TOGGLE -->
-        <section class="grid-2-1">
+        <!-- ROW 3: RECENT AUDIT ACTIVITY TABLE WITH STATUS TOGGLE (FULL WIDTH) -->
+        <section style="margin-bottom: 24px;">
 
-          <div class="panel-card">
+          <div class="panel-card" style="width: 100%; box-sizing: border-box;">
             <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
               <div class="panel-title">
                 <h3>Recent Audit Activity</h3>
@@ -408,8 +396,8 @@
                   <button class="time-range-btn" onclick="filterDashboardAudits('PENDING', this)">Pending</button>
                   <button class="time-range-btn" onclick="filterDashboardAudits('FAILED', this)">Issues</button>
                 </div>
-                <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;"
-                  onclick="showView('audits')">View All</button>
+                <button class="btn-secondary" style="padding: 4px 12px; font-size: 12px; font-weight: 600;"
+                  onclick="showView('audits')">View All Audits →</button>
               </div>
             </div>
             <div class="table-responsive">
@@ -417,88 +405,129 @@
                 <thead>
                   <tr>
                     <th>Audit ID</th>
-                    <th>Call ID</th>
-                    <th>Agent</th>
+                    <th>Call Reference</th>
+                    <th>Identified Agent</th>
                     <th>Status</th>
-                    <th>Score</th>
+                    <th>QA Score</th>
                     <th>Completed At</th>
                   </tr>
                 </thead>
                 <tbody id="dashAuditsBody">
                   <tr>
-                    <td><code>AUD-2026-000124</code></td>
-                    <td><code>CALL-0009876</code></td>
-                    <td><strong>Vijay Rajput</strong></td>
-                    <td><span class="status-pill badge-completed">Completed</span></td>
-                    <td><strong>92%</strong></td>
-                    <td>23-Aug-2026 02:45 PM</td>
-                  </tr>
-                  <tr>
-                    <td><code>AUD-2026-000123</code></td>
-                    <td><code>CALL-0009875</code></td>
-                    <td><strong>Jane Smith</strong></td>
-                    <td><span class="status-pill badge-completed">Completed</span></td>
-                    <td><strong>88%</strong></td>
-                    <td>23-Aug-2026 01:32 PM</td>
-                  </tr>
-                  <tr>
-                    <td><code>AUD-2026-000122</code></td>
-                    <td><code>CALL-0009874</code></td>
-                    <td><strong>Mike Johnson</strong></td>
-                    <td><span class="status-pill badge-pending">Pending</span></td>
-                    <td><strong>--</strong></td>
-                    <td>23-Aug-2026 12:58 PM</td>
+                    <td colspan="6" class="loading-cell">Loading recent audit activity...</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          <!-- QUICK ACTIONS & AI INSIGHTS BANNER -->
-          <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div class="panel-card">
-              <div class="panel-header" style="margin-bottom: 12px;">
-                <div class="panel-title">
-                  <h3>Quick Actions</h3>
-                </div>
-              </div>
-              <div class="quick-actions-grid">
-                <div class="action-tile" onclick="openAuditModal()">
-                  <i data-lucide="upload-cloud"></i>
-                  <span>Upload Audio</span>
-                </div>
-                <div class="action-tile" onclick="showView('employees')">
-                  <i data-lucide="users"></i>
-                  <span>Employees</span>
-                </div>
-                <div class="action-tile" onclick="showView('departments')">
-                  <i data-lucide="building-2"></i>
-                  <span>Departments</span>
-                </div>
-                <div class="action-tile" onclick="showView('designations')">
-                  <i data-lucide="award"></i>
-                  <span>Designations</span>
-                </div>
-                <div class="action-tile" onclick="showView('shifts')">
-                  <i data-lucide="clock"></i>
-                  <span>Shifts</span>
-                </div>
-              </div>
-            </div>
+        </section>
 
-            <div class="ai-banner-bottom">
-              <div class="ai-banner-left">
-                <i data-lucide="bot"></i>
-                <div>
-                  <h4>AI-Powered Insights</h4>
-                  <p>Get actionable insights and improve audit quality with AI.</p>
-                </div>
-              </div>
-              <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;"
-                onclick="openVoiceSummaryModal()">Learn More</button>
+        <!-- ROW 4: WORKFORCE & ORGANIZATION INTELLIGENCE (EMPLOYEES, DEPARTMENTS, DESIGNATIONS, SHIFTS) -->
+        <section style="margin-bottom: 24px; margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; background: #ffffff; padding: 14px 20px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);">
+            <div>
+              <h3 style="font-size: 17px; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: -0.2px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #1d61e7;">
+                  <i data-lucide="building-2" style="width: 18px; height: 18px;"></i>
+                </span>
+                Organization &amp; Workforce Directory
+              </h3>
+              <p style="font-size: 13px; color: #475569; margin: 4px 0 0 42px; font-weight: 500;">
+                Live staff directory, department distribution, designations, and operational shifts.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn-secondary" style="font-size: 12px; padding: 6px 14px; height: auto; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;" onclick="loadEmployees(); loadDepartments(); loadDesignations(); loadShifts(); showToast('Workforce directory refreshed', 'success');">
+                <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i> Refresh
+              </button>
             </div>
           </div>
 
+          <!-- 4 CARDS GRID FOR ORG OVERVIEW -->
+          <div class="grid-4-cols" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+
+            <!-- 1. EMPLOYEES CARD -->
+            <div class="panel-card" style="padding: 18px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                  <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Staff & Agents</span>
+                  <h3 id="dashOrgEmpCount" style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 4px 0 0 0;">0</h3>
+                </div>
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: #eff6ff; color: #1d61e7; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="users" style="width: 20px; height: 20px;"></i>
+                </div>
+              </div>
+              <div id="dashOrgEmpList" style="display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                <div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 12px;">Loading employees...</div>
+              </div>
+              <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <span id="dashOrgVoiceEnrolledBadge" style="font-size: 11px; font-weight: 600; color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 6px;">0 Enrolled</span>
+                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; height: auto;" onclick="showView('employees')">View All →</button>
+              </div>
+            </div>
+
+            <!-- 2. DEPARTMENTS CARD -->
+            <div class="panel-card" style="padding: 18px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                  <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Departments</span>
+                  <h3 id="dashOrgDeptCount" style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 4px 0 0 0;">0</h3>
+                </div>
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: #f5f3ff; color: #7c3aed; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="building-2" style="width: 20px; height: 20px;"></i>
+                </div>
+              </div>
+              <div id="dashOrgDeptList" style="display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                <div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 12px;">Loading departments...</div>
+              </div>
+              <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <span id="dashOrgDeptActiveBadge" style="font-size: 11px; font-weight: 600; color: #7c3aed; background: #f5f3ff; padding: 2px 8px; border-radius: 6px;">0 Active</span>
+                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; height: auto;" onclick="showView('departments')">View All →</button>
+              </div>
+            </div>
+
+            <!-- 3. DESIGNATIONS CARD -->
+            <div class="panel-card" style="padding: 18px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                  <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Designations & Roles</span>
+                  <h3 id="dashOrgDesigCount" style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 4px 0 0 0;">0</h3>
+                </div>
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="award" style="width: 20px; height: 20px;"></i>
+                </div>
+              </div>
+              <div id="dashOrgDesigList" style="display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                <div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 12px;">Loading designations...</div>
+              </div>
+              <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <span id="dashOrgDesigRoleBadge" style="font-size: 11px; font-weight: 600; color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 6px;">Roles Registered</span>
+                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; height: auto;" onclick="showView('designations')">View All →</button>
+              </div>
+            </div>
+
+            <!-- 4. SHIFTS CARD -->
+            <div class="panel-card" style="padding: 18px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                  <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Operational Shifts</span>
+                  <h3 id="dashOrgShiftCount" style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 4px 0 0 0;">0</h3>
+                </div>
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: #fffbeb; color: #d97706; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="clock" style="width: 20px; height: 20px;"></i>
+                </div>
+              </div>
+              <div id="dashOrgShiftList" style="display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                <div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 12px;">Loading shifts...</div>
+              </div>
+              <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <span id="dashOrgShiftActiveBadge" style="font-size: 11px; font-weight: 600; color: #d97706; background: #fffbeb; padding: 2px 8px; border-radius: 6px;">Active Schedules</span>
+                <button class="btn-secondary" style="font-size: 11px; padding: 3px 8px; height: auto;" onclick="showView('shifts')">View All →</button>
+              </div>
+            </div>
+
+          </div>
         </section>
 
       </div>

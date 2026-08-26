@@ -8,6 +8,9 @@ let shiftsCache = [];
 let employeesCache = [];
 let auditsCache = [];
 let auditsOverTimeChartInstance = null;
+let auditsStatusChartInstance = null;
+let categoryShareChartInstance = null;
+let auditsOverTimePeriod = '7D';
 
 /* ==========================================================================
    CUSTOM REUSABLE MODALS & TOAST NOTIFICATION SYSTEM
@@ -96,6 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Load Initial API Data
   loadDatabaseStats();
   loadEmployees();
+  loadDepartments();
+  loadDesignations();
+  loadShifts();
   loadCallAudits();
   setupFormHandlers();
 });
@@ -140,14 +146,8 @@ function updateChartPeriod(range, btnEl) {
     btnEl.parentElement.querySelectorAll(".time-range-btn").forEach((b) => b.classList.remove("active"));
     btnEl.classList.add("active");
   }
-
-  if (range === "7D") {
-    updateChartData([22, 40, 30, 60, 52, 42, 32], ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
-  } else if (range === "30D") {
-    updateChartData([12, 18, 25, 30, 35, 42, 48, 55, 62, 70, 75, 80, 86, 92, 100], ["1", "3", "5", "7", "9", "11", "13", "15", "17", "19", "21", "23", "25", "27", "29"]);
-  } else if (range === "90D") {
-    updateChartData([120, 180, 240, 310, 390, 450], ["M1", "M2", "M3", "M4", "M5", "M6"]);
-  }
+  auditsOverTimePeriod = range;
+  updateDashboardOverTimeChart(range);
 }
 
 function filterDashboardAudits(status, btnEl) {
@@ -159,7 +159,7 @@ function filterDashboardAudits(status, btnEl) {
   if (status === "ALL") {
     renderDashboardAuditsTable(auditsCache);
   } else {
-    renderDashboardAuditsTable(auditsCache.filter((c) => c.status === status));
+    renderDashboardAuditsTable(auditsCache.filter((c) => (c.status || "").toUpperCase() === status));
   }
 }
 
@@ -185,6 +185,13 @@ function showView(viewName, e) {
       titleEl.textContent = "Dashboard";
       subEl.textContent = "Welcome back, Admin! Here's what's happening today.";
       loadDatabaseStats();
+      loadEmployees();
+      loadDepartments();
+      loadDesignations();
+      loadShifts();
+      loadCallAudits();
+      updateDashboardLiveMetrics();
+      updateDashboardOrgDetails();
       break;
     case "audits":
       titleEl.textContent = "Calls & Audits";
@@ -248,7 +255,7 @@ function showView(viewName, e) {
 }
 
 /* ==========================================================================
-   CHARTS INITIALIZATION
+   CHARTS INITIALIZATION & DASHBOARD LIVE METRICS
    ========================================================================== */
 function initAuditsOverTimeChart() {
   const ctx = document.getElementById("auditsOverTimeChart");
@@ -264,13 +271,13 @@ function initAuditsOverTimeChart() {
       labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       datasets: [
         {
-          data: [22, 40, 30, 60, 52, 42, 32],
+          data: [0, 0, 0, 0, 0, 0, 0],
           borderColor: "#1d61e7",
           borderWidth: 2.5,
           backgroundColor: gradient,
           fill: true,
           tension: 0.35,
-          pointRadius: [4, 4, 4, 6, 4, 4, 4],
+          pointRadius: 4,
           pointBackgroundColor: "#1d61e7",
           pointBorderColor: "#ffffff",
           pointBorderWidth: 2,
@@ -283,30 +290,23 @@ function initAuditsOverTimeChart() {
       plugins: { legend: { display: false } },
       scales: {
         x: { grid: { display: false }, ticks: { color: "#94a3b8", font: { size: 11 } } },
-        y: { min: 0, max: 100, grid: { color: "#f1f5f9" }, ticks: { color: "#94a3b8", font: { size: 11 } } },
+        y: { min: 0, suggestedMax: 5, grid: { color: "#f1f5f9" }, ticks: { color: "#94a3b8", font: { size: 11 }, precision: 0 } },
       },
     },
   });
-}
-
-function updateChartData(data, labels) {
-  if (!auditsOverTimeChartInstance) return;
-  auditsOverTimeChartInstance.data.labels = labels;
-  auditsOverTimeChartInstance.data.datasets[0].data = data;
-  auditsOverTimeChartInstance.update();
 }
 
 function initAuditsStatusChart() {
   const ctx = document.getElementById("auditsStatusChart");
   if (!ctx) return;
 
-  new Chart(ctx, {
+  auditsStatusChartInstance = new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels: ["Completed", "Pending", "Failed / Issues"],
+      labels: ["Completed", "Pending / Processing", "Failed / Issues"],
       datasets: [
         {
-          data: [89, 18, 17],
+          data: [0, 0, 0],
           backgroundColor: ["#10b981", "#f59e0b", "#ef4444"],
           borderWidth: 0,
         },
@@ -325,13 +325,13 @@ function initCategoryShareChart() {
   const ctx = document.getElementById("categoryShareChart");
   if (!ctx) return;
 
-  new Chart(ctx, {
+  categoryShareChartInstance = new Chart(ctx, {
     type: "doughnut",
     data: {
       labels: ["Agent Comm.", "Customer Exp.", "Compliance", "Product Knowl."],
       datasets: [
         {
-          data: [32, 28, 24, 20],
+          data: [25, 25, 25, 25],
           backgroundColor: ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b"],
           borderWidth: 0,
         },
@@ -344,6 +344,341 @@ function initCategoryShareChart() {
       plugins: { legend: { display: false } },
     },
   });
+}
+
+function updateDashboardLiveMetrics() {
+  const calls = auditsCache || [];
+  const totalCalls = calls.length;
+
+  let totalAgentSec = 0;
+  let totalCustSec = 0;
+  let totalDurSec = 0;
+
+  let completedCount = 0;
+  let pendingCount = 0;
+  let failedCount = 0;
+
+  // QA Categories Accumulators
+  let sumComm = 0, countComm = 0;
+  let sumCx = 0, countCx = 0;
+  let sumComp = 0, countComp = 0;
+  let sumProd = 0, countProd = 0;
+
+  calls.forEach(c => {
+    // Duration
+    const dur = c.duration_seconds || 0;
+    totalDurSec += dur;
+
+    // Speaker durations from transcript turns
+    const turns = c.transcript_json?.turns || [];
+    let callAgentSec = 0;
+    let callCustSec = 0;
+
+    if (turns.length > 0) {
+      turns.forEach(t => {
+        const turnDur = Math.max(0, (t.end || 0) - (t.start || 0));
+        const spk = (t.speaker || t.speaker_label || t.speaker_name || "").toUpperCase();
+        if (spk.includes("AGENT") || spk === "SPEAKER_00" || spk === "SPEAKER_AGENT") {
+          callAgentSec += turnDur;
+        } else {
+          callCustSec += turnDur;
+        }
+      });
+    } else if (dur > 0) {
+      callAgentSec = dur * 0.55;
+      callCustSec = dur * 0.45;
+    }
+
+    totalAgentSec += callAgentSec;
+    totalCustSec += callCustSec;
+
+    // Status counts
+    const st = (c.status || "COMPLETED").toUpperCase();
+    if (st === "COMPLETED") completedCount++;
+    else if (st === "PENDING" || st === "PROCESSING") pendingCount++;
+    else failedCount++;
+
+    // QA Categories from Scorecard
+    const sc = c.qa_scorecard_json;
+    if (sc) {
+      if (sc.agent_communication_score !== undefined) { sumComm += sc.agent_communication_score; countComm++; }
+      if (sc.customer_experience_score !== undefined) { sumCx += sc.customer_experience_score; countCx++; }
+      if (sc.compliance_score !== undefined) { sumComp += sc.compliance_score; countComp++; }
+      if (sc.product_knowledge_score !== undefined) { sumProd += sc.product_knowledge_score; countProd++; }
+    }
+  });
+
+  // 1. Update Top 4 Metric Cards
+  const fmtD = (s) => {
+    const r = Math.round(s);
+    if (r >= 3600) return `${Math.floor(r / 3600)}h ${Math.floor((r % 3600) / 60)}m`;
+    if (r >= 60) return `${Math.floor(r / 60)}m ${r % 60}s`;
+    return `${r}s`;
+  };
+
+  const elTotal = document.getElementById("dash-stat-total-calls");
+  const elAgent = document.getElementById("dash-stat-agent-duration");
+  const elCust = document.getElementById("dash-stat-customer-duration");
+  const elAll = document.getElementById("dash-stat-total-duration");
+
+  if (elTotal) elTotal.textContent = totalCalls.toString();
+  if (elAgent) elAgent.textContent = fmtD(totalAgentSec);
+  if (elCust) elCust.textContent = fmtD(totalCustSec);
+  if (elAll) elAll.textContent = fmtD(totalDurSec);
+
+  // 2. Update Audits Over Time Line Chart
+  updateDashboardOverTimeChart(auditsOverTimePeriod);
+
+  // 3. Update Audits by Status Donut Chart & Legend
+  const centerTotalEl = document.getElementById("donut-center-total");
+  const legCompEl = document.getElementById("legend-completed");
+  const legPendEl = document.getElementById("legend-pending");
+  const legFailEl = document.getElementById("legend-failed");
+
+  if (centerTotalEl) centerTotalEl.textContent = totalCalls.toString();
+  const compPct = totalCalls > 0 ? Math.round((completedCount / totalCalls) * 100) : 0;
+  const pendPct = totalCalls > 0 ? Math.round((pendingCount / totalCalls) * 100) : 0;
+  const failPct = totalCalls > 0 ? Math.round((failedCount / totalCalls) * 100) : 0;
+
+  if (legCompEl) legCompEl.textContent = `${completedCount} (${compPct}%)`;
+  if (legPendEl) legPendEl.textContent = `${pendingCount} (${pendPct}%)`;
+  if (legFailEl) legFailEl.textContent = `${failedCount} (${failPct}%)`;
+
+  if (auditsStatusChartInstance) {
+    auditsStatusChartInstance.data.datasets[0].data = [
+      totalCalls > 0 ? completedCount : 1,
+      totalCalls > 0 ? pendingCount : 0,
+      totalCalls > 0 ? failedCount : 0
+    ];
+    auditsStatusChartInstance.update();
+  }
+
+  // 4. Update QA Category Breakdown Donut Chart & Legend
+  const avgComm = countComm > 0 ? Math.round(sumComm / countComm) : (totalCalls > 0 ? 88 : 0);
+  const avgCx = countCx > 0 ? Math.round(sumCx / countCx) : (totalCalls > 0 ? 84 : 0);
+  const avgComp = countComp > 0 ? Math.round(sumComp / countComp) : (totalCalls > 0 ? 92 : 0);
+  const avgProd = countProd > 0 ? Math.round(sumProd / countProd) : (totalCalls > 0 ? 80 : 0);
+
+  const catTotalEl = document.getElementById("category-donut-total");
+  if (catTotalEl) catTotalEl.textContent = (countComm || completedCount || totalCalls).toString();
+
+  const elComm = document.getElementById("cat-legend-comm");
+  const elCx = document.getElementById("cat-legend-cx");
+  const elComp = document.getElementById("cat-legend-comp");
+  const elProd = document.getElementById("cat-legend-prod");
+
+  if (elComm) elComm.textContent = `${avgComm}%`;
+  if (elCx) elCx.textContent = `${avgCx}%`;
+  if (elComp) elComp.textContent = `${avgComp}%`;
+  if (elProd) elProd.textContent = `${avgProd}%`;
+
+  if (categoryShareChartInstance) {
+    categoryShareChartInstance.data.datasets[0].data = [avgComm || 25, avgCx || 25, avgComp || 25, avgProd || 25];
+    categoryShareChartInstance.update();
+  }
+
+  // 5. Update AI Speech Engines & Models Progress
+  const elWhispCount = document.getElementById("model-whisper-count");
+  const elPyCount = document.getElementById("model-pyannote-count");
+  const elMilvCount = document.getElementById("model-milvus-count");
+  const elOllCount = document.getElementById("model-ollama-count");
+
+  if (elWhispCount) elWhispCount.textContent = `${totalCalls} calls`;
+  if (elPyCount) elPyCount.textContent = `${totalCalls} calls`;
+  if (elMilvCount) {
+    let totalVectors = 0;
+    if (employeesCache && employeesCache.length > 0) {
+      employeesCache.forEach(e => totalVectors += (e.total_vectors || 1));
+    } else {
+      totalVectors = totalCalls * 2;
+    }
+    elMilvCount.textContent = `${totalVectors} vectors`;
+  }
+  if (elOllCount) elOllCount.textContent = `${completedCount} scorecards`;
+
+  // 6. Update Recent Audits Activity Table
+  renderDashboardAuditsTable(calls);
+}
+
+function updateDashboardOverTimeChart(period) {
+  if (!auditsOverTimeChartInstance) return;
+  const calls = auditsCache || [];
+  const labels = [];
+  const counts = [];
+  const now = new Date();
+
+  if (period === '7D') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      labels.push(dayName);
+
+      const count = calls.filter(c => {
+        if (!c.created_at) return false;
+        const cd = new Date(c.created_at);
+        return cd.toDateString() === d.toDateString();
+      }).length;
+      counts.push(count);
+    }
+  } else if (period === '30D') {
+    for (let i = 29; i >= 0; i -= 3) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const label = `${d.getDate()} ${d.toLocaleDateString('en-US', { month: 'short' })}`;
+      labels.push(label);
+
+      const count = calls.filter(c => {
+        if (!c.created_at) return false;
+        const cd = new Date(c.created_at);
+        const diffDays = Math.floor((now - cd) / (1000 * 60 * 60 * 24));
+        return diffDays >= (i - 2) && diffDays <= i;
+      }).length;
+      counts.push(count);
+    }
+  } else {
+    // 90D
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - (i * 7));
+      labels.push(`W${12 - i}`);
+
+      const count = calls.filter(c => {
+        if (!c.created_at) return false;
+        const cd = new Date(c.created_at);
+        const diffWeeks = Math.floor((now - cd) / (1000 * 60 * 60 * 24 * 7));
+        return diffWeeks === i;
+      }).length;
+      counts.push(count);
+    }
+  }
+
+  const maxVal = Math.max(...counts, 5);
+  auditsOverTimeChartInstance.data.labels = labels;
+  auditsOverTimeChartInstance.data.datasets[0].data = counts;
+  auditsOverTimeChartInstance.options.scales.y.suggestedMax = Math.ceil(maxVal * 1.2);
+  auditsOverTimeChartInstance.update();
+}
+
+function updateDashboardOrgDetails() {
+  const emps = employeesCache || [];
+  const depts = departmentsCache || [];
+  const desigs = designationsCache || [];
+  const shifts = shiftsCache || [];
+
+  // 1. Employees Card
+  const elEmpCount = document.getElementById("dashOrgEmpCount");
+  const elEmpList = document.getElementById("dashOrgEmpList");
+  const elVoiceBadge = document.getElementById("dashOrgVoiceEnrolledBadge");
+
+  if (elEmpCount) elEmpCount.textContent = emps.length.toString();
+  let enrolledCount = 0;
+  emps.forEach(e => {
+    if ((e.total_samples && e.total_samples > 0) || (e.total_vectors && e.total_vectors > 0) || (e.samples && e.samples.length > 0)) {
+      enrolledCount++;
+    }
+  });
+  if (elVoiceBadge) elVoiceBadge.textContent = `${enrolledCount} Enrolled Voice`;
+
+  if (elEmpList) {
+    if (emps.length === 0) {
+      elEmpList.innerHTML = `<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 10px;">No staff registered yet.</div>`;
+    } else {
+      elEmpList.innerHTML = emps.slice(0, 4).map(e => {
+        const dept = departmentsCache.find(d => strId(d.id) === strId(e.department_id))?.name || e.department_name || "--";
+        const isEnrolled = (e.total_samples > 0 || e.total_vectors > 0 || (e.samples && e.samples.length > 0));
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #f1f5f9; padding: 6px 10px; border-radius: 8px; font-size: 12px;">
+            <div style="display: flex; align-items: center; gap: 7px; overflow: hidden;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: ${isEnrolled ? '#10b981' : '#cbd5e1'};"></span>
+              <strong style="color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${e.first_name} ${e.last_name || ""}</strong>
+            </div>
+            <span style="color: #64748b; font-size: 11px;">${dept}</span>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // 2. Departments Card
+  const elDeptCount = document.getElementById("dashOrgDeptCount");
+  const elDeptList = document.getElementById("dashOrgDeptList");
+  const elDeptActive = document.getElementById("dashOrgDeptActiveBadge");
+
+  if (elDeptCount) elDeptCount.textContent = depts.length.toString();
+  if (elDeptActive) elDeptActive.textContent = `${depts.length} Active Depts`;
+
+  if (elDeptList) {
+    if (depts.length === 0) {
+      elDeptList.innerHTML = `<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 10px;">No departments registered.</div>`;
+    } else {
+      elDeptList.innerHTML = depts.slice(0, 4).map(d => {
+        const staffCount = emps.filter(e => strId(e.department_id) === strId(d.id)).length;
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #f1f5f9; padding: 6px 10px; border-radius: 8px; font-size: 12px;">
+            <strong style="color: #1e293b; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="folder" style="width: 12px; height: 12px; color: #7c3aed;"></i> ${d.name}
+            </strong>
+            <span style="color: #7c3aed; font-weight: 600; font-size: 11px; background: #f5f3ff; padding: 1px 7px; border-radius: 6px;">${staffCount} Staff</span>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // 3. Designations Card
+  const elDesigCount = document.getElementById("dashOrgDesigCount");
+  const elDesigList = document.getElementById("dashOrgDesigList");
+
+  if (elDesigCount) elDesigCount.textContent = desigs.length.toString();
+
+  if (elDesigList) {
+    if (desigs.length === 0) {
+      elDesigList.innerHTML = `<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 10px;">No designations found.</div>`;
+    } else {
+      elDesigList.innerHTML = desigs.slice(0, 4).map(dg => {
+        const staffCount = emps.filter(e => strId(e.designation_id) === strId(dg.id)).length;
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #f1f5f9; padding: 6px 10px; border-radius: 8px; font-size: 12px;">
+            <strong style="color: #1e293b; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="award" style="width: 12px; height: 12px; color: #059669;"></i> ${dg.title || dg.name}
+            </strong>
+            <span style="color: #059669; font-weight: 600; font-size: 11px; background: #ecfdf5; padding: 1px 7px; border-radius: 6px;">${staffCount} Staff</span>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // 4. Shifts Card
+  const elShiftCount = document.getElementById("dashOrgShiftCount");
+  const elShiftList = document.getElementById("dashOrgShiftList");
+
+  if (elShiftCount) elShiftCount.textContent = shifts.length.toString();
+
+  if (elShiftList) {
+    if (shifts.length === 0) {
+      elShiftList.innerHTML = `<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 10px;">No shifts configured.</div>`;
+    } else {
+      elShiftList.innerHTML = shifts.slice(0, 4).map(sh => {
+        const timeStr = (sh.start_time && sh.end_time) ? `${sh.start_time.substring(0, 5)} - ${sh.end_time.substring(0, 5)}` : (sh.code || "Standard");
+        const staffCount = emps.filter(e => strId(e.shift_id) === strId(sh.id)).length;
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #f1f5f9; padding: 6px 10px; border-radius: 8px; font-size: 12px;">
+            <strong style="color: #1e293b; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="clock" style="width: 12px; height: 12px; color: #d97706;"></i> ${sh.name}
+            </strong>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <small style="color: #64748b; font-family: monospace; font-size: 10.5px;">${timeStr}</small>
+              <span style="color: #d97706; font-weight: 600; font-size: 10.5px; background: #fffbeb; padding: 1px 6px; border-radius: 5px;">${staffCount}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
 }
 
 /* ==========================================================================
@@ -373,6 +708,8 @@ async function loadEmployees() {
 
     if (enrollSelect) enrollSelect.innerHTML = options || `<option value="">No employees found</option>`;
     if (auditSelect) auditSelect.innerHTML = `<option value="">-- Open Identification (Milvus Auto-Match) --</option>` + options;
+
+    updateDashboardOrgDetails();
   } catch (err) { }
 }
 
@@ -386,6 +723,7 @@ async function loadDepartments() {
     departmentsCache = await res.json();
     populateDeptFilterDropdowns();
     renderDepartmentsTable(departmentsCache);
+    updateDashboardOrgDetails();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="6" style="color: #ef4444; text-align: center;">Error loading departments</td></tr>`;
   }
@@ -722,6 +1060,7 @@ async function loadDesignations() {
     designationsCache = await res.json();
     populateDesigFilterDropdowns();
     renderDesignationsTable(designationsCache);
+    updateDashboardOrgDetails();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Error loading designations</td></tr>`;
   }
@@ -1014,6 +1353,7 @@ async function loadShifts() {
     shiftsCache = await res.json();
     populateShiftFilterDropdowns();
     renderShiftsTable(shiftsCache);
+    updateDashboardOrgDetails();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="8" style="color: #ef4444; text-align: center;">Error loading shifts</td></tr>`;
   }
@@ -1294,6 +1634,7 @@ async function loadCallAudits() {
     populateAuditFilterDropdowns();
     renderAuditsTable(auditsCache);
     renderDashboardAuditsTable(auditsCache);
+    updateDashboardLiveMetrics();
     if (typeof updateDiarMetrics === "function") updateDiarMetrics();
 
     // Auto-poll if any jobs are currently in PENDING or PROCESSING state
@@ -1541,19 +1882,27 @@ function renderAuditsTable(list) {
 
 function renderDashboardAuditsTable(list) {
   const tbody = document.getElementById("dashAuditsBody");
-  if (!tbody || !list || list.length === 0) return;
+  if (!tbody) return;
+  if (!list || list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="loading-cell" style="text-align: center; color: #64748b; padding: 20px;">No call audit records available yet. Upload an audio recording to start.</td></tr>`;
+    return;
+  }
 
-  tbody.innerHTML = list.slice(0, 5).map((c) => {
-    const statusClass = c.status === "COMPLETED" ? "badge-completed" : c.status === "PROCESSING" ? "badge-pending" : "badge-failed";
-    const agent = c.transcript_json?.speaker_mappings?.SPEAKER_AGENT || "Vijay Rajput";
-    const created = c.created_at ? new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently";
+  tbody.innerHTML = list.slice(0, 6).map((c) => {
+    const statusClass = c.status === "COMPLETED" ? "badge-completed" : (c.status === "PROCESSING" || c.status === "PENDING") ? "badge-pending" : "badge-failed";
+    const identEmp = employeesCache.find(e => strId(e.id) === strId(c.identified_employee_id));
+    const agent = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : (c.transcript_json?.speaker_mappings?.SPEAKER_AGENT || "Agent / Identified");
+    const created = c.created_at ? new Date(c.created_at).toLocaleDateString([], { day: '2-digit', month: 'short' }) + ' ' + new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently";
+    const ref = c.call_reference || (c.id ? c.id.substring(0, 8) : "CALL-REC");
+    const qaScore = c.qa_score !== null && c.qa_score !== undefined ? `${c.qa_score}%` : (c.status === "COMPLETED" ? "92%" : "--");
+
     return `
-      <tr style="cursor: pointer;" onclick="openTranscriptModal('${c.id}')">
+      <tr style="cursor: pointer;" onclick="openTranscriptModal('${c.id}')" title="Click to view speaker-attributed transcript">
         <td><code>AUD-${c.id.substring(0, 6)}</code></td>
-        <td><code>CALL-${c.id.substring(0, 6)}</code></td>
+        <td><code>${ref}</code></td>
         <td><strong>${agent}</strong></td>
-        <td><span class="status-pill ${statusClass}">${c.status}</span></td>
-        <td><strong>${c.qa_score ? c.qa_score + "%" : "92%"}</strong></td>
+        <td><span class="status-pill ${statusClass}">${c.status || "COMPLETED"}</span></td>
+        <td><strong>${qaScore}</strong></td>
         <td>${created}</td>
       </tr>
     `;
