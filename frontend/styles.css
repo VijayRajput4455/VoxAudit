@@ -2023,6 +2023,54 @@ code {
     font-size: 12px !important;
   }
 
+  /* SPEAKER DIARIZATION CHAT MESSENGER LAYOUT (Customer Left, Agent Right) */
+  #diarTurnsListContainer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    max-height: 520px !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  .diar-turn-item {
+    display: flex !important;
+    flex-direction: column !important;
+    max-width: 80% !important;
+    width: auto !important;
+    box-sizing: border-box !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+  }
+
+  /* AGENT ON LEFT */
+  .diar-turn-item.turn-agent {
+    align-self: flex-start !important;
+    margin-right: auto !important;
+    margin-left: 0 !important;
+    background: #f0f7ff !important;
+    border: 1px solid #bfdbfe !important;
+    border-left: 4px solid #1d61e7 !important;
+    border-radius: 16px 16px 16px 4px !important;
+    padding: 12px 16px !important;
+  }
+
+  /* CUSTOMER ON RIGHT */
+  .diar-turn-item.turn-customer {
+    align-self: flex-end !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    background: #ffffff !important;
+    border: 1px solid #e9d5ff !important;
+    border-right: 4px solid #9333ea !important;
+    border-radius: 16px 16px 4px 16px !important;
+    padding: 12px 16px !important;
+  }
+
   .qa-dialogue-container {
     max-height: 520px !important;
     height: 520px !important;

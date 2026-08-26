@@ -1562,20 +1562,30 @@ async function openTranscriptModal(callId) {
     const res = await fetch(`/api/v1/calls/${callId}`);
     if (!res.ok) throw new Error("Failed");
     const call = await res.json();
-    const turns = call.transcript_json?.turns || [];
+    const identEmp = employeesCache.find(e => strId(e.id) === strId(call.identified_employee_id));
+    const agentName = identEmp ? `${identEmp.first_name} ${identEmp.last_name || ""}` : "Agent";
+    const ref = call.call_reference || (call.id ? call.id.substring(0, 8) : "CALL-REC");
 
-    let html = `<div style="margin-bottom: 16px;"><h4>Call ID: <code>${call.id}</code></h4><p>Duration: ${call.duration_seconds || "--"}s | Language: ${call.detected_language || "en"}</p></div>`;
+    let html = `<div style="margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
+      <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">Call Reference: <code>${ref}</code></h4>
+      <p style="font-size: 12px; color: #64748b; margin: 0;">Identified Agent: <strong>${agentName}</strong> | Duration: ${call.duration_seconds || "--"}s | Language: ${call.detected_language || "en"}</p>
+    </div>`;
+
     if (turns.length > 0) {
-      html += `<div style="display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto;">`;
+      html += `<div style="display: flex; flex-direction: column; gap: 12px; max-height: 460px; overflow-y: auto; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px;">`;
       turns.forEach((t) => {
-        const isAgent = t.speaker_name !== "Customer" && !t.speaker_name.startsWith("Customer");
-        const color = isAgent ? "#1d61e7" : "#059669";
-        html += `<div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 10px;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-            <strong style="color: ${color}; font-size:12px;">${t.speaker_name}</strong>
-            <small style="color:#94a3b8;">[${t.start}s - ${t.end}s]</small>
+        const spk = (t.speaker || t.speaker_label || t.speaker_name || "").toUpperCase();
+        const isAgent = spk.includes("AGENT") || spk === "SPEAKER_00" || spk === "SPEAKER_AGENT";
+        const label = isAgent ? `Agent (${agentName})` : "Customer";
+        const start = typeof t.start === "number" ? `${Math.floor(t.start / 60).toString().padStart(2, '0')}:${Math.floor(t.start % 60).toString().padStart(2, '0')}` : "00:00";
+        const end = typeof t.end === "number" ? `${Math.floor(t.end / 60).toString().padStart(2, '0')}:${Math.floor(t.end % 60).toString().padStart(2, '0')}` : "00:00";
+
+        html += `<div style="display: flex; flex-direction: column; max-width: 82%; ${isAgent ? 'align-self: flex-start; margin-right: auto; margin-left: 0; background: #f0f7ff; border: 1px solid #bfdbfe; border-left: 3.5px solid #1d61e7; border-radius: 14px 14px 14px 4px;' : 'align-self: flex-end; margin-left: auto; margin-right: 0; background: #ffffff; border: 1px solid #e9d5ff; border-right: 3.5px solid #9333ea; border-radius: 14px 14px 4px 14px;'} padding: 10px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <strong style="color: ${isAgent ? '#1d61e7' : '#7e22ce'}; font-size: 11.5px; font-weight: 700;">${label}</strong>
+            <small style="color: #94a3b8; font-family: monospace; font-size: 11px;">[${start} - ${end}]</small>
           </div>
-          <p style="font-size:13.5px; color:#1e293b;">${t.text}</p>
+          <p style="font-size: 13px; color: #1e293b; margin: 0; line-height: 1.45;">${t.text || t.content || ""}</p>
         </div>`;
       });
       html += `</div>`;
@@ -4576,30 +4586,30 @@ function renderRealDiarizationData(call) {
       </div>
     </div>
 
-    <!-- 4. DIARIZED TRANSCRIPT TURNS LIST -->
-    <div id="diarTurnsListContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px;">
+    <!-- 4. DIARIZED TRANSCRIPT TURNS LIST (Agent Left, Customer Right) -->
+    <div id="diarTurnsListContainer" style="display: flex; flex-direction: column; gap: 12px; max-height: 520px; overflow-y: auto; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px;">
       ${turns.map((t, idx) => {
     const spk = t.speaker || t.speaker_label || "SPEAKER_00";
     const isAgent = spk === "SPEAKER_AGENT" || spk === "SPEAKER_00" || spk === "AGENT";
-    const label = isAgent ? `Agent (${agentName})` : "Customer / Speaker 2";
+    const label = isAgent ? `Agent (${agentName})` : "Customer";
     const textContent = t.text || t.transcript || t.content || "";
     const startTime = fmtTime(t.start);
     const endTime = fmtTime(t.end);
 
     return `
-          <div class="diar-turn-item ${isAgent ? 'turn-agent' : 'turn-customer'}" data-speaker="${isAgent ? 'AGENT' : 'CUSTOMER'}" data-text="${textContent.toLowerCase()}" style="background: ${isAgent ? '#f8fafc' : '#ffffff'}; border: 1px solid ${isAgent ? '#dbeafe' : '#e2e8f0'}; border-radius: 14px; padding: 14px; transition: all 0.2s ease;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="background: ${isAgent ? '#dbeafe' : '#f3e8ff'}; color: ${isAgent ? '#1e40af' : '#7e22ce'}; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
-                <i data-lucide="${isAgent ? 'headphone-off' : 'user'}" style="width: 12px;"></i> ${label}
+          <div class="diar-turn-item ${isAgent ? 'turn-agent' : 'turn-customer'}" data-speaker="${isAgent ? 'AGENT' : 'CUSTOMER'}" data-text="${textContent.toLowerCase()}" style="display: flex; flex-direction: column; max-width: 80%; width: auto; ${isAgent ? 'align-self: flex-start; margin-right: auto; margin-left: 0; background: #f0f7ff; border: 1px solid #bfdbfe; border-left: 4px solid #1d61e7; border-radius: 16px 16px 16px 4px;' : 'align-self: flex-end; margin-left: auto; margin-right: 0; background: #ffffff; border: 1px solid #e9d5ff; border-right: 4px solid #9333ea; border-radius: 16px 16px 4px 16px;'} padding: 12px 16px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); transition: all 0.2s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px;">
+              <span style="background: ${isAgent ? '#dbeafe' : '#f3e8ff'}; color: ${isAgent ? '#1e40af' : '#7e22ce'}; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px;">
+                <i data-lucide="${isAgent ? 'headset' : 'user'}" style="width: 12px; height: 12px;"></i> ${label}
               </span>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <small style="font-family: monospace; color: #64748b; font-size: 11.5px; font-weight: 600;">${startTime} - ${endTime}</small>
-                <button type="button" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 2px;" title="Copy turn text" onclick="copyTurnText('${escape(textContent)}')">
-                  <i data-lucide="copy" style="width: 11px;"></i>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <small style="font-family: monospace; color: #64748b; font-size: 11px; font-weight: 600; background: rgba(0,0,0,0.03); padding: 1px 6px; border-radius: 4px;">${startTime} - ${endTime}</small>
+                <button type="button" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 2px; display: inline-flex; align-items: center;" title="Copy turn text" onclick="copyTurnText('${escape(textContent)}')">
+                  <i data-lucide="copy" style="width: 11px; height: 11px;"></i>
                 </button>
               </div>
             </div>
-            <p class="turn-text-body" style="font-size: 13.5px; color: #334155; margin: 0; line-height: 1.45; font-weight: 500;">${textContent}</p>
+            <p class="turn-text-body" style="font-size: 13.5px; color: ${isAgent ? '#0f172a' : '#1e293b'}; margin: 0; line-height: 1.5; font-weight: 500; word-break: break-word;">${textContent}</p>
           </div>
         `;
   }).join("")}
@@ -4629,7 +4639,7 @@ function filterDiarTurns(filterType) {
     const matchSpk = currentDiarSpeakerFilter === "ALL" || spk === currentDiarSpeakerFilter;
     const matchQuery = !query || txt.includes(query);
 
-    item.style.display = (matchSpk && matchQuery) ? "block" : "none";
+    item.style.display = (matchSpk && matchQuery) ? "flex" : "none";
   });
 }
 
