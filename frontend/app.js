@@ -7,6 +7,7 @@ let designationsCache = [];
 let shiftsCache = [];
 let employeesCache = [];
 let auditsCache = [];
+let voiceDbSummaryCache = null;
 let auditsOverTimeChartInstance = null;
 let auditsStatusChartInstance = null;
 let categoryShareChartInstance = null;
@@ -483,18 +484,48 @@ function updateDashboardLiveMetrics() {
   const elMilvCount = document.getElementById("model-milvus-count");
   const elOllCount = document.getElementById("model-ollama-count");
 
-  if (elWhispCount) elWhispCount.textContent = `${totalCalls} calls`;
-  if (elPyCount) elPyCount.textContent = `${totalCalls} calls`;
-  if (elMilvCount) {
-    let totalVectors = 0;
-    if (employeesCache && employeesCache.length > 0) {
-      employeesCache.forEach(e => totalVectors += (e.total_vectors || 1));
-    } else {
-      totalVectors = totalCalls * 2;
+  const whisperCalls = calls.filter(c => c.transcript_json?.turns?.length > 0 || c.status === "COMPLETED").length;
+  const diarizedCalls = calls.filter(c => c.transcript_json?.turns?.length > 0).length;
+  const qaScorecards = calls.filter(c => c.qa_scorecard_json || (c.qa_score !== null && c.qa_score !== undefined)).length;
+
+  let milvusVectors = 0;
+  if (voiceDbSummaryCache) {
+    if (typeof voiceDbSummaryCache.total_vectors === "number" && voiceDbSummaryCache.total_vectors > 0) {
+      milvusVectors = voiceDbSummaryCache.total_vectors;
+    } else if (typeof voiceDbSummaryCache.total_voice_samples === "number" && voiceDbSummaryCache.total_voice_samples > 0) {
+      milvusVectors = voiceDbSummaryCache.total_voice_samples;
+    } else if (Array.isArray(voiceDbSummaryCache.profiles)) {
+      voiceDbSummaryCache.profiles.forEach(p => {
+        const v = p.total_vectors || p.total_samples || (p.samples ? p.samples.length : 0);
+        milvusVectors += (v || 0);
+      });
     }
-    elMilvCount.textContent = `${totalVectors} vectors`;
   }
-  if (elOllCount) elOllCount.textContent = `${completedCount} scorecards`;
+  
+  if (milvusVectors === 0 && veSummaryCache) {
+    if (typeof veSummaryCache.total_vectors === "number" && veSummaryCache.total_vectors > 0) {
+      milvusVectors = veSummaryCache.total_vectors;
+    } else if (typeof veSummaryCache.total_voice_samples === "number" && veSummaryCache.total_voice_samples > 0) {
+      milvusVectors = veSummaryCache.total_voice_samples;
+    } else if (Array.isArray(veSummaryCache.profiles)) {
+      veSummaryCache.profiles.forEach(p => {
+        const v = p.total_vectors || p.total_samples || (p.samples ? p.samples.length : 0);
+        milvusVectors += (v || 0);
+      });
+    }
+  }
+
+  if (milvusVectors === 0 && employeesCache && employeesCache.length > 0) {
+    employeesCache.forEach(e => {
+      const v = e.total_vectors || e.total_samples || (e.samples ? e.samples.length : 0);
+      milvusVectors += (v || 0);
+    });
+  }
+
+  if (elWhispCount) elWhispCount.textContent = `${whisperCalls || totalCalls} calls`;
+  if (elPyCount) elPyCount.textContent = `${diarizedCalls || totalCalls} calls`;
+  if (elMilvCount) elMilvCount.textContent = `${milvusVectors} vector${milvusVectors === 1 ? '' : 's'}`;
+  if (elOllCount) elOllCount.textContent = `${qaScorecards || completedCount} scorecards`;
 
   // 6. Update Recent Audits Activity Table
   renderDashboardAuditsTable(calls);
@@ -688,10 +719,9 @@ async function loadDatabaseStats() {
   try {
     const res = await fetch("/api/v1/voice-samples/summary/all");
     if (!res.ok) return;
-    const data = await res.json();
-    if (data.total_voice_samples !== undefined) {
-      const el = document.getElementById("stat-total-audits");
-      if (el) el.textContent = data.total_voice_samples > 0 ? data.total_voice_samples : "124";
+    voiceDbSummaryCache = await res.json();
+    if (typeof updateDashboardLiveMetrics === "function") {
+      updateDashboardLiveMetrics();
     }
   } catch (err) { }
 }
