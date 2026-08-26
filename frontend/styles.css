@@ -921,6 +921,15 @@ select option {
   white-space: nowrap;
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .badge-completed {
   background: #e6f7ed;
   color: #059669;

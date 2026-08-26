@@ -217,23 +217,31 @@ function showView(viewName, e) {
       loadVoiceEnrollmentPage();
       break;
     case "diarization":
+      stopVoiceEnrollmentPolling();
       titleEl.textContent = "Speaker Diarization Studio";
       subEl.textContent = "Multi-speaker voice separation, turn-by-turn timeline analysis, and Milvus identification.";
       loadDiarizationPage();
       break;
     case "qa-analysis":
+      stopVoiceEnrollmentPolling();
       titleEl.textContent = "QA Quality Test & Scorecards";
       subEl.textContent = "Automated AI quality evaluation, compliance checklist scoring, and agent performance insights.";
       loadQaAnalysisPage();
       break;
     case "chat-qa":
+      stopVoiceEnrollmentPolling();
       titleEl.textContent = "Chat QA Audit Studio";
       subEl.textContent = "AI Quality Evaluation, CX Sentiment & Scorecards on JSON Chat Transcripts.";
       loadChatQaPage();
       break;
     default:
+      stopVoiceEnrollmentPolling();
       titleEl.textContent = "Dashboard";
       subEl.textContent = "AI-Powered Call Analysis & Voice Audit";
+  }
+
+  if (viewName !== "voice-enrollment") {
+    stopVoiceEnrollmentPolling();
   }
 
   if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
@@ -1562,7 +1570,13 @@ async function openTranscriptModal(callId) {
 }
 
 function openModal(id) { document.getElementById(id)?.classList.add("active"); }
-function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove("active");
+  if (id === "manageVoiceClipsModal" && typeof manageVoiceClipsPollingInterval !== "undefined" && manageVoiceClipsPollingInterval) {
+    clearInterval(manageVoiceClipsPollingInterval);
+    manageVoiceClipsPollingInterval = null;
+  }
+}
 function openEnrollmentModal(e) { if (e) e.preventDefault(); loadEmployees(); openModal("enrollmentModal"); }
 function openAuditModal() { loadEmployees(); openModal("auditModal"); }
 async function openVoiceSummaryModal(e) { if (e) e.preventDefault(); openModal("voiceSummaryModal"); }
@@ -1999,18 +2013,25 @@ async function openEmployeeProfileModal(id) {
     : `<span class="status-pill badge-inactive">NOT ENROLLED</span>`;
 
   let samplesListHtml = isEnrolled
-    ? voiceSamples.map(s => `
+    ? voiceSamples.map(s => {
+        const isReady = s.embedding_id && s.status === "ACTIVE";
+        const isFailed = s.status === "FAILED";
+        const badgeClass = isReady ? "badge-completed" : isFailed ? "badge-failed" : "badge-pending";
+        const badgeIcon = isReady ? '<i data-lucide="check-circle" style="width:11px;"></i> ' : isFailed ? '<i data-lucide="alert-circle" style="width:11px;"></i> ' : '<i data-lucide="loader-2" style="width:11px; animation:spin 1s linear infinite;"></i> ';
+        const durText = s.duration_seconds ? Math.round(s.duration_seconds) + "s" : "Computing...";
+        return `
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <strong style="font-size:13px; color:#1e293b;">${s.original_file_name || s.code}</strong>
-            <div style="font-size:11px; color:#64748b;">Format: ${s.audio_format || "wav"} | Duration: ${s.duration_seconds ? Math.round(s.duration_seconds) + "s" : "--"} | Vector ID: <code>${s.embedding_id ? String(s.embedding_id).substring(0, 8) + "..." : "192D"}</code></div>
+            <div style="font-size:11px; color:#64748b;">Format: ${s.audio_format || "wav"} | Duration: ${durText} | Vector ID: <code>${s.embedding_id ? String(s.embedding_id).substring(0, 8) + "..." : (isReady ? "192D" : "Generating...")}</code></div>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span class="status-pill badge-completed" style="font-size:11px;">${s.status}</span>
+            <span class="status-pill ${badgeClass}" style="font-size:11px; display:inline-flex; align-items:center; gap:4px;">${badgeIcon}${s.status || "PROCESSING"}</span>
             <button class="btn-secondary" style="padding:4px 8px; font-size:11px; color:#ef4444;" onclick="deleteSingleVoiceSample('${s.id}', '${s.original_file_name || s.code}', '${emp.id}', '${fullName}')">Delete Clip</button>
           </div>
         </div>
-      `).join("")
+      `;
+      }).join("")
     : `<p style="font-size:13px; color:#64748b; margin:0;">No voice samples enrolled yet. Go to Voice Enrollment tab to register voice samples.</p>`;
 
   content.innerHTML = `
@@ -2196,9 +2217,13 @@ function setEnrollMode(mode) {
   }
 }
 
-async function loadVoiceEnrollmentPage() {
+let vePollingInterval = null;
+
+async function loadVoiceEnrollmentPage(isSilent = false) {
   const tbody = document.getElementById("veDirectoryTableBody");
-  if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Loading enrolled voice directory...</td></tr>`;
+  if (!isSilent && tbody && !veSummaryCache) {
+    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Loading enrolled voice directory...</td></tr>`;
+  }
 
   try {
     const [empRes, summaryRes, deptRes] = await Promise.all([
@@ -2216,8 +2241,53 @@ async function loadVoiceEnrollmentPage() {
     populateVoiceEnrollmentDropdowns();
     renderVoiceEnrollmentDirectory(summaryData);
     initVeDropzones();
+
+    // Check if background embedding worker is still processing samples
+    checkVoiceEnrollmentProcessingStatus(summaryData);
   } catch (err) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Error loading voice enrollment directory</td></tr>`;
+    if (!isSilent && tbody && !veSummaryCache) {
+      tbody.innerHTML = `<tr><td colspan="7" style="color: #ef4444; text-align: center;">Error loading voice enrollment directory</td></tr>`;
+    }
+  }
+}
+
+function checkVoiceEnrollmentProcessingStatus(summaryData) {
+  if (!summaryData || !summaryData.profiles) {
+    stopVoiceEnrollmentPolling();
+    return;
+  }
+
+  const hasPending = summaryData.profiles.some(p => {
+    const samples = p.samples || [];
+    const sampleCount = p.total_samples || samples.length;
+    const vectorCount = p.total_vectors || 0;
+    const isProcessing = samples.some(s => s.status === "PENDING" || s.status === "PROCESSING" || (!s.embedding_id && s.status !== "FAILED"));
+    return isProcessing || (sampleCount > 0 && vectorCount < sampleCount);
+  });
+
+  if (hasPending) {
+    startVoiceEnrollmentPolling();
+  } else {
+    stopVoiceEnrollmentPolling();
+  }
+}
+
+function startVoiceEnrollmentPolling() {
+  if (vePollingInterval) return;
+  vePollingInterval = setInterval(() => {
+    const viewVoiceEl = document.getElementById("view-voice-enrollment");
+    if (viewVoiceEl && viewVoiceEl.classList.contains("active")) {
+      loadVoiceEnrollmentPage(true);
+    } else {
+      stopVoiceEnrollmentPolling();
+    }
+  }, 2000);
+}
+
+function stopVoiceEnrollmentPolling() {
+  if (vePollingInterval) {
+    clearInterval(vePollingInterval);
+    vePollingInterval = null;
   }
 }
 
@@ -2782,15 +2852,39 @@ function renderVoiceEnrollmentDirectory(summaryData = null) {
     const sampleCount = prof.total_samples || samplesList.length;
     const vectorCount = prof.total_vectors || 0;
 
+    const pendingCount = samplesList.filter(s => s.status === 'PENDING' || s.status === 'PROCESSING' || (!s.embedding_id && s.status !== 'FAILED')).length;
+    const failedCount = samplesList.filter(s => s.status === 'FAILED').length;
+
     let profDurationSec = 0;
     samplesList.forEach(s => { if (s.duration_seconds) profDurationSec += s.duration_seconds; });
     const durSec = Math.round(profDurationSec);
-    const durStr = durSec > 60 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : `${durSec}s`;
+    const durStr = durSec > 0
+      ? (durSec > 60 ? `${Math.floor(durSec / 60)}m ${durSec % 60}s` : `${durSec}s`)
+      : (pendingCount > 0 ? `<span style="color:#d97706; font-size:11px; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="loader-2" style="width:11px; animation:spin 1s linear infinite;"></i> Computing...</span>` : "--");
+
+    let statusClass = "badge-inactive";
+    let statusText = "NO SAMPLES";
+
+    if (sampleCount === 0 && vectorCount === 0) {
+      statusClass = "badge-inactive";
+      statusText = "NO SAMPLES";
+    } else if (pendingCount > 0 || (vectorCount < sampleCount && failedCount === 0)) {
+      statusClass = "badge-pending";
+      statusText = vectorCount > 0 
+        ? `<i data-lucide="loader-2" style="width:11px; height:11px; animation:spin 1s linear infinite;"></i> ENROLLED (${vectorCount}/${sampleCount} Vectors)`
+        : `<i data-lucide="loader-2" style="width:11px; height:11px; animation:spin 1s linear infinite;"></i> PROCESSING VECTOR...`;
+    } else if (vectorCount > 0) {
+      statusClass = "badge-completed";
+      statusText = `<i data-lucide="shield-check" style="width:12px; height:12px;"></i> ENROLLED (${vectorCount} Vector${vectorCount === 1 ? '' : 's'})`;
+    } else if (failedCount > 0) {
+      statusClass = "badge-failed";
+      statusText = `<i data-lucide="alert-circle" style="width:12px; height:12px;"></i> FAILED (${failedCount} Error${failedCount === 1 ? '' : 's'})`;
+    } else {
+      statusClass = "badge-completed";
+      statusText = `ENROLLED (${sampleCount} Clip${sampleCount === 1 ? '' : 's'})`;
+    }
 
     const isEnrolled = sampleCount > 0 || vectorCount > 0;
-    const statusClass = isEnrolled ? "badge-completed" : "badge-inactive";
-    const statusText = isEnrolled ? `ENROLLED (${vectorCount} Vector${vectorCount === 1 ? '' : 's'})` : "NO SAMPLES";
-
     const fileNames = samplesList.map(s => s.original_file_name || s.id).join(", ");
     const fileSub = fileNames ? `<br><small style="color: #475569; font-size: 11px;">Files: ${fileNames}</small>` : "";
 
@@ -2800,7 +2894,7 @@ function renderVoiceEnrollmentDirectory(summaryData = null) {
         <td><strong>${fullName}</strong>${fileSub}</td>
         <td>${matchedDept}</td>
         <td><strong>${sampleCount} audio clip(s)</strong></td>
-        <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+        <td><span class="status-pill ${statusClass}" style="display:inline-flex; align-items:center; gap:5px;">${statusText}</span></td>
         <td>${durStr}</td>
         <td>
           <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="selectEmployeeForEnrollment('${prof.employee_id}')">+ Add Sample</button>
@@ -2915,19 +3009,27 @@ async function submitVoiceEnrollment(e) {
   if (!empId) return showToast("Please select a target employee", "error");
 
   const btnSubmit = document.getElementById("btnSubmitEnrollment");
-  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader"></i> Processing Voice...`; }
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader-2" style="animation:spin 1s linear infinite;"></i> Enrolling Voice...`; }
 
   const formData = new FormData();
   formData.append("employee_id", empId);
   formData.append("sample_type", "ENROLLMENT");
 
-  const fileInput = document.getElementById("veAudioFiles");
-  if (!fileInput.files || fileInput.files.length === 0) {
-    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
-    return showToast("Please select at least one audio file to upload", "error");
-  }
-  for (let i = 0; i < fileInput.files.length; i++) {
-    formData.append("files", fileInput.files[i]);
+  if (enrollMode === "upload") {
+    const fileInput = document.getElementById("veAudioFiles");
+    if (!fileInput.files || fileInput.files.length === 0) {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
+      return showToast("Please select at least one audio file to upload", "error");
+    }
+    for (let i = 0; i < fileInput.files.length; i++) {
+      formData.append("files", fileInput.files[i]);
+    }
+  } else {
+    if (!recordedAudioBlob) {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = `<i data-lucide="cpu"></i> Enroll Voice Data`; }
+      return showToast("Please record an audio clip before submitting", "error");
+    }
+    formData.append("files", recordedAudioBlob, `mic_enroll_${Date.now()}.wav`);
   }
 
   try {
@@ -2942,11 +3044,12 @@ async function submitVoiceEnrollment(e) {
     }
 
     const data = await res.json();
-    showToast(`Voice sample(s) successfully enrolled! ${data.message || ""}`, "success");
+    showToast(`Voice sample(s) queued for embedding generation! ${data.message || ""}`, "success");
 
     clearMicRecording();
     clearVeSelectedFiles();
-    loadVoiceEnrollmentPage();
+    loadVoiceEnrollmentPage(true);
+    startVoiceEnrollmentPolling();
   } catch (err) {
     showToast("Voice Enrollment Error: " + err.message, "error");
   } finally {
@@ -3451,7 +3554,7 @@ async function submitQuickVoiceRecord() {
   if (!empId || !quickRecordedAudioBlob) return showToast("No recorded voice sample", "error");
 
   const btnSubmit = document.getElementById("btnQuickRecordSubmit");
-  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader"></i> Saving Voice...`; }
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = `<i data-lucide="loader-2" style="animation:spin 1s linear infinite;"></i> Saving Voice...`; }
 
   const formData = new FormData();
   formData.append("employee_id", empId);
@@ -3469,9 +3572,11 @@ async function submitQuickVoiceRecord() {
       throw new Error(err.detail || "Voice enrollment failed.");
     }
 
-    showToast("Voice sample successfully registered!", "success");
+    showToast("Voice sample queued for vector embedding!", "success");
     closeModal("quickRecordModal");
     loadEmployees();
+    loadVoiceEnrollmentPage(true);
+    startVoiceEnrollmentPolling();
   } catch (err) {
     showToast("Voice Enrollment Error: " + err.message, "error");
   } finally {
@@ -3484,12 +3589,16 @@ async function submitQuickVoiceRecord() {
    MANAGE INDIVIDUAL VOICE CLIPS & MILVUS VECTOR EMBEDDINGS LOGIC
    ========================================================================== */
 
+let manageVoiceClipsPollingInterval = null;
+
 async function openManageVoiceClipsModal(employeeId, empName) {
   const subtitleEl = document.getElementById("manageVoiceClipsEmpSubtitle");
   if (subtitleEl) subtitleEl.textContent = `Managing voice samples & Milvus embeddings for ${empName}`;
 
   const listEl = document.getElementById("manageVoiceClipsList");
-  if (listEl) listEl.innerHTML = `<p style="text-align:center; padding: 20px; color:#64748b;">Loading voice sample clips...</p>`;
+  if (listEl && !manageVoiceClipsPollingInterval) {
+    listEl.innerHTML = `<p style="text-align:center; padding: 20px; color:#64748b;">Loading voice sample clips...</p>`;
+  }
 
   openModal("manageVoiceClipsModal");
 
@@ -3499,14 +3608,29 @@ async function openManageVoiceClipsModal(employeeId, empName) {
     const samples = await res.json();
 
     if (!samples || samples.length === 0) {
+      if (manageVoiceClipsPollingInterval) {
+        clearInterval(manageVoiceClipsPollingInterval);
+        manageVoiceClipsPollingInterval = null;
+      }
       listEl.innerHTML = `<div style="text-align:center; padding: 30px; color:#64748b;">No voice sample clips found for ${empName}.</div>`;
       return;
     }
 
+    let hasUnprocessed = false;
+
     listEl.innerHTML = samples.map(s => {
       const fileName = s.original_file_name || s.code || `voice_sample_${s.id.substring(0, 6)}.wav`;
-      const durStr = s.duration_seconds ? `${Math.round(s.duration_seconds)} seconds` : "Unknown duration";
-      const vecStatus = s.embedding_id ? `<span style="color:#059669; font-weight:600;">● Milvus Vector Embedded (192D)</span>` : `<span style="color:#eab308; font-weight:600;">Processing Embedding</span>`;
+      const durStr = s.duration_seconds ? `${Math.round(s.duration_seconds)} seconds` : "Calculating duration...";
+      
+      let vecStatus = "";
+      if (s.embedding_id) {
+        vecStatus = `<span style="color:#059669; font-weight:600; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="check-circle" style="width:13px; height:13px;"></i> Milvus Vector Embedded (192D)</span>`;
+      } else if (s.status === "FAILED") {
+        vecStatus = `<span style="color:#ef4444; font-weight:600; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="alert-circle" style="width:13px; height:13px;"></i> Embedding Failed (${s.error_message || "Error"})</span>`;
+      } else {
+        hasUnprocessed = true;
+        vecStatus = `<span style="color:#d97706; font-weight:600; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="loader-2" style="width:13px; height:13px; animation:spin 1s linear infinite;"></i> Processing 192D Milvus Vector...</span>`;
+      }
 
       return `
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
@@ -3530,6 +3654,25 @@ async function openManageVoiceClipsModal(employeeId, empName) {
     }).join("");
 
     if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+
+    if (hasUnprocessed) {
+      if (!manageVoiceClipsPollingInterval) {
+        manageVoiceClipsPollingInterval = setInterval(() => {
+          const manageModalEl = document.getElementById("manageVoiceClipsModal");
+          if (manageModalEl && manageModalEl.classList.contains("active")) {
+            openManageVoiceClipsModal(employeeId, empName);
+          } else {
+            clearInterval(manageVoiceClipsPollingInterval);
+            manageVoiceClipsPollingInterval = null;
+          }
+        }, 2000);
+      }
+    } else {
+      if (manageVoiceClipsPollingInterval) {
+        clearInterval(manageVoiceClipsPollingInterval);
+        manageVoiceClipsPollingInterval = null;
+      }
+    }
 
   } catch (err) {
     if (listEl) listEl.innerHTML = `<p style="color:#ef4444; text-align:center; padding:20px;">Error loading voice clips: ${err.message}</p>`;
