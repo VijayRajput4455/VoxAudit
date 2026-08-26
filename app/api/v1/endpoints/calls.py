@@ -226,3 +226,21 @@ def list_call_jobs(
     call_jobs = db.scalars(statement).all()
     return [CallJobResponse.model_validate(job) for job in call_jobs]
 
+
+@router.delete(
+    "/{call_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete Call Processing Job",
+    description="Deletes a call audit record and its associated audio recording from MinIO storage.",
+)
+def delete_call_job(
+    call_id: UUID,
+    db: Session = Depends(get_db),
+) -> None:
+    """Deletes a call processing job by ID."""
+    call_service = CallService(db)
+    success = call_service.delete_call_job(call_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Call job '{call_id}' not found.")
+
+

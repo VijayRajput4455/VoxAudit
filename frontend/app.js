@@ -1360,21 +1360,25 @@ function filterAudits() {
 }
 
 async function deleteCallAudit(callId) {
-  const confirmed = await showConfirmModal({
-    title: "Delete Call Audit Record",
-    message: "Are you sure you want to delete this call recording audit and its transcript?",
-    confirmText: "Delete Call Audit",
-    isDanger: true
-  });
-  if (!confirmed) return;
+  const call = auditsCache.find(c => strId(c.id) === strId(callId));
+  const callName = call?.original_file_name || call?.call_reference || (call?.id ? call.id.substring(0, 8) : "this call");
+
+  if (!confirm(`Are you sure you want to permanently delete "${callName}" and its transcript?`)) return;
 
   try {
     const res = await fetch(`/api/v1/calls/${callId}`, { method: "DELETE" });
     if (res.ok) {
-      showToast("Call audit record deleted", "success");
-      loadCallAudits();
+      showToast("Call audit record deleted successfully", "info");
+      auditsCache = auditsCache.filter(c => strId(c.id) !== strId(callId));
+      renderAuditsTable(auditsCache);
+      renderDashboardAuditsTable(auditsCache);
+      if (typeof updateDiarMetrics === "function") updateDiarMetrics();
+      if (typeof renderDiarHistoryTable === "function") renderDiarHistoryTable();
+      if (typeof populateCallDropdown === "function") populateCallDropdown();
+      if (typeof populateQaCallDropdown === "function") populateQaCallDropdown();
     } else {
-      showToast("Failed to delete call audit", "error");
+      const err = await res.json().catch(() => ({}));
+      showToast(err.detail || "Failed to delete call audit", "error");
     }
   } catch (err) {
     showToast("Error deleting call audit: " + err.message, "error");
@@ -1437,9 +1441,15 @@ function renderAuditsTable(list) {
           <td><strong>${identName}</strong></td>
           <td>${qaBadge}</td>
           <td><span class="status-pill ${statusClass}">${c.status}</span></td>
-          <td>
-            <button class="btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="event.stopPropagation(); openTranscriptModal('${c.id}')"><i data-lucide="file-text"></i> View</button>
-            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #ef4444;" onclick="event.stopPropagation(); deleteCallAudit('${c.id}')"><i data-lucide="trash-2"></i></button>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px;">
+              <button class="btn-primary" style="font-size: 11.5px; padding: 5px 12px; height: auto; display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; font-weight: 600; box-shadow: 0 2px 6px rgba(29, 97, 231, 0.2);" onclick="event.stopPropagation(); openTranscriptModal('${c.id}')" title="View transcript & QA scorecard">
+                <i data-lucide="eye" style="width: 13px; height: 13px;"></i> View
+              </button>
+              <button class="btn-secondary" style="font-size: 11px; padding: 5px 9px; height: auto; color: #ef4444; border: 1px solid #fecaca; background: #fff5f5; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onclick="event.stopPropagation(); deleteCallAudit('${c.id}')" title="Delete Call Audit">
+                <i data-lucide="trash-2" style="width: 13px; height: 13px; color: #ef4444;"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -1507,9 +1517,13 @@ function renderAuditsTable(list) {
           </div>
 
           <!-- FOOTER ACTION BUTTONS -->
-          <div style="display: flex; align-items: center; gap: 10px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
-            <button class="btn-primary" style="flex: 1; padding: 8px 14px; font-size: 12.5px; justify-content: center;" onclick="openTranscriptModal('${c.id}')"><i data-lucide="file-text" style="width: 14px;"></i> View Transcript & QA</button>
-            <button class="btn-secondary" style="padding: 8px 12px; font-size: 12.5px; color: #ef4444;" onclick="deleteCallAudit('${c.id}')"><i data-lucide="trash-2" style="width: 14px;"></i></button>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+            <button class="btn-primary" style="flex: 1; padding: 7px 14px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 9px; box-shadow: 0 2px 6px rgba(29, 97, 231, 0.2);" onclick="openTranscriptModal('${c.id}')">
+              <i data-lucide="eye" style="width: 13px; height: 13px;"></i> View Transcript
+            </button>
+            <button class="btn-secondary" style="padding: 7px 11px; font-size: 12px; color: #ef4444; border: 1px solid #fecaca; background: #fff5f5; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onclick="deleteCallAudit('${c.id}')" title="Delete Call Audit">
+              <i data-lucide="trash-2" style="width: 13px; height: 13px; color: #ef4444;"></i>
+            </button>
           </div>
         </div>
       `;
@@ -5013,6 +5027,9 @@ function renderDiarHistoryTable(filterQuery = null) {
             <button class="btn-secondary" style="font-size: 11px; padding: 4px 8px; height: auto;" onclick="downloadDiarHistoryJson('${c.id}')" title="Download JSON">
               <i data-lucide="download" style="width: 12px;"></i>
             </button>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 8px; height: auto; color: #ef4444; border-color: #fca5a5;" onclick="deleteDiarHistoryCall('${c.id}')" title="Delete call and audio recording">
+              <i data-lucide="trash-2" style="width: 12px; color: #ef4444;"></i>
+            </button>
           </div>
         </td>
       </tr>
@@ -5113,6 +5130,46 @@ async function downloadDiarHistoryJson(callId) {
   a.click();
   URL.revokeObjectURL(url);
   showToast("Diarization JSON downloaded!", "success");
+}
+
+async function deleteDiarHistoryCall(callId) {
+  const call = auditsCache.find(c => strId(c.id) === strId(callId));
+  const callName = call?.original_file_name || call?.audio_filename || "this call";
+
+  if (!confirm(`Are you sure you want to permanently delete "${callName}" and its transcript?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/v1/calls/${callId}`, {
+      method: "DELETE"
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to delete call");
+    }
+
+    showToast("Call and audio recording deleted successfully", "info");
+
+    // Remove from local auditsCache
+    auditsCache = auditsCache.filter(c => strId(c.id) !== strId(callId));
+
+    // Update metrics and re-render history table
+    updateDiarMetrics();
+    renderDiarHistoryTable();
+    populateCallDropdown();
+    populateQaCallDropdown();
+
+    // If currently inspected call is deleted, hide or reset the player panel
+    if (currentViewedDiarJobId === callId) {
+      currentViewedDiarJobId = null;
+      const detailsSec = document.getElementById("diarDetailsBottomSection");
+      if (detailsSec) detailsSec.style.display = "none";
+    }
+  } catch (err) {
+    showToast(`Error deleting call: ${err.message}`, "error");
+  }
 }
 
 /* ==========================================================================
@@ -6157,6 +6214,9 @@ function renderQaHistoryTable(filterQuery = null) {
             ` : ''}
             <button class="btn-primary" style="font-size: 11.5px; padding: 5px 11px; height: auto; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);" onclick="triggerQaAuditFromRow('${c.id}')" title="Run AI Quality Evaluation on this call">
               <i data-lucide="play" style="width: 12px;"></i> ${hasQa ? 'Re-Audit' : 'Run Audit'}
+            </button>
+            <button class="btn-secondary" style="font-size: 11px; padding: 5px 8px; height: auto; color: #ef4444; border-color: #fca5a5;" onclick="deleteDiarHistoryCall('${c.id}')" title="Delete call">
+              <i data-lucide="trash-2" style="width: 12px; color: #ef4444;"></i>
             </button>
           </div>
         </td>

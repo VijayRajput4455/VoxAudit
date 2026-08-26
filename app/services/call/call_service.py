@@ -116,3 +116,25 @@ class CallService:
             extra={"call_id": str(call_job.id), "job_id": job_id, "status": "PENDING"},
         )
         return call_job
+
+    def delete_call_job(self, call_id: UUID) -> bool:
+        """Deletes CallJob record from PostgreSQL and removes associated audio file from MinIO storage."""
+        from sqlalchemy import select
+
+        statement = select(CallJob).where(CallJob.id == call_id)
+        call_job = self.db.scalar(statement)
+        if not call_job:
+            return False
+
+        storage_key = call_job.storage_key
+        if storage_key:
+            try:
+                self.storage.delete_file(storage_key)
+            except Exception as exc:
+                logger.warning(f"Failed to delete audio object '{storage_key}' from MinIO: {str(exc)}")
+
+        self.db.delete(call_job)
+        self.db.commit()
+        logger.info(f"Deleted call job '{call_id}' and storage object '{storage_key}'")
+        return True
+
