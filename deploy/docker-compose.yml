@@ -1,25 +1,32 @@
+# =============================================================================
+# VoxAudit Complete Enterprise Infrastructure & Application Stack
+# =============================================================================
+
 services:
 
   # ---------------------------------------------------------------------------
   # 1. PostgreSQL Database
   # ---------------------------------------------------------------------------
   postgres:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: voxaudit-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: voxaudit
-      POSTGRES_USER: voxaudit
-      POSTGRES_PASSWORD: voxaudit_password
+      POSTGRES_DB: ${POSTGRES_DB:-voxaudit}
+      POSTGRES_USER: ${POSTGRES_USER:-voxaudit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voxaudit_password}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - voxaudit_postgres_data:/var/lib/postgresql/data
+    networks:
+      - voxaudit-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U voxaudit -d voxaudit" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voxaudit} -d ${POSTGRES_DB:-voxaudit}" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   # ---------------------------------------------------------------------------
   # 2. MinIO Object Storage
@@ -30,37 +37,64 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - voxaudit_minio_data:/data
+    networks:
+      - voxaudit-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # 2b. MinIO Auto Bucket Initialization
+  # ---------------------------------------------------------------------------
+  minio-init:
+    image: minio/mc:latest
+    container_name: voxaudit-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - voxaudit-network
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
+      /usr/bin/mc mb --ignore-existing myminio/${MINIO_BUCKET_NAME:-voxaudit-audio};
+      /usr/bin/mc anonymous set download myminio/${MINIO_BUCKET_NAME:-voxaudit-audio};
+      exit 0;
+      "
 
   # ---------------------------------------------------------------------------
   # 3. RabbitMQ Message Queue
   # ---------------------------------------------------------------------------
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3-management-alpine
     container_name: voxaudit-rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - voxaudit_rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - voxaudit-network
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
 
   # ---------------------------------------------------------------------------
   # 4. Etcd (Metadata storage for Milvus)
@@ -77,9 +111,11 @@ services:
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls=http://0.0.0.0:2379 --data-dir=/etcd-data
     volumes:
       - voxaudit_etcd_data:/etcd-data
+    networks:
+      - voxaudit-network
 
   # ---------------------------------------------------------------------------
-  # 5. Milvus Vector Database
+  # 5. Milvus 192D Vector Database
   # ---------------------------------------------------------------------------
   milvus:
     image: milvusdb/milvus:v2.4.0
@@ -91,13 +127,15 @@ services:
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
-      MINIO_ACCESS_KEY_ID: minioadmin
-      MINIO_SECRET_ACCESS_KEY: minioadmin
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - voxaudit_milvus_data:/var/lib/milvus
     ports:
-      - "19530:19530"
+      - "${MILVUS_PORT:-19530}:19530"
       - "9091:9091"
+    networks:
+      - voxaudit-network
     depends_on:
       - etcd
       - minio
@@ -108,23 +146,28 @@ services:
   api:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile.api
     container_name: voxaudit-api
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     environment:
-      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-voxaudit}:${POSTGRES_PASSWORD:-voxaudit_password}@postgres:5432/${POSTGRES_DB:-voxaudit}
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-voxaudit-audio}
       - MINIO_SECURE=false
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       - MILVUS_HOST=milvus
       - MILVUS_PORT=19530
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    networks:
+      - voxaudit-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,12 +188,14 @@ services:
     container_name: voxaudit-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - voxaudit-network
     depends_on:
       - api
 
   # ---------------------------------------------------------------------------
-  # 8. Voice Sample Enrollment Worker (GPU Enabled)
+  # 8. Voice Sample Enrollment Worker (SpeechBrain 192D Biometrics)
   # ---------------------------------------------------------------------------
   voice-worker:
     build:
@@ -159,17 +204,25 @@ services:
     container_name: voxaudit-voice-worker
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-voxaudit}:${POSTGRES_PASSWORD:-voxaudit_password}@postgres:5432/${POSTGRES_DB:-voxaudit}
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-voxaudit-audio}
       - MINIO_SECURE=false
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       - MILVUS_HOST=milvus
       - MILVUS_PORT=19530
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
+    volumes:
+      - voxaudit_huggingface_cache:/root/.cache/huggingface
+      - voxaudit_torch_cache:/root/.cache/torch
+    networks:
+      - voxaudit-network
     deploy:
       resources:
         reservations:
@@ -184,7 +237,7 @@ services:
       - milvus
 
   # ---------------------------------------------------------------------------
-  # 9. Call Processing & Audit Worker (GPU Enabled)
+  # 9. Call Processing & Diarization Worker (Whisper Large-v3 + PyAnnote 3.1)
   # ---------------------------------------------------------------------------
   call-worker:
     build:
@@ -193,17 +246,25 @@ services:
     container_name: voxaudit-call-worker
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-voxaudit}:${POSTGRES_PASSWORD:-voxaudit_password}@postgres:5432/${POSTGRES_DB:-voxaudit}
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-voxaudit-audio}
       - MINIO_SECURE=false
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       - MILVUS_HOST=milvus
       - MILVUS_PORT=19530
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
+    volumes:
+      - voxaudit_huggingface_cache:/root/.cache/huggingface
+      - voxaudit_torch_cache:/root/.cache/torch
+    networks:
+      - voxaudit-network
     deploy:
       resources:
         reservations:
@@ -225,9 +286,11 @@ services:
     container_name: voxaudit-ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "${OLLAMA_PORT:-11434}:11434"
     volumes:
       - voxaudit_ollama_data:/root/.ollama
+    networks:
+      - voxaudit-network
     deploy:
       resources:
         reservations:
@@ -236,9 +299,28 @@ services:
               count: all
               capabilities: [gpu]
 
+  # ---------------------------------------------------------------------------
+  # 10b. Ollama Automatic Model Puller (Auto-pulls LLM model)
+  # ---------------------------------------------------------------------------
+  ollama-pull:
+    image: curlimages/curl:latest
+    container_name: voxaudit-ollama-pull
+    depends_on:
+      - ollama
+    networks:
+      - voxaudit-network
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Ollama service to start...';
+      until curl -s http://ollama:11434/api/tags > /dev/null; do sleep 3; done;
+      echo 'Pulling Ollama Model ${OLLAMA_MODEL:-qwen3.5:9b}...';
+      curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"${OLLAMA_MODEL:-qwen3.5:9b}\"}';
+      echo 'Model ready!';
+      exit 0;
+      "
 
   # ---------------------------------------------------------------------------
-  # 11. QA Audit Worker (Ollama LLM Powered)
+  # 11. QA Audit Worker (Ollama LLM Automated Scorecard Engine)
   # ---------------------------------------------------------------------------
   qa-worker:
     build:
@@ -247,23 +329,45 @@ services:
     container_name: voxaudit-qa-worker
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql://voxaudit:voxaudit_password@postgres:5432/voxaudit
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-voxaudit}:${POSTGRES_PASSWORD:-voxaudit_password}@postgres:5432/${POSTGRES_DB:-voxaudit}
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       - OLLAMA_BASE_URL=http://ollama:11434
-      - OLLAMA_MODEL=qwen3.5:9b
-
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3.5:9b}
+    networks:
+      - voxaudit-network
     depends_on:
       - postgres
       - rabbitmq
       - ollama
 
+# =============================================================================
+# Persistent Storage Volumes
+# =============================================================================
 volumes:
   voxaudit_postgres_data:
+    name: voxaudit_postgres_data
   voxaudit_minio_data:
+    name: voxaudit_minio_data
+  voxaudit_rabbitmq_data:
+    name: voxaudit_rabbitmq_data
   voxaudit_etcd_data:
+    name: voxaudit_etcd_data
   voxaudit_milvus_data:
+    name: voxaudit_milvus_data
   voxaudit_ollama_data:
+    name: voxaudit_ollama_data
+  voxaudit_huggingface_cache:
+    name: voxaudit_huggingface_cache
+  voxaudit_torch_cache:
+    name: voxaudit_torch_cache
 
+# =============================================================================
+# Isolated Docker Network
+# =============================================================================
+networks:
+  voxaudit-network:
+    name: voxaudit-network
+    driver: bridge

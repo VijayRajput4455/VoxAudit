@@ -199,6 +199,7 @@ VoxAudit/
 │       ├── call_processing_worker.py  # Background worker for Stage 1 audio processing
 │       └── qa_audit_worker.py      # Background worker for Stage 2 LLM QA auditing
 ├── docker/
+│   ├── Dockerfile.api              # Dockerfile for main FastAPI API service
 │   ├── Dockerfile.call_worker      # Dockerfile for Stage 1 Call Processing Worker
 │   ├── Dockerfile.frontend         # Dockerfile for NGINX frontend
 │   ├── Dockerfile.qa_worker        # Dockerfile for Stage 2 QA Audit Worker
@@ -208,7 +209,6 @@ VoxAudit/
 ├── migrations/                     # Database migration assets
 ├── tests/
 │   └── unit/                       # Pytest unit test suites
-├── Dockerfile                      # Dockerfile for main FastAPI API service
 ├── pyproject.toml                  # Project metadata & dependencies
 ├── requirements.txt                # Python package dependencies list
 └── README.md                       # Project technical documentation
