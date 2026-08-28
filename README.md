@@ -591,24 +591,34 @@ pytest tests/unit/services/test_qa_scorecard.py tests/unit/workers/test_qa_audit
 
 ---
 
-## Logging & Observability (Grafana + Loki)
+## Logging, Observability & Analytics (Grafana + Prometheus + Loki)
 
-VoxAudit includes a pre-configured, production-ready observability and log aggregation stack:
+VoxAudit includes a pre-configured, production-ready observability and business intelligence stack with 4 pre-provisioned Grafana dashboards:
 
-- **Structured JSON Logging**: Standardized log records formatted with timestamps, log level, service name, environment, request correlation IDs, module names, and exception tracebacks ([`app/core/logging.py`](file:///c:/Users/VIJAY/Desktop/GitHub/VoxAudit/app/core/logging.py)).
-- **Loki Engine** (Port `3100`): Ingests and indexes structured JSON log streams from file logs and Docker containers.
-- **Promtail Shipper**: Scrapes `logs/voxaudit.log` and microservice containers, automatically parsing JSON fields into indexed labels (`level`, `service`, `module`, `request_id`).
-- **Grafana Dashboard** (Port `3000`): Pre-provisioned enterprise dashboard available at `http://localhost:3000`:
-  - **Credentials**: Username `admin` / Password `admin`
-  - **Live Ingestion & Volume Rate**: Real-time stacked time-series chart of logs by severity level (`INFO`, `WARNING`, `ERROR`, `CRITICAL`).
-  - **Health KPIs**: Live counters for Ingested Logs, Errors, Warnings, and Critical Events.
-  - **Error Center**: Dedicated panel streaming only errors with full stack traces.
-  - **Interactive Search**: Filter logs by service dropdown, severity level, or free-text / Request ID search.
+- **1. Business & QA Audit Analytics** (`/d/voxaudit-qa-business-analytics`):
+  - Executive KPIs: Total Calls Audited, Total Audio Duration, Average QA Score, Resolution Rate %, In-Flight Jobs.
+  - Interactive Filters: Department, Employee Agent, and QA Grade dropdowns.
+  - Daily Quality & Volume Trend over time, Customer Sentiment & Frustration distributions, Agent QA Leaderboard.
+- **2. API & AI/ML Pipeline Performance** (`/d/voxaudit-api-ml-performance`):
+  - Total API Hits counter, Requests Per Second (RPS), HTTP Status Code breakdown (2xx, 4xx, 5xx).
+  - Response latency percentiles (p50 median, p95).
+  - AI/ML stage execution times: Faster-Whisper STT, Pyannote Diarization, SpeechBrain ECAPA, and Ollama LLM Audit.
+  - Real-Time Factor (RTF) gauge ($\frac{\text{Processing Time}}{\text{Audio Duration}}$).
+- **3. Infrastructure, Queues & Hardware** (`/d/voxaudit-infrastructure-queues`):
+  - RabbitMQ real-time Queue Depth (`call_processing_jobs`, `qa_audit_jobs`, `voice_sample_jobs`).
+  - In-flight unacknowledged jobs, message publish/delivery throughput, and active worker consumers.
+  - NVIDIA CUDA GPU VRAM Allocation, Total Capacity, Host CPU %, and RAM usage.
+- **4. Enterprise Log Observability & Analytics** (`/d/voxaudit-logs-analytics`):
+  - Single-line formatted structured log stream powered by Loki & Promtail.
+  - Dedicated Error & Exception Console with full stack traces and severity breakdowns.
 
 ```bash
-# Launch full observability stack alongside backend infrastructure
-docker compose -f deploy/docker-compose.yml up -d loki promtail grafana
+# Launch the complete observability suite
+docker compose -f deploy/docker-compose.yml up -d prometheus loki promtail grafana
 ```
+
+- **Grafana URL**: `http://localhost:3000` (Default: `admin` / `admin`)
+
 
 
 ---

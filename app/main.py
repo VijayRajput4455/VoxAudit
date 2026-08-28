@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.api.v1.router import router as api_v1_router
 from app.core.config import settings
@@ -102,10 +102,49 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from app.core.metrics import HTTP_REQUESTS_TOTAL, HTTP_REQUEST_DURATION_SECONDS
+import time
+
+
+@app.middleware("http")
+async def prometheus_metrics_middleware(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    duration = time.perf_counter() - start_time
+
+    # Normalize path (e.g. ignore static asset paths)
+    path = request.url.path
+    if not path.startswith("/static"):
+        HTTP_REQUESTS_TOTAL.labels(
+            method=request.method,
+            endpoint=path,
+            status_code=response.status_code,
+        ).inc()
+        HTTP_REQUEST_DURATION_SECONDS.labels(
+            method=request.method,
+            endpoint=path,
+        ).observe(duration)
+
+    return response
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics_endpoint():
+    """Prometheus telemetry scrape endpoint."""
+    from app.core.metrics import collect_hardware_metrics
+    collect_hardware_metrics()
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
+
+
 app.include_router(
     api_v1_router,
     prefix=settings.API_V1_PREFIX,
 )
+
 
 # Serve Frontend SPA Dashboard
 from pathlib import Path

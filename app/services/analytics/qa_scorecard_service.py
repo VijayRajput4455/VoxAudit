@@ -280,10 +280,12 @@ Output a valid JSON object strictly matching this Enterprise v1.0 Schema format:
 """
 
         try:
-            llm_result = self.ollama_client.generate_json(
-                prompt=user_prompt,
-                system_prompt=system_prompt,
-            )
+            from app.core.metrics import StageTimer
+            with StageTimer("qa_audit"):
+                llm_result = self.ollama_client.generate_json(
+                    prompt=user_prompt,
+                    system_prompt=system_prompt,
+                )
 
             # Standardize top-level overall score compatibility
             if "overall_evaluation" in llm_result and "score" in llm_result["overall_evaluation"]:

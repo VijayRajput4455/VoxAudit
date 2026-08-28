@@ -1,0 +1,1314 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Executive Quality Assurance (QA) Scorecard Analytics, Agent Performance, Compliance Violations, and Customer Experience Intelligence powered by PostgreSQL.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "title": "Executive QA & Customer Experience KPIs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Total customer calls fully audited and scored by LLM.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#3274D9",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(c.id) AS \"Total Audited\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee') AND ('$grade' = 'All' OR coalesce(c.qa_scorecard_json->'overall_evaluation'->>'grade', '-') = '$grade');",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Calls Audited",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Total cumulative audio duration of all processed customer calls.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#1F77B4",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "dthms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(sum(c.duration_seconds), 0) AS \"Total Audio\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.duration_seconds IS NOT NULL AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee');",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Audio Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Average overall QA compliance score across all calls.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "green",
+                "value": 85
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(round(avg(c.qa_score)::numeric, 1), 0) AS \"Avg QA Score\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND c.qa_score IS NOT NULL AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee');",
+          "refId": "A"
+        }
+      ],
+      "title": "Average QA Score",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Percentage of calls where the customer issue was marked as Resolved.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(round(100.0 * count(CASE WHEN c.qa_scorecard_json->'customer_experience'->'issue_resolution'->>'status' = 'Resolved' THEN 1 END) / nullif(count(c.id), 0), 1), 0) AS \"Resolution Rate\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee');",
+          "refId": "A"
+        }
+      ],
+      "title": "Issue Resolution Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Average duration of processed support calls.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#8F3BB8",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(round(avg(c.duration_seconds)::numeric, 0), 0) AS \"Avg Duration\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.duration_seconds IS NOT NULL AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee');",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Call Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Total pending or processing calls currently in the queue.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"In Flight\" FROM call_jobs WHERE status IN ('PENDING', 'PROCESSING');",
+          "refId": "A"
+        }
+      ],
+      "title": "Jobs In Pipeline",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 200,
+      "title": "Call Volume & QA Score Trends Over Time",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Daily Call Volume vs Average QA Score trend over time.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg Score"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Calls Audited"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT date_trunc('day', c.created_at) AS \"time\", round(avg(c.qa_score)::numeric, 1) AS \"Avg Score\", count(c.id) AS \"Calls Audited\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee') GROUP BY 1 ORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Daily Quality & Volume Trend",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 300,
+      "title": "Customer Experience, Frustration & Quality Breakdown",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Distribution of customer sentiment at call completion.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Positive"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Neutral"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Negative"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 15
+      },
+      "id": 6,
+      "options": {
+        "displayLabels": [
+          "percent",
+          "value"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(c.qa_scorecard_json->'customer_experience'->'sentiment'->>'final', 'Unspecified') AS \"metric\", count(*) AS \"value\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee') GROUP BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Customer Sentiment Distribution",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Customer Frustration levels detected during customer calls.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Low"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Medium"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF9830",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "High"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 15
+      },
+      "id": 13,
+      "options": {
+        "displayLabels": [
+          "percent",
+          "value"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(c.qa_scorecard_json->'customer_experience'->'frustration'->>'final', 'Unspecified') AS \"metric\", count(*) AS \"value\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee') GROUP BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Customer Frustration Level",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Distribution of overall quality grades (A, B, C, D, Fail).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 15
+      },
+      "id": 7,
+      "options": {
+        "displayLabels": [
+          "percent",
+          "value"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(c.qa_scorecard_json->'overall_evaluation'->>'grade', 'Ungraded') AS \"metric\", count(*) AS \"value\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee') GROUP BY 1 ORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "QA Grade Breakdown",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Average score performance across company departments.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 15
+      },
+      "id": 8,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(d.name, 'General Support') AS \"Department\", round(avg(c.qa_score)::numeric, 1) AS \"Avg QA Score\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND c.qa_score IS NOT NULL GROUP BY 1 ORDER BY 2 DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Department Performance",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 400,
+      "title": "Agent QA Performance Leaderboard",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Rankings of employee agents by QA score, resolution rate, and call volume.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg QA Score"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "green",
+                      "value": 85
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 9,
+      "options": {
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Avg QA Score"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(e.first_name || ' ' || e.last_name, 'Unidentified Speaker') AS \"Employee\", coalesce(d.name, 'Support') AS \"Department\", count(c.id) AS \"Audited Calls\", coalesce(round(avg(c.qa_score)::numeric, 1), 0) AS \"Avg QA Score\", coalesce(round(100.0 * count(CASE WHEN c.qa_scorecard_json->'customer_experience'->'issue_resolution'->>'status' = 'Resolved' THEN 1 END) / nullif(count(c.id), 0), 1), 0) || '%' AS \"Resolution %\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE c.status = 'COMPLETED' AND ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') GROUP BY 1, 2 ORDER BY 4 DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Employee QA Leaderboard",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 500,
+      "title": "Recent Audited Calls Explorer",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres"
+      },
+      "description": "Comprehensive audit log of recent processed calls with duration, score, sentiment, and resolution status.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "QA Score"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 60
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 75
+                    },
+                    {
+                      "color": "green",
+                      "value": 85
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 10,
+      "options": {
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Processed At"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT to_char(c.created_at, 'YYYY-MM-DD HH24:MI:SS') AS \"Processed At\", coalesce(c.audit_code, c.code, substring(c.id::text, 1, 8)) AS \"Call Reference\", coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') AS \"Agent Name\", coalesce(round(c.duration_seconds::numeric, 0), 0) || 's' AS \"Audio Duration\", c.qa_score AS \"QA Score\", coalesce(c.qa_scorecard_json->'overall_evaluation'->>'grade', '-') AS \"Grade\", coalesce(c.qa_scorecard_json->'customer_experience'->'sentiment'->>'final', '-') AS \"Sentiment\", coalesce(c.qa_scorecard_json->'customer_experience'->'issue_resolution'->>'status', '-') AS \"Issue Resolution\" FROM call_jobs c LEFT JOIN employees e ON c.identified_employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE ('$department' = 'All' OR coalesce(d.name, 'Unassigned') = '$department') AND ('$employee' = 'All' OR coalesce(e.first_name || ' ' || e.last_name, 'Unassigned') = '$employee') AND ('$grade' = 'All' OR coalesce(c.qa_scorecard_json->'overall_evaluation'->>'grade', '-') = '$grade') ORDER BY c.created_at DESC LIMIT 50;",
+          "refId": "A"
+        }
+      ],
+      "title": "Audited Calls Log",
+      "type": "table"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "voxaudit",
+    "qa",
+    "business",
+    "analytics",
+    "scorecards"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "All"
+        },
+        "datasource": {
+          "type": "postgres",
+          "uid": "postgres"
+        },
+        "definition": "SELECT DISTINCT coalesce(name, 'Unassigned') FROM departments UNION SELECT 'All' ORDER BY 1;",
+        "description": "Filter by company department",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Department",
+        "multi": false,
+        "name": "department",
+        "options": [],
+        "query": "SELECT DISTINCT coalesce(name, 'Unassigned') FROM departments UNION SELECT 'All' ORDER BY 1;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "All"
+        },
+        "datasource": {
+          "type": "postgres",
+          "uid": "postgres"
+        },
+        "definition": "SELECT DISTINCT coalesce(first_name || ' ' || last_name, 'Unassigned') FROM employees UNION SELECT 'All' ORDER BY 1;",
+        "description": "Filter by specific agent / employee",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Agent",
+        "multi": false,
+        "name": "employee",
+        "options": [],
+        "query": "SELECT DISTINCT coalesce(first_name || ' ' || last_name, 'Unassigned') FROM employees UNION SELECT 'All' ORDER BY 1;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "All"
+        },
+        "description": "Filter by QA Grade",
+        "hide": 0,
+        "includeAll": false,
+        "label": "QA Grade",
+        "multi": false,
+        "name": "grade",
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "All"
+          },
+          {
+            "selected": false,
+            "text": "A",
+            "value": "A"
+          },
+          {
+            "selected": false,
+            "text": "B",
+            "value": "B"
+          },
+          {
+            "selected": false,
+            "text": "C",
+            "value": "C"
+          },
+          {
+            "selected": false,
+            "text": "D",
+            "value": "D"
+          },
+          {
+            "selected": false,
+            "text": "Fail",
+            "value": "Fail"
+          }
+        ],
+        "query": "All,A,B,C,D,Fail",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "VoxAudit - Business & QA Audit Analytics",
+  "uid": "voxaudit-qa-business-analytics",
+  "version": 3,
+  "weekStart": ""
+}

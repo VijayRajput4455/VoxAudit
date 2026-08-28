@@ -576,6 +576,10 @@ class CallProcessor:
         """
         logger.info(f"Starting Call Processing Pipeline for '{audio_path}' (Expected Agent: '{expected_employee_id}')...")
 
+        import time
+        from app.core.metrics import ML_REAL_TIME_FACTOR, StageTimer
+        total_start = time.perf_counter()
+
         # 1. Load full audio waveform
         data, sample_rate = sf.read(audio_path)
         waveform = torch.from_numpy(data).float()
@@ -584,22 +588,25 @@ class CallProcessor:
         duration_seconds = round(len(waveform) / float(sample_rate), 2)
 
         # 2. Whisper Speech-to-Text Transcription
-        words, detected_language = self.transcribe(audio_path)
+        with StageTimer("whisper"):
+            words, detected_language = self.transcribe(audio_path)
 
         # 3. Speaker Diarization with Word Pause Boundary Precision
-        speaker_segments = self.diarize(audio_path, words=words)
+        with StageTimer("diarization"):
+            speaker_segments = self.diarize(audio_path, words=words)
 
         # 4. Extract Speaker Audio Chunks
         speaker_audio = self.extract_speaker_audio(waveform, sample_rate, speaker_segments)
 
         # 5. ECAPA Embedding & Milvus Speaker Identification
         threshold = getattr(settings, "SPEAKER_MATCH_THRESHOLD", 0.50)
-        speaker_names, identified_employee_id = self.identify_speakers(
-            speaker_audio,
-            sample_rate,
-            threshold=threshold,
-            expected_employee_id=expected_employee_id,
-        )
+        with StageTimer("embedding"):
+            speaker_names, identified_employee_id = self.identify_speakers(
+                speaker_audio,
+                sample_rate,
+                threshold=threshold,
+                expected_employee_id=expected_employee_id,
+            )
 
         # Use expected_employee_id if provided and matched
         if expected_employee_id and not identified_employee_id:
@@ -612,16 +619,21 @@ class CallProcessor:
         raw_conversation = self.build_conversation(aligned_words)
 
         # 8. Per-Turn ECAPA Acoustic Voice Verification & Turn Merging
-        transcript_turns = self.verify_and_refine_turns(
-            raw_conversation=raw_conversation,
-            waveform=waveform,
-            sample_rate=sample_rate,
-            macro_speaker_names=speaker_names,
-            threshold=threshold,
-            expected_employee_id=expected_employee_id,
-        )
+        with StageTimer("embedding"):
+            transcript_turns = self.verify_and_refine_turns(
+                raw_conversation=raw_conversation,
+                waveform=waveform,
+                sample_rate=sample_rate,
+                macro_speaker_names=speaker_names,
+                threshold=threshold,
+                expected_employee_id=expected_employee_id,
+            )
 
-        logger.info(f"Call processing complete. Generated {len(transcript_turns)} verified transcript turns.")
+        total_proc_time = time.perf_counter() - total_start
+        rtf = round(total_proc_time / max(0.1, duration_seconds), 3)
+        ML_REAL_TIME_FACTOR.labels(model="whisper_pyannote").set(rtf)
+
+        logger.info(f"Call processing complete in {total_proc_time:.2f}s (RTF: {rtf}). Generated {len(transcript_turns)} verified transcript turns.")
 
         return {
             "duration_seconds": duration_seconds,

@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # 1. VoxAudit FastAPI API & ML Pipeline Telemetry
+  # ---------------------------------------------------------------------------
+  - job_name: 'voxaudit-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api:8000', 'host.docker.internal:8000']
+        labels:
+          application: 'voxaudit'
+          environment: 'production'
+
+  # ---------------------------------------------------------------------------
+  # 2. RabbitMQ Message Broker & Queue Telemetry
+  # ---------------------------------------------------------------------------
+  - job_name: 'rabbitmq'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+        labels:
+          application: 'rabbitmq'
+
+  - job_name: 'rabbitmq-queues'
+    metrics_path: '/metrics/per-object'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+        labels:
+          application: 'rabbitmq-queues'
+
+  # ---------------------------------------------------------------------------
+  # 3. Prometheus Self-Monitoring
+  # ---------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

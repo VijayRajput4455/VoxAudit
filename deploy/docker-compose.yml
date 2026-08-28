@@ -82,6 +82,7 @@ services:
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+      - "15692:15692"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
@@ -169,6 +170,8 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-production}
     networks:
       - voxaudit-network
+    volumes:
+      - ../logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -221,6 +224,7 @@ services:
       - HF_TOKEN=${HF_TOKEN:-}
       - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
     volumes:
+      - ../logs:/app/logs
       - voxaudit_huggingface_cache:/root/.cache/huggingface
       - voxaudit_torch_cache:/root/.cache/torch
     networks:
@@ -268,6 +272,7 @@ services:
       - HF_TOKEN=${HF_TOKEN:-}
       - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
     volumes:
+      - ../logs:/app/logs
       - voxaudit_huggingface_cache:/root/.cache/huggingface
       - voxaudit_torch_cache:/root/.cache/torch
     networks:
@@ -347,6 +352,8 @@ services:
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3.5:9b}
+    volumes:
+      - ../logs:/app/logs
     networks:
       - voxaudit-network
     depends_on:
@@ -412,8 +419,24 @@ services:
       - voxaudit_grafana_data:/var/lib/grafana
     networks:
       - voxaudit-network
-    depends_on:
-      - loki
+  # ---------------------------------------------------------------------------
+  # 15. Prometheus Telemetry & Metrics Scraper
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: voxaudit-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - voxaudit_prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    networks:
+      - voxaudit-network
 
 
 # =============================================================================
@@ -440,6 +463,8 @@ volumes:
     name: voxaudit_loki_data
   voxaudit_grafana_data:
     name: voxaudit_grafana_data
+  voxaudit_prometheus_data:
+    name: voxaudit_prometheus_data
 
 # =============================================================================
 # Isolated Docker Network
@@ -448,4 +473,5 @@ networks:
   voxaudit-network:
     name: voxaudit-network
     driver: bridge
+
 
