@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Use Python 3.11 slim image
 FROM python:3.11-slim
 
@@ -17,10 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Copy requirements and install dependencies with BuildKit persistent pip cache
 COPY requirements.txt pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+
 
 # Copy application source code and frontend SPA
 COPY app ./app

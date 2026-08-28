@@ -67,8 +67,8 @@ services:
     entrypoint: >
       /bin/sh -c "
       /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
-      /usr/bin/mc mb --ignore-existing myminio/${MINIO_BUCKET_NAME:-voxaudit-audio};
-      /usr/bin/mc anonymous set download myminio/${MINIO_BUCKET_NAME:-voxaudit-audio};
+      /usr/bin/mc mb --ignore-existing myminio/${MINIO_BUCKET:-voice-samples};
+      /usr/bin/mc anonymous set download myminio/${MINIO_BUCKET:-voice-samples};
       exit 0;
       "
 
@@ -156,7 +156,8 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-voxaudit-audio}
+      - MINIO_BUCKET=${MINIO_BUCKET:-voice-samples}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET:-voice-samples}
       - MINIO_SECURE=false
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
@@ -208,7 +209,8 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-voxaudit-audio}
+      - MINIO_BUCKET=${MINIO_BUCKET:-voice-samples}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET:-voice-samples}
       - MINIO_SECURE=false
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
@@ -231,10 +233,14 @@ services:
               count: all
               capabilities: [gpu]
     depends_on:
-      - postgres
-      - minio
-      - rabbitmq
-      - milvus
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      milvus:
+        condition: service_started
 
   # ---------------------------------------------------------------------------
   # 9. Call Processing & Diarization Worker (Whisper Large-v3 + PyAnnote 3.1)
@@ -250,7 +256,8 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-voxaudit-audio}
+      - MINIO_BUCKET=${MINIO_BUCKET:-voice-samples}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET:-voice-samples}
       - MINIO_SECURE=false
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
@@ -273,10 +280,14 @@ services:
               count: all
               capabilities: [gpu]
     depends_on:
-      - postgres
-      - minio
-      - rabbitmq
-      - milvus
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      milvus:
+        condition: service_started
 
   # ---------------------------------------------------------------------------
   # 10. Ollama Local LLM Engine (Port 11434)
@@ -339,9 +350,13 @@ services:
     networks:
       - voxaudit-network
     depends_on:
-      - postgres
-      - rabbitmq
-      - ollama
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
 
 # =============================================================================
 # Persistent Storage Volumes

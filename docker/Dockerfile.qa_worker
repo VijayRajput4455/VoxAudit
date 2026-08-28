@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # QA Audit Worker Dockerfile
 FROM python:3.11-slim
 
@@ -12,9 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements.txt pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
+
 
 COPY app ./app
 
 CMD ["python", "-m", "app.workers.qa_audit_worker"]
+

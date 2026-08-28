@@ -38,8 +38,34 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning(f"Database schema auto-migration warning: {str(exc)}")
 
+    # Automatically seed the 4 default shifts (General, Morning, Evening, Night), departments, and designations
+    try:
+        from app.core.database import SessionLocal
+        from app.services.shift_service import ShiftService
+        from app.services.department_service import DepartmentService
+        from app.services.designation_service import DesignationService
+
+        with SessionLocal() as db_session:
+            shift_svc = ShiftService(db_session)
+            seeded_shifts = shift_svc.seed_default_shifts()
+            if seeded_shifts:
+                logger.info(f"Auto-seeded {len(seeded_shifts)} default shift(s): General, Morning, Evening, Night.")
+
+            dept_svc = DepartmentService(db_session)
+            seeded_depts = dept_svc.seed_default_departments()
+            if seeded_depts:
+                logger.info(f"Auto-seeded {len(seeded_depts)} default department(s).")
+
+            desig_svc = DesignationService(db_session)
+            seeded_desigs = desig_svc.seed_default_designations()
+            if seeded_desigs:
+                logger.info(f"Auto-seeded {len(seeded_desigs)} default designation(s).")
+    except Exception as exc:
+        logger.warning(f"Database default seeding warning: {str(exc)}")
+
     yield
     logger.info("Shutting down application...")
+
 
 
 

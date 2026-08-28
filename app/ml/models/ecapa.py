@@ -19,8 +19,8 @@ def resolve_device() -> str:
 
     target_device = getattr(settings, "EMBEDDING_DEVICE", "auto").lower()
 
-    if target_device == "auto":
-        device = "cuda" if cuda_available else "cpu"
+    if target_device in ("auto", "cuda"):
+        device = "cuda:0" if cuda_available else "cpu"
     else:
         device = target_device
 

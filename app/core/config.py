@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,9 +23,13 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_SECURE: bool = False
-    MINIO_BUCKET: str = "voice-samples"
+    MINIO_BUCKET: str = Field(
+        default="voice-samples",
+        validation_alias=AliasChoices("MINIO_BUCKET", "MINIO_BUCKET_NAME", "MINIO_VOICE_BUCKET"),
+    )
     MINIO_REGION: str = "us-east-1"
     MINIO_PUBLIC_URL: str | None = None
+
 
     # Maximum allowed audio upload size in bytes (default: 50MB)
     MAX_UPLOAD_SIZE_BYTES: int = 50 * 1024 * 1024

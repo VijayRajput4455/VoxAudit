@@ -59,4 +59,26 @@ def test_embedding_service_raises_invalid_audio():
     service = EmbeddingService(inference=mock_inference)
 
     with pytest.raises(InvalidAudioException):
-        service.generate_embedding("non_existent.wav")
+        service.generate_embedding("non_existent_path.wav")
+
+
+def test_resolve_device(monkeypatch):
+    from app.ml.models.ecapa import resolve_device
+
+    # Test auto with CUDA available
+    monkeypatch.setattr("torch.cuda.is_available", lambda: True)
+    monkeypatch.setattr("app.core.config.settings.EMBEDDING_DEVICE", "auto")
+    assert resolve_device() == "cuda:0"
+
+    # Test cuda with CUDA available
+    monkeypatch.setattr("app.core.config.settings.EMBEDDING_DEVICE", "cuda")
+    assert resolve_device() == "cuda:0"
+
+    # Test auto without CUDA
+    monkeypatch.setattr("torch.cuda.is_available", lambda: False)
+    monkeypatch.setattr("app.core.config.settings.EMBEDDING_DEVICE", "auto")
+    assert resolve_device() == "cpu"
+
+    # Test explicit cpu
+    monkeypatch.setattr("app.core.config.settings.EMBEDDING_DEVICE", "cpu")
+    assert resolve_device() == "cpu"
