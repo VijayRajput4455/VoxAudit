@@ -20,6 +20,7 @@ WORKDIR /app
 COPY requirements.txt pyproject.toml ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
+    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
     pip install -r requirements.txt
 
 
