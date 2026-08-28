@@ -591,10 +591,25 @@ pytest tests/unit/services/test_qa_scorecard.py tests/unit/workers/test_qa_audit
 
 ---
 
-## Logging & Error Handling
+## Logging & Observability (Grafana + Loki)
 
-- **Structured JSON Logging**: Standardized log records formatted with timestamps, module names, line numbers, request IDs, and job UUIDs ([`app/core/logging.py`](file:///c:/Users/VIJAY/Desktop/GitHub/VoxAudit/app/core/logging.py)).
-- **Graceful Partial Fallback**: If Ollama or an ML service encounters a temporary timeout, workers return structured fallback JSON payloads without crashing or corrupting database state.
+VoxAudit includes a pre-configured, production-ready observability and log aggregation stack:
+
+- **Structured JSON Logging**: Standardized log records formatted with timestamps, log level, service name, environment, request correlation IDs, module names, and exception tracebacks ([`app/core/logging.py`](file:///c:/Users/VIJAY/Desktop/GitHub/VoxAudit/app/core/logging.py)).
+- **Loki Engine** (Port `3100`): Ingests and indexes structured JSON log streams from file logs and Docker containers.
+- **Promtail Shipper**: Scrapes `logs/voxaudit.log` and microservice containers, automatically parsing JSON fields into indexed labels (`level`, `service`, `module`, `request_id`).
+- **Grafana Dashboard** (Port `3000`): Pre-provisioned enterprise dashboard available at `http://localhost:3000`:
+  - **Credentials**: Username `admin` / Password `admin`
+  - **Live Ingestion & Volume Rate**: Real-time stacked time-series chart of logs by severity level (`INFO`, `WARNING`, `ERROR`, `CRITICAL`).
+  - **Health KPIs**: Live counters for Ingested Logs, Errors, Warnings, and Critical Events.
+  - **Error Center**: Dedicated panel streaming only errors with full stack traces.
+  - **Interactive Search**: Filter logs by service dropdown, severity level, or free-text / Request ID search.
+
+```bash
+# Launch full observability stack alongside backend infrastructure
+docker compose -f deploy/docker-compose.yml up -d loki promtail grafana
+```
+
 
 ---
 

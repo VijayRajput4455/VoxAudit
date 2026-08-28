@@ -357,6 +357,64 @@ services:
       ollama:
         condition: service_started
 
+  # ---------------------------------------------------------------------------
+  # 12. Loki Log Aggregation Engine
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: voxaudit-loki
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - voxaudit_loki_data:/tmp/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - voxaudit-network
+
+  # ---------------------------------------------------------------------------
+  # 13. Promtail Log Shipper & Parser
+  # ---------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: voxaudit-promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - ../logs:/var/log/voxaudit:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - voxaudit-network
+    depends_on:
+      - loki
+
+  # ---------------------------------------------------------------------------
+  # 14. Grafana Observability Dashboard
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: voxaudit-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/dashboards/voxaudit-logs-dashboard.json
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - voxaudit_grafana_data:/var/lib/grafana
+    networks:
+      - voxaudit-network
+    depends_on:
+      - loki
+
 
 # =============================================================================
 # Persistent Storage Volumes
@@ -378,6 +436,10 @@ volumes:
     name: voxaudit_huggingface_cache
   voxaudit_torch_cache:
     name: voxaudit_torch_cache
+  voxaudit_loki_data:
+    name: voxaudit_loki_data
+  voxaudit_grafana_data:
+    name: voxaudit_grafana_data
 
 # =============================================================================
 # Isolated Docker Network
@@ -386,3 +448,4 @@ networks:
   voxaudit-network:
     name: voxaudit-network
     driver: bridge
+
